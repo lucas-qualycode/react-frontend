@@ -16,6 +16,7 @@ import {
   signInWithEmailAndPassword,
   signInWithEmailLink,
   signInWithPhoneNumber,
+  signOut as firebaseSignOut,
   type ConfirmationResult,
   type User as FirebaseUser,
 } from 'firebase/auth'
@@ -37,6 +38,7 @@ export interface AuthState {
     phoneNumber: string,
     recaptchaVerifier: RecaptchaVerifier
   ) => Promise<ConfirmationResult>
+  signOut: () => Promise<void>
 }
 
 export function getEmailForSignInKey(): string {
@@ -91,6 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     []
   )
+  const signOut = useCallback(async () => {
+    await firebaseSignOut(auth)
+  }, [])
   useEffect(() => {
     let unsub: (() => void) | undefined
     try {
@@ -122,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sendSignInLinkToEmail: sendSignInLinkToEmailFn,
       signInWithEmailLink: signInWithEmailLinkFn,
       signInWithPhoneNumber: signInWithPhoneNumberFn,
+      signOut,
     }),
     [
       user,
@@ -132,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sendSignInLinkToEmailFn,
       signInWithEmailLinkFn,
       signInWithPhoneNumberFn,
+      signOut,
     ]
   )
   return (

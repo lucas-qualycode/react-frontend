@@ -10,14 +10,18 @@ import {
 import {
   createUserWithEmailAndPassword,
   getAuth,
+  GoogleAuthProvider,
+  linkWithCredential as firebaseLinkWithCredential,
   onAuthStateChanged,
   RecaptchaVerifier,
   sendSignInLinkToEmail,
   signInWithEmailAndPassword,
   signInWithEmailLink,
   signInWithPhoneNumber,
+  signInWithPopup,
   signOut as firebaseSignOut,
   type ConfirmationResult,
+  type OAuthCredential,
   type User as FirebaseUser,
 } from 'firebase/auth'
 import { app } from '@/app/firebase'
@@ -39,6 +43,21 @@ export interface AuthState {
     recaptchaVerifier: RecaptchaVerifier
   ) => Promise<ConfirmationResult>
   signOut: () => Promise<void>
+  signInWithGoogle: () => Promise<void>
+  linkWithCredential: (credential: OAuthCredential) => Promise<void>
+}
+
+export const ACCOUNT_EXISTS_DIFFERENT_CREDENTIAL = 'auth/account-exists-with-different-credential' as const
+
+export function isAccountExistsDifferentCredentialError(
+  err: unknown
+): err is { code: typeof ACCOUNT_EXISTS_DIFFERENT_CREDENTIAL; email?: string; credential?: OAuthCredential } {
+  return (
+    err != null &&
+    typeof err === 'object' &&
+    'code' in err &&
+    (err as { code: string }).code === ACCOUNT_EXISTS_DIFFERENT_CREDENTIAL
+  )
 }
 
 export function getEmailForSignInKey(): string {
@@ -96,6 +115,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await firebaseSignOut(auth)
   }, [])
+  const signInWithGoogle = useCallback(async () => {
+    const provider = new GoogleAuthProvider()
+    try {
+      await signInWithPopup(auth, provider)
+    } catch (err) {
+      if (isAccountExistsDifferentCredentialError(err)) throw err
+      const message =
+        err && typeof err === 'object' && 'code' in err
+          ? (err as { code: string }).code === 'auth/popup-closed-by-user'
+            ? 'Sign-in cancelled.'
+            : (err as { code: string }).code === 'auth/popup-blocked'
+              ? 'Popup was blocked. Allow popups for this site and try again.'
+              : err instanceof Error
+                ? err.message
+                : 'Sign-in failed. Please try again.'
+          : 'Sign-in failed. Please try again.'
+      throw new Error(message)
+    }
+  }, [])
+  const linkWithCredential = useCallback(async (credential: OAuthCredential) => {
+    const currentUser = auth.currentUser
+    if (!currentUser) throw new Error('Must be signed in to link account.')
+    await firebaseLinkWithCredential(currentUser, credential)
+  }, [])
   useEffect(() => {
     let unsub: (() => void) | undefined
     try {
@@ -128,6 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithEmailLink: signInWithEmailLinkFn,
       signInWithPhoneNumber: signInWithPhoneNumberFn,
       signOut,
+      signInWithGoogle,
+      linkWithCredential,
     }),
     [
       user,
@@ -139,6 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithEmailLinkFn,
       signInWithPhoneNumberFn,
       signOut,
+      signInWithGoogle,
+      linkWithCredential,
     ]
   )
   return (

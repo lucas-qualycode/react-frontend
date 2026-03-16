@@ -4,8 +4,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import type { OAuthCredential } from 'firebase/auth'
 import { useAuth } from '@/app/auth/AuthContext'
+import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
 import { Button } from '@/shared/components/Button'
+import { GoogleIcon, EmailLinkIcon, PhoneIcon } from '@/shared/components/icons'
 
 const signUpSchema = z
   .object({
@@ -31,6 +34,8 @@ function getSignUpErrorMessage(err: unknown): string {
     'auth/weak-password': 'Password is too weak.',
     'auth/too-many-requests': 'Too many attempts. Please try again later.',
     'auth/network-request-failed': 'Network error. Please check your connection.',
+    'auth/popup-closed-by-user': 'Sign-in cancelled.',
+    'auth/popup-blocked': 'Popup was blocked. Allow popups for this site and try again.',
   }
   return (
     messages[code] ??
@@ -42,11 +47,17 @@ const inputClass =
   'w-full rounded-lg border border-border bg-input px-3 py-2 text-[var(--text)] outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20'
 const labelClass = 'mb-1 block text-sm font-medium text-[var(--text)]'
 
+type PendingLink = { email: string; credential: OAuthCredential }
+
 export function SignUpPage() {
-  const { user, signUp } = useAuth()
+  const { user, signUp, signInWithGoogle, signIn, linkWithCredential } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [linkLoading, setLinkLoading] = useState(false)
+  const [pendingLink, setPendingLink] = useState<PendingLink | null>(null)
+  const [linkPassword, setLinkPassword] = useState('')
 
   const {
     register,
@@ -76,10 +87,98 @@ export function SignUpPage() {
     }
   }
 
+  async function onGoogleClick() {
+    setGoogleLoading(true)
+    try {
+      await signInWithGoogle()
+      navigate(redirectTo, { replace: true })
+    } catch (err) {
+      if (isAccountExistsDifferentCredentialError(err)) {
+        setPendingLink({
+          email: (err as { email?: string }).email ?? '',
+          credential: (err as { credential?: OAuthCredential }).credential!,
+        })
+      } else {
+        toast.error(getSignUpErrorMessage(err))
+      }
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
+  async function onLinkAccountSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!pendingLink || !linkPassword.trim()) return
+    setLinkLoading(true)
+    try {
+      await signIn(pendingLink.email, linkPassword)
+      await linkWithCredential(pendingLink.credential)
+      navigate(redirectTo, { replace: true })
+    } catch (err) {
+      toast.error(getSignUpErrorMessage(err))
+    } finally {
+      setLinkLoading(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-sm px-4 py-8">
       <h1 className="text-2xl font-semibold text-[var(--text-h)]">Create account</h1>
 
+      {pendingLink ? (
+        <div className="mt-6 rounded-lg border border-border bg-muted/30 p-4">
+          <p className="text-sm text-[var(--text)]">
+            An account already exists for {pendingLink.email}. Enter your password to link your Google account.
+          </p>
+          <form onSubmit={onLinkAccountSubmit} className="mt-4 flex flex-col gap-4" noValidate>
+            <div>
+              <label htmlFor="signup-link-email" className={labelClass}>
+                Email
+              </label>
+              <input
+                id="signup-link-email"
+                type="email"
+                value={pendingLink.email}
+                readOnly
+                className={inputClass + ' bg-muted'}
+                aria-readonly
+              />
+            </div>
+            <div>
+              <label htmlFor="signup-link-password" className={labelClass}>
+                Password
+              </label>
+              <input
+                id="signup-link-password"
+                type="password"
+                autoComplete="current-password"
+                className={inputClass}
+                value={linkPassword}
+                onChange={(e) => setLinkPassword(e.target.value)}
+                disabled={linkLoading}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={linkLoading} className="mt-2">
+                {linkLoading ? 'Linking…' : 'Link account'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setPendingLink(null)
+                  setLinkPassword('')
+                }}
+                disabled={linkLoading}
+                className="mt-2"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <>
       <form
         onSubmit={handleSubmit(onSignUpSubmit)}
         className="mt-6 flex flex-col gap-4"
@@ -136,19 +235,33 @@ export function SignUpPage() {
       </form>
 
       <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6 text-center text-sm text-[var(--text)]">
+        <Button
+          type="button"
+          variant="secondary"
+          className="flex w-full items-center justify-center gap-2"
+          disabled={googleLoading}
+          onClick={onGoogleClick}
+          aria-busy={googleLoading}
+          aria-label={googleLoading ? 'Creating account with Google…' : 'Create account with Google'}
+        >
+          <GoogleIcon className="h-5 w-5 shrink-0" />
+          <span>{googleLoading ? 'Signing in…' : 'Create account with Google'}</span>
+        </Button>
         <Link
           to="/login/link"
           state={location.state}
-          className="font-medium text-primary hover:underline"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
-          Create account with email link
+          <EmailLinkIcon className="h-5 w-5 shrink-0" />
+          <span>Create account with email link</span>
         </Link>
         <Link
           to="/login/phone"
           state={location.state}
-          className="font-medium text-primary hover:underline"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
-          Create account with phone number
+          <PhoneIcon className="h-5 w-5 shrink-0" />
+          <span>Create account with phone number</span>
         </Link>
       </div>
 
@@ -160,6 +273,8 @@ export function SignUpPage() {
           </Link>
         </p>
       </div>
+        </>
+      )}
     </div>
   )
 }

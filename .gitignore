@@ -26,3 +26,15 @@ dist-ssr
 
 # Environment variables
 .env
+
+# Test coverage
+coverage
+*.lcov
+
+# Build / tool caches
+.vite
+.eslintcache
+*.tsbuildinfo
+
+# Optional: uncomment if you use Firebase emulator data
+# .firebase-emulator

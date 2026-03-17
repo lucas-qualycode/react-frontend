@@ -79,6 +79,9 @@ export function SignUpPage() {
     setIsSubmitting(true)
     try {
       await signUp(data.email, data.password)
+      toast.success(
+        `Account created. We sent a verification email to ${data.email}. Please verify so you can link Google or other sign-in methods later.`
+      )
       navigate(redirectTo, { replace: true })
     } catch (err) {
       toast.error(getSignUpErrorMessage(err))

@@ -14,6 +14,7 @@ import {
   linkWithCredential as firebaseLinkWithCredential,
   onAuthStateChanged,
   RecaptchaVerifier,
+  sendEmailVerification,
   sendSignInLinkToEmail,
   signInWithEmailAndPassword,
   signInWithEmailLink,
@@ -85,7 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password)
   }, [])
   const signUp = useCallback(async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password)
+    const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password)
+    await sendEmailVerification(newUser)
   }, [])
   const sendSignInLinkToEmailFn = useCallback(async (email: string) => {
     const url =

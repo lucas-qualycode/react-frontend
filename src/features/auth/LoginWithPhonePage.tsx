@@ -7,7 +7,7 @@ import { useAuth } from '@/app/auth/AuthContext'
 import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
 import { app } from '@/app/firebase'
 import { Button } from '@/shared/components/Button'
-import { GoogleIcon, EmailLinkIcon, PhoneIcon } from '@/shared/components/icons'
+import { GoogleIcon, EmailLinkIcon } from '@/shared/components/icons'
 
 type PendingLink = { email: string; credential: OAuthCredential }
 

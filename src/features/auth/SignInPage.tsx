@@ -10,12 +10,12 @@ import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
 import { Button } from '@/shared/components/Button'
 import { GoogleIcon, EmailLinkIcon, PhoneIcon } from '@/shared/components/icons'
 
-const loginSchema = z.object({
+const signInSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Invalid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
-type LoginForm = z.infer<typeof loginSchema>
+type SignInForm = z.infer<typeof signInSchema>
 
 function getAuthErrorMessage(err: unknown): string {
   const code =
@@ -42,7 +42,7 @@ const labelClass = 'mb-1 block text-sm font-medium text-[var(--text)]'
 
 type PendingLink = { email: string; credential: OAuthCredential }
 
-export function LoginPage() {
+export function SignInPage() {
   const { user, signIn, signInWithGoogle, linkWithCredential } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
@@ -56,8 +56,8 @@ export function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<SignInForm>({
+    resolver: zodResolver(signInSchema),
     defaultValues: { email: '', password: '' },
   })
 
@@ -68,7 +68,7 @@ export function LoginPage() {
     return <Navigate to={redirectTo} replace />
   }
 
-  async function onSubmit(data: LoginForm) {
+  async function onSubmit(data: SignInForm) {
     setIsSubmitting(true)
     try {
       await signIn(data.email, data.password)
@@ -116,7 +116,7 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-8">
-      <h1 className="text-2xl font-semibold text-[var(--text-h)]">Log in</h1>
+      <h1 className="text-2xl font-semibold text-[var(--text-h)]">Sign in</h1>
       {pendingLink ? (
         <div className="mt-6 rounded-lg border border-border bg-muted/30 p-4">
           <p className="text-sm text-[var(--text)]">
@@ -177,11 +177,11 @@ export function LoginPage() {
         noValidate
       >
         <div>
-          <label htmlFor="login-email" className={labelClass}>
+          <label htmlFor="signin-email" className={labelClass}>
             Email
           </label>
           <input
-            id="login-email"
+            id="signin-email"
             type="email"
             autoComplete="email"
             className={inputClass}
@@ -192,11 +192,11 @@ export function LoginPage() {
           )}
         </div>
         <div>
-          <label htmlFor="login-password" className={labelClass}>
+          <label htmlFor="signin-password" className={labelClass}>
             Password
           </label>
           <input
-            id="login-password"
+            id="signin-password"
             type="password"
             autoComplete="current-password"
             className={inputClass}
@@ -207,7 +207,7 @@ export function LoginPage() {
           )}
         </div>
         <Button type="submit" disabled={isSubmitting} className="mt-2">
-          {isSubmitting ? 'Logging in…' : 'Log in'}
+          {isSubmitting ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
 
@@ -219,26 +219,26 @@ export function LoginPage() {
           disabled={googleLoading}
           onClick={onGoogleClick}
           aria-busy={googleLoading}
-          aria-label={googleLoading ? 'Signing in with Google…' : 'Log in with Google'}
+          aria-label={googleLoading ? 'Signing in with Google…' : 'Sign in with Google'}
         >
           <GoogleIcon className="h-5 w-5 shrink-0" />
-          <span>{googleLoading ? 'Signing in…' : 'Log in with Google'}</span>
+          <span>{googleLoading ? 'Signing in…' : 'Sign in with Google'}</span>
         </Button>
         <Link
-          to="/login/link"
+          to="/signin/link"
           state={location.state}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
           <EmailLinkIcon className="h-5 w-5 shrink-0" />
-          <span>Log in with email link</span>
+          <span>Sign in with email link</span>
         </Link>
         <Link
-          to="/login/phone"
+          to="/signin/phone"
           state={location.state}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
           <PhoneIcon className="h-5 w-5 shrink-0" />
-          <span>Log in with phone</span>
+          <span>Sign in with phone</span>
         </Link>
       </div>
 
@@ -246,7 +246,7 @@ export function LoginPage() {
         <p>
           Don&apos;t have an account?{' '}
           <Link to="/signup" className="font-medium text-primary hover:underline">
-            Create account
+            Sign up
           </Link>
         </p>
       </div>

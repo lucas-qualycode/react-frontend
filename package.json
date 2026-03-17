@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy": "npm run build && npx firebase deploy --only hosting",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
@@ -44,6 +45,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.0",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "firebase-tools": "^13.0.0"
   }
 }

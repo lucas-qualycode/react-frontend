@@ -15,13 +15,13 @@ export function AuthCompletePage() {
   useEffect(() => {
     const href = window.location.href
     if (!isSignInWithEmailLink(auth, href)) {
-      toast.error('Invalid or expired login link.')
+      toast.error('Invalid or expired sign-in link.')
       setStatus('error')
       return
     }
     const email = window.localStorage.getItem(getEmailForSignInKey())
     if (!email) {
-      toast.error('Please open the login link from the same device where you requested it.')
+      toast.error('Please open the sign-in link from the same device where you requested it.')
       setStatus('error')
       return
     }
@@ -36,7 +36,7 @@ export function AuthCompletePage() {
   }, [signInWithEmailLink])
 
   if (status === 'error') {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/signin" replace />
   }
   if (status === 'done') {
     const from = (location.state as { from?: { pathname: string } })?.from

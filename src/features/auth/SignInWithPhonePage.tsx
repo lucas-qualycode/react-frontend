@@ -1,21 +1,25 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { getAuth, RecaptchaVerifier } from 'firebase/auth'
 import type { OAuthCredential } from 'firebase/auth'
 import { useAuth } from '@/app/auth/AuthContext'
 import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
+import { app } from '@/app/firebase'
 import { Button } from '@/shared/components/Button'
-import { GoogleIcon, EmailLinkIcon, PhoneIcon } from '@/shared/components/icons'
+import { GoogleIcon, EmailLinkIcon } from '@/shared/components/icons'
 
 type PendingLink = { email: string; credential: OAuthCredential }
 
-function getEmailLinkErrorMessage(err: unknown): string {
+function getPhoneErrorMessage(err: unknown): string {
   const code =
     err && typeof err === 'object' && 'code' in err
       ? (err as { code: string }).code
       : ''
   const messages: Record<string, string> = {
-    'auth/invalid-email': 'Invalid email address.',
+    'auth/invalid-phone-number': 'Invalid phone number.',
+    'auth/invalid-verification-code': 'Invalid or expired code.',
+    'auth/code-expired': 'Code expired. Please request a new one.',
     'auth/too-many-requests': 'Too many attempts. Please try again later.',
     'auth/network-request-failed': 'Network error. Please check your connection.',
     'auth/popup-closed-by-user': 'Sign-in cancelled.',
@@ -28,13 +32,18 @@ const inputClass =
   'w-full rounded-lg border border-border bg-input px-3 py-2 text-[var(--text)] outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20'
 const labelClass = 'mb-1 block text-sm font-medium text-[var(--text)]'
 
-export function LoginWithLinkPage() {
-  const { user, sendSignInLinkToEmail, signInWithGoogle, signIn, linkWithCredential } = useAuth()
+export function SignInWithPhonePage() {
+  const { user, signInWithPhoneNumber, signInWithGoogle, signIn, linkWithCredential } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [phoneStep, setPhoneStep] = useState<'phone' | 'code'>('phone')
+  const [phoneValue, setPhoneValue] = useState('')
+  const [codeValue, setCodeValue] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [linkSent, setLinkSent] = useState(false)
+  const [confirmationResult, setConfirmationResult] = useState<{
+    confirm: (code: string) => Promise<unknown>
+  } | null>(null)
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [linkLoading, setLinkLoading] = useState(false)
   const [pendingLink, setPendingLink] = useState<PendingLink | null>(null)
@@ -55,7 +64,7 @@ export function LoginWithLinkPage() {
           credential: (err as { credential?: OAuthCredential }).credential!,
         })
       } else {
-        toast.error(getEmailLinkErrorMessage(err))
+        toast.error(getPhoneErrorMessage(err))
       }
     } finally {
       setGoogleLoading(false)
@@ -71,7 +80,7 @@ export function LoginWithLinkPage() {
       await linkWithCredential(pendingLink.credential)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      toast.error(getEmailLinkErrorMessage(err))
+      toast.error(getPhoneErrorMessage(err))
     } finally {
       setLinkLoading(false)
     }
@@ -81,17 +90,36 @@ export function LoginWithLinkPage() {
     return <Navigate to={redirectTo} replace />
   }
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onRequestCode(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim()) return
+    if (!phoneValue.trim() || !recaptchaContainerRef.current) return
+    const auth = getAuth(app)
+    const verifier = new RecaptchaVerifier(
+      auth,
+      recaptchaContainerRef.current,
+      { size: 'invisible' }
+    )
     setIsSubmitting(true)
-    setLinkSent(false)
     try {
-      await sendSignInLinkToEmail(email.trim())
-      setLinkSent(true)
-      toast.success('Check your email for the login link.')
+      const result = await signInWithPhoneNumber(phoneValue.trim(), verifier)
+      setConfirmationResult(result)
+      setPhoneStep('code')
     } catch (err) {
-      toast.error(getEmailLinkErrorMessage(err))
+      toast.error(getPhoneErrorMessage(err))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function onConfirmCode(e: React.FormEvent) {
+    e.preventDefault()
+    if (!confirmationResult || !codeValue.trim()) return
+    setIsSubmitting(true)
+    try {
+      await confirmationResult.confirm(codeValue.trim())
+      navigate(redirectTo, { replace: true })
+    } catch (err) {
+      toast.error(getPhoneErrorMessage(err))
     } finally {
       setIsSubmitting(false)
     }
@@ -99,7 +127,7 @@ export function LoginWithLinkPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-8">
-      <h1 className="text-2xl font-semibold text-[var(--text-h)]">Log in with email link</h1>
+      <h1 className="text-2xl font-semibold text-[var(--text-h)]">Sign in with phone number</h1>
       {pendingLink ? (
         <div className="mt-6 rounded-lg border border-border bg-muted/30 p-4">
           <p className="text-sm text-[var(--text)]">
@@ -107,11 +135,11 @@ export function LoginWithLinkPage() {
           </p>
           <form onSubmit={onLinkAccountSubmit} className="mt-4 flex flex-col gap-4" noValidate>
             <div>
-              <label htmlFor="login-link-link-email" className={labelClass}>
+              <label htmlFor="signin-phone-link-email" className={labelClass}>
                 Email
               </label>
               <input
-                id="login-link-link-email"
+                id="signin-phone-link-email"
                 type="email"
                 value={pendingLink.email}
                 readOnly
@@ -120,11 +148,11 @@ export function LoginWithLinkPage() {
               />
             </div>
             <div>
-              <label htmlFor="login-link-link-password" className={labelClass}>
+              <label htmlFor="signin-phone-link-password" className={labelClass}>
                 Password
               </label>
               <input
-                id="login-link-link-password"
+                id="signin-phone-link-password"
                 type="password"
                 autoComplete="current-password"
                 className={inputClass}
@@ -152,27 +180,64 @@ export function LoginWithLinkPage() {
             </div>
           </form>
         </div>
-      ) : linkSent ? (
-        <p className="mt-6 text-[var(--text)]">Link sent. Check your email and click the link to sign in.</p>
       ) : (
-        <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4" noValidate>
+      <>
+      <div ref={recaptchaContainerRef} />
+      {phoneStep === 'phone' ? (
+        <form onSubmit={onRequestCode} className="mt-6 flex flex-col gap-4" noValidate>
           <div>
-            <label htmlFor="login-link-email" className={labelClass}>
-              Email
+            <label htmlFor="signin-phone" className={labelClass}>
+              Phone number
             </label>
             <input
-              id="login-link-email"
-              type="email"
-              autoComplete="email"
+              id="signin-phone"
+              type="tel"
+              autoComplete="tel"
+              placeholder="+1 234 567 8900"
               className={inputClass}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={phoneValue}
+              onChange={(e) => setPhoneValue(e.target.value)}
               disabled={isSubmitting}
             />
           </div>
           <Button type="submit" disabled={isSubmitting} className="mt-2">
-            {isSubmitting ? 'Sending…' : 'Send link'}
+            {isSubmitting ? 'Sending…' : 'Send code'}
           </Button>
+        </form>
+      ) : (
+        <form onSubmit={onConfirmCode} className="mt-6 flex flex-col gap-4" noValidate>
+          <div>
+            <label htmlFor="signin-phone-code" className={labelClass}>
+              Verification code
+            </label>
+            <input
+              id="signin-phone-code"
+              type="text"
+              placeholder="Enter code"
+              className={inputClass}
+              value={codeValue}
+              onChange={(e) => setCodeValue(e.target.value)}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={isSubmitting} className="mt-2">
+              {isSubmitting ? 'Verifying…' : 'Verify'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setPhoneStep('phone')
+                setConfirmationResult(null)
+                setCodeValue('')
+              }}
+              disabled={isSubmitting}
+              className="mt-2"
+            >
+              Back
+            </Button>
+          </div>
         </form>
       )}
 
@@ -184,26 +249,26 @@ export function LoginWithLinkPage() {
           disabled={googleLoading}
           onClick={onGoogleClick}
           aria-busy={googleLoading}
-          aria-label={googleLoading ? 'Signing in with Google…' : 'Log in with Google'}
+          aria-label={googleLoading ? 'Signing in with Google…' : 'Sign in with Google'}
         >
           <GoogleIcon className="h-5 w-5 shrink-0" />
-          <span>{googleLoading ? 'Signing in…' : 'Log in with Google'}</span>
+          <span>{googleLoading ? 'Signing in…' : 'Sign in with Google'}</span>
         </Button>
         <Link
-          to="/login"
+          to="/signin"
           state={location.state}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
           <EmailLinkIcon className="h-5 w-5 shrink-0" />
-          <span>Log in with email and password</span>
+          <span>Sign in with email and password</span>
         </Link>
         <Link
-          to="/login/phone"
+          to="/signin/link"
           state={location.state}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
-          <PhoneIcon className="h-5 w-5 shrink-0" />
-          <span>Log in with phone</span>
+          <EmailLinkIcon className="h-5 w-5 shrink-0" />
+          <span>Sign in with email link</span>
         </Link>
       </div>
 
@@ -211,10 +276,12 @@ export function LoginWithLinkPage() {
         <p>
           Don&apos;t have an account?{' '}
           <Link to="/signup" className="font-medium text-primary hover:underline">
-            Create account
+            Sign up
           </Link>
         </p>
       </div>
+      </>
+      )}
     </div>
   )
 }

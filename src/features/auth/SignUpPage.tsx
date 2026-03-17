@@ -80,7 +80,7 @@ export function SignUpPage() {
     try {
       await signUp(data.email, data.password)
       toast.success(
-        `Account created. We sent a verification email to ${data.email}. Please verify so you can link Google or other sign-in methods later.`
+        `You're signed up. We sent a verification email to ${data.email}. Please verify so you can link Google or other sign-in methods later.`
       )
       navigate(redirectTo, { replace: true })
     } catch (err) {
@@ -126,7 +126,7 @@ export function SignUpPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-8">
-      <h1 className="text-2xl font-semibold text-[var(--text-h)]">Create account</h1>
+      <h1 className="text-2xl font-semibold text-[var(--text-h)]">Sign up</h1>
 
       {pendingLink ? (
         <div className="mt-6 rounded-lg border border-border bg-muted/30 p-4">
@@ -233,7 +233,7 @@ export function SignUpPage() {
           )}
         </div>
         <Button type="submit" disabled={isSubmitting} className="mt-2">
-          {isSubmitting ? 'Creating account…' : 'Create account'}
+          {isSubmitting ? 'Signing up…' : 'Sign up'}
         </Button>
       </form>
 
@@ -245,34 +245,34 @@ export function SignUpPage() {
           disabled={googleLoading}
           onClick={onGoogleClick}
           aria-busy={googleLoading}
-          aria-label={googleLoading ? 'Creating account with Google…' : 'Create account with Google'}
+          aria-label={googleLoading ? 'Signing up with Google…' : 'Sign up with Google'}
         >
           <GoogleIcon className="h-5 w-5 shrink-0" />
-          <span>{googleLoading ? 'Signing in…' : 'Create account with Google'}</span>
+          <span>{googleLoading ? 'Signing up…' : 'Sign up with Google'}</span>
         </Button>
         <Link
-          to="/login/link"
+          to="/signin/link"
           state={location.state}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
           <EmailLinkIcon className="h-5 w-5 shrink-0" />
-          <span>Create account with email link</span>
+          <span>Sign up with email link</span>
         </Link>
         <Link
-          to="/login/phone"
+          to="/signin/phone"
           state={location.state}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
           <PhoneIcon className="h-5 w-5 shrink-0" />
-          <span>Create account with phone number</span>
+          <span>Sign up with phone number</span>
         </Link>
       </div>
 
       <div className="mt-6 border-t border-border pt-6 text-center text-sm text-[var(--text)]">
         <p>
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-primary hover:underline">
-            Log in
+          <Link to="/signin" className="font-medium text-primary hover:underline">
+            Sign in
           </Link>
         </p>
       </div>

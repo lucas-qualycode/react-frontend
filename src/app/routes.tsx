@@ -6,8 +6,8 @@ import { ProtectedRoute } from '@/app/ProtectedRoute'
 const HomePage = lazy(() =>
   import('@/features/home/HomePage').then((m) => ({ default: m.HomePage }))
 )
-const LoginPage = lazy(() =>
-  import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage }))
+const SignInPage = lazy(() =>
+  import('@/features/auth/SignInPage').then((m) => ({ default: m.SignInPage }))
 )
 const SignUpPage = lazy(() =>
   import('@/features/auth/SignUpPage').then((m) => ({ default: m.SignUpPage }))
@@ -17,14 +17,14 @@ const AuthCompletePage = lazy(() =>
     default: m.AuthCompletePage,
   }))
 )
-const LoginWithLinkPage = lazy(() =>
-  import('@/features/auth/LoginWithLinkPage').then((m) => ({
-    default: m.LoginWithLinkPage,
+const SignInWithLinkPage = lazy(() =>
+  import('@/features/auth/SignInWithLinkPage').then((m) => ({
+    default: m.SignInWithLinkPage,
   }))
 )
-const LoginWithPhonePage = lazy(() =>
-  import('@/features/auth/LoginWithPhonePage').then((m) => ({
-    default: m.LoginWithPhonePage,
+const SignInWithPhonePage = lazy(() =>
+  import('@/features/auth/SignInWithPhonePage').then((m) => ({
+    default: m.SignInWithPhonePage,
   }))
 )
 const GeneralEventsPage = lazy(() =>
@@ -153,16 +153,16 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <SuspensePage><HomePage /></SuspensePage> },
       {
-        path: 'login',
-        element: <SuspensePage><LoginPage /></SuspensePage>,
+        path: 'signin',
+        element: <SuspensePage><SignInPage /></SuspensePage>,
       },
       {
-        path: 'login/link',
-        element: <SuspensePage><LoginWithLinkPage /></SuspensePage>,
+        path: 'signin/link',
+        element: <SuspensePage><SignInWithLinkPage /></SuspensePage>,
       },
       {
-        path: 'login/phone',
-        element: <SuspensePage><LoginWithPhonePage /></SuspensePage>,
+        path: 'signin/phone',
+        element: <SuspensePage><SignInWithPhonePage /></SuspensePage>,
       },
       {
         path: 'signup',

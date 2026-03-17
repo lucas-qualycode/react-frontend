@@ -101,10 +101,10 @@ export function Toolbar() {
             </div>
           ) : (
             <Link
-              to="/login"
+              to="/signin"
               className="ml-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
             >
-              Login
+              Sign in
             </Link>
           )}
         </nav>

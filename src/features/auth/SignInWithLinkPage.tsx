@@ -6,7 +6,7 @@ import { Alert, Button, Card, Divider, Form, Input, Layout, Space, Typography } 
 import { useAuth } from '@/app/auth/AuthContext'
 import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
 import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
-import { GoogleIcon, EmailLinkIcon, PhoneIcon } from '@/shared/components/icons'
+import { GoogleOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons'
 
 type PendingLink = { email: string; credential: OAuthCredential }
 
@@ -157,17 +157,17 @@ export function SignInWithLinkPage() {
           loading={googleLoading}
           onClick={onGoogleClick}
           aria-label={googleLoading ? 'Signing in with Google…' : 'Sign in with Google'}
-          icon={<GoogleIcon />}
+          icon={<GoogleOutlined style={{ fontSize: 20 }} />}
         >
           Sign in with Google
         </Button>
         <Link to="/signin" state={location.state} style={{ display: 'block' }}>
-          <Button type="default" block icon={<EmailLinkIcon />}>
+          <Button type="default" block icon={<MailOutlined style={{ fontSize: 20 }} />}>
             Sign in with email and password
           </Button>
         </Link>
         <Link to="/signin/phone" state={location.state} style={{ display: 'block' }}>
-          <Button type="default" block icon={<PhoneIcon />}>
+          <Button type="default" block icon={<PhoneOutlined style={{ fontSize: 20 }} />}>
             Sign in with phone
           </Button>
         </Link>

@@ -6,7 +6,7 @@ import type { OAuthCredential } from 'firebase/auth'
 import { useAuth } from '@/app/auth/AuthContext'
 import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
 import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
-import { GoogleIcon, EmailLinkIcon, PhoneIcon } from '@/shared/components/icons'
+import { GoogleOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons'
 
 const signUpSchema = z
   .object({
@@ -203,17 +203,17 @@ export function SignUpPage() {
               loading={googleLoading}
               onClick={onGoogleClick}
               aria-label={googleLoading ? 'Signing up with Google…' : 'Sign up with Google'}
-              icon={<GoogleIcon />}
+              icon={<GoogleOutlined style={{ fontSize: 20 }} />}
             >
               Sign up with Google
             </Button>
             <Link to="/signin/link" state={location.state} style={{ display: 'block' }}>
-              <Button type="default" block icon={<EmailLinkIcon />}>
+              <Button type="default" block icon={<MailOutlined style={{ fontSize: 20 }} />}>
                 Sign up with email link
               </Button>
             </Link>
             <Link to="/signin/phone" state={location.state} style={{ display: 'block' }}>
-              <Button type="default" block icon={<PhoneIcon />}>
+              <Button type="default" block icon={<PhoneOutlined style={{ fontSize: 20 }} />}>
                 Sign up with phone number
               </Button>
             </Link>

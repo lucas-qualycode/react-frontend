@@ -4,13 +4,13 @@ import { Avatar, Button, Dropdown, Flex, Grid, Input, Popover, theme } from 'ant
 import type { MenuProps } from 'antd'
 import { useAuth } from '@/app/auth/AuthContext'
 import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
-import { SearchIcon, CartIcon, HeartIcon } from '@/shared/components/icons'
+import { HeartOutlined, LoginOutlined, MenuOutlined, SearchOutlined, ShoppingCartOutlined, UserAddOutlined } from '@ant-design/icons'
 
 const BRAND_NAME = 'Partiiu.com'
 
 const NAV_ICONS = [
-  { to: '/favorites', label: 'Favorites', icon: HeartIcon },
-  { to: '/orders', label: 'Cart', icon: CartIcon },
+  { to: '/favorites', label: 'Favorites', icon: HeartOutlined },
+  { to: '/orders', label: 'Cart', icon: ShoppingCartOutlined },
 ] as const
 
 const SEARCH_INPUT_WIDTH = 256
@@ -87,30 +87,30 @@ export function AppHeader() {
       key: 'favorites',
       label: (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <HeartIcon />
+          <HeartOutlined style={{ fontSize: 18 }} />
           Favorites
         </span>
       ),
       onClick: () => navigate('/favorites'),
     },
     {
-      key: 'cart',
+      key: 'signin',
       label: (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <CartIcon />
-          Cart
+          <LoginOutlined style={{ fontSize: 18 }} />
+          Sign in
         </span>
       ),
-      onClick: () => navigate('/orders'),
-    },
-    {
-      key: 'signin',
-      label: 'Sign in',
       onClick: () => navigate('/signin'),
     },
     {
       key: 'signup',
-      label: 'Sign up',
+      label: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <UserAddOutlined style={{ fontSize: 18 }} />
+          Sign up
+        </span>
+      ),
       onClick: () => navigate('/signup'),
     },
   ]
@@ -147,7 +147,7 @@ export function AppHeader() {
               id="app-header-search"
               type="search"
               placeholder="Search"
-              prefix={<SearchIcon />}
+              prefix={<SearchOutlined style={{ fontSize: 18 }} />}
               style={{ width: SEARCH_INPUT_WIDTH }}
               aria-label="Search"
               variant="outlined"
@@ -166,7 +166,7 @@ export function AppHeader() {
                   id="app-header-search-popover"
                   type="search"
                   placeholder="Search"
-                  prefix={<SearchIcon />}
+                  prefix={<SearchOutlined style={{ fontSize: 18 }} />}
                   style={{ width: SEARCH_INPUT_WIDTH }}
                   aria-label="Search"
                   variant="outlined"
@@ -193,7 +193,7 @@ export function AppHeader() {
                 onClick={openSearch}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSearch() } }}
               >
-                <SearchIcon />
+                <SearchOutlined style={{ fontSize: 20 }} />
               </span>
             </Popover>
           )}
@@ -213,7 +213,7 @@ export function AppHeader() {
                 onMouseLeave={() => setHoveredNav(null)}
                 aria-label={label}
               >
-                <Icon />
+                <Icon style={{ fontSize: 20 }} />
               </Link>
             )
           })}
@@ -264,11 +264,7 @@ export function AppHeader() {
                   onMouseEnter={() => setHoveredMenu(true)}
                   onMouseLeave={() => setHoveredMenu(false)}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M4 6h16" />
-                    <path d="M4 12h16" />
-                    <path d="M4 18h16" />
-                  </svg>
+                  <MenuOutlined style={{ fontSize: 18 }} />
                 </span>
               </Dropdown>
             ) : (

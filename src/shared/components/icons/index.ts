@@ -1,6 +1,0 @@
-export { SearchIcon } from './SearchIcon'
-export { CartIcon } from './CartIcon'
-export { HeartIcon } from './HeartIcon'
-export { GoogleIcon } from './GoogleIcon'
-export { EmailLinkIcon } from './EmailLinkIcon'
-export { PhoneIcon } from './PhoneIcon'

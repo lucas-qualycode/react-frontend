@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { message } from 'antd'
 import type { OAuthCredential } from 'firebase/auth'
+import { Alert, Button, Card, Divider, Form, Input, Layout, Space, Typography } from 'antd'
 import { useAuth } from '@/app/auth/AuthContext'
 import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
-import { Button } from '@/shared/components/Button'
+import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
 import { GoogleIcon, EmailLinkIcon, PhoneIcon } from '@/shared/components/icons'
 
 type PendingLink = { email: string; credential: OAuthCredential }
@@ -24,15 +25,11 @@ function getEmailLinkErrorMessage(err: unknown): string {
   return messages[code] ?? (err instanceof Error ? err.message : 'Something went wrong. Please try again.')
 }
 
-const inputClass =
-  'w-full rounded-lg border border-border bg-input px-3 py-2 text-[var(--text)] outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20'
-const labelClass = 'mb-1 block text-sm font-medium text-[var(--text)]'
-
 export function SignInWithLinkPage() {
   const { user, sendSignInLinkToEmail, signInWithGoogle, signIn, linkWithCredential } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [sendLinkForm] = Form.useForm<{ email: string }>()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [linkSent, setLinkSent] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -55,7 +52,7 @@ export function SignInWithLinkPage() {
           credential: (err as { credential?: OAuthCredential }).credential!,
         })
       } else {
-        toast.error(getEmailLinkErrorMessage(err))
+        message.error(getEmailLinkErrorMessage(err))
       }
     } finally {
       setGoogleLoading(false)
@@ -71,7 +68,7 @@ export function SignInWithLinkPage() {
       await linkWithCredential(pendingLink.credential)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      toast.error(getEmailLinkErrorMessage(err))
+      message.error(getEmailLinkErrorMessage(err))
     } finally {
       setLinkLoading(false)
     }
@@ -81,140 +78,105 @@ export function SignInWithLinkPage() {
     return <Navigate to={redirectTo} replace />
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email.trim()) return
+  async function onSendLinkFinish(values: { email: string }) {
     setIsSubmitting(true)
     setLinkSent(false)
     try {
-      await sendSignInLinkToEmail(email.trim())
+      await sendSignInLinkToEmail(values.email.trim())
       setLinkSent(true)
-      toast.success('Check your email for the sign-in link.')
+      message.success('Check your email for the sign-in link.')
     } catch (err) {
-      toast.error(getEmailLinkErrorMessage(err))
+      message.error(getEmailLinkErrorMessage(err))
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const { Content } = Layout
+  const { Title, Text } = Typography
   return (
-    <div className="mx-auto max-w-sm px-4 py-8">
-      <h1 className="text-2xl font-semibold text-[var(--text-h)]">Sign in with email link</h1>
+    <Content style={{ padding: 32, maxWidth: 384, margin: '0 auto', width: '100%' }}>
+      <Title level={2}>Sign in with email link</Title>
       {pendingLink ? (
-        <div className="mt-6 rounded-lg border border-border bg-muted/30 p-4">
-          <p className="text-sm text-[var(--text)]">
-            An account already exists for {pendingLink.email}. Enter your password to link your Google account.
-          </p>
-          <form onSubmit={onLinkAccountSubmit} className="mt-4 flex flex-col gap-4" noValidate>
-            <div>
-              <label htmlFor="signin-link-link-email" className={labelClass}>
-                Email
-              </label>
-              <input
-                id="signin-link-link-email"
-                type="email"
-                value={pendingLink.email}
-                readOnly
-                className={inputClass + ' bg-muted'}
-                aria-readonly
-              />
-            </div>
-            <div>
-              <label htmlFor="signin-link-link-password" className={labelClass}>
-                Password
-              </label>
-              <input
-                id="signin-link-link-password"
-                type="password"
-                autoComplete="current-password"
-                className={inputClass}
+        <Card style={{ marginTop: 24 }}>
+          <Alert
+            message={`An account already exists for ${pendingLink.email}. Enter your password to link your Google account.`}
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+          <Form layout="vertical">
+            <Form.Item label="Email">
+              <Input value={pendingLink.email} readOnly disabled />
+            </Form.Item>
+            <Form.Item label="Password">
+              <Input.Password
                 value={linkPassword}
                 onChange={(e) => setLinkPassword(e.target.value)}
                 disabled={linkLoading}
+                autoComplete="current-password"
               />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={linkLoading} className="mt-2">
-                {linkLoading ? 'Linking…' : 'Link account'}
+            </Form.Item>
+            <Space>
+              <Button type="primary" htmlType="button" loading={linkLoading} onClick={(e) => { e.preventDefault(); onLinkAccountSubmit(e) }}>
+                Link account
               </Button>
               <Button
-                type="button"
-                variant="ghost"
+                type="text"
+                disabled={linkLoading}
                 onClick={() => {
                   setPendingLink(null)
                   setLinkPassword('')
                 }}
-                disabled={linkLoading}
-                className="mt-2"
               >
                 Cancel
               </Button>
-            </div>
-          </form>
-        </div>
+            </Space>
+          </Form>
+        </Card>
       ) : linkSent ? (
-        <p className="mt-6 text-[var(--text)]">Link sent. Check your email and click the link to sign in.</p>
+        <Text style={{ display: 'block', marginTop: 24 }}>Link sent. Check your email and click the link to sign in.</Text>
       ) : (
-        <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4" noValidate>
-          <div>
-            <label htmlFor="signin-link-email" className={labelClass}>
-              Email
-            </label>
-            <input
-              id="signin-link-email"
-              type="email"
-              autoComplete="email"
-              className={inputClass}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
-          <Button type="submit" disabled={isSubmitting} className="mt-2">
-            {isSubmitting ? 'Sending…' : 'Send link'}
-          </Button>
-        </form>
+        <Form form={sendLinkForm} layout="vertical" style={{ marginTop: 24 }} onFinish={onSendLinkFinish}>
+          <Form.Item name="email" label="Email" rules={[{ required: true, message: 'Email is required' }, { type: 'email', message: 'Invalid email' }]}>
+            <Input type="email" autoComplete="email" disabled={isSubmitting} />
+          </Form.Item>
+          <Form.Item style={{ marginTop: 35 }}>
+            <Button type="primary" htmlType="submit" loading={isSubmitting} block>
+              Send link
+            </Button>
+          </Form.Item>
+        </Form>
       )}
 
-      <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6 text-center text-sm text-[var(--text)]">
+      <Divider />
+      <Space direction="vertical" size="small" style={{ width: '100%' }}>
         <Button
-          type="button"
-          variant="secondary"
-          className="flex w-full items-center justify-center gap-2"
-          disabled={googleLoading}
+          type="default"
+          block
+          loading={googleLoading}
           onClick={onGoogleClick}
-          aria-busy={googleLoading}
           aria-label={googleLoading ? 'Signing in with Google…' : 'Sign in with Google'}
+          icon={<GoogleIcon />}
         >
-          <GoogleIcon className="h-5 w-5 shrink-0" />
-          <span>{googleLoading ? 'Signing in…' : 'Sign in with Google'}</span>
+          Sign in with Google
         </Button>
-        <Link
-          to="/signin"
-          state={location.state}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-        >
-          <EmailLinkIcon className="h-5 w-5 shrink-0" />
-          <span>Sign in with email and password</span>
+        <Link to="/signin" state={location.state} style={{ display: 'block' }}>
+          <Button type="default" block icon={<EmailLinkIcon />}>
+            Sign in with email and password
+          </Button>
         </Link>
-        <Link
-          to="/signin/phone"
-          state={location.state}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-        >
-          <PhoneIcon className="h-5 w-5 shrink-0" />
-          <span>Sign in with phone</span>
+        <Link to="/signin/phone" state={location.state} style={{ display: 'block' }}>
+          <Button type="default" block icon={<PhoneIcon />}>
+            Sign in with phone
+          </Button>
         </Link>
-      </div>
+      </Space>
 
-      <div className="mt-6 border-t border-border pt-6 text-center text-sm text-[var(--text)]">
-        <p>
-          Don&apos;t have an account?{' '}
-          <Link to="/signup" className="font-medium text-primary hover:underline">
-            Sign up
-          </Link>
-        </p>
-      </div>
-    </div>
+      <Divider />
+      <Text style={{ display: 'block', textAlign: 'center' }}>
+        Don&apos;t have an account? <AuthFooterLink to="/signup">Sign up</AuthFooterLink>
+      </Text>
+    </Content>
   )
 }

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { Flex, Spin } from 'antd'
 import { Layout } from '@/app/Layout'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
 
@@ -125,12 +126,9 @@ const OrdersPage = lazy(() =>
 
 function PageFallback() {
   return (
-    <div className="flex min-h-[30vh] items-center justify-center">
-      <div
-        className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
-        aria-label="Loading"
-      />
-    </div>
+    <Flex style={{ minHeight: '30vh' }} align="center" justify="center">
+      <Spin size="large" aria-label="Loading" />
+    </Flex>
   )
 }
 

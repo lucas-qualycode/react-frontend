@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { Flex, Spin } from 'antd'
 import { useAuth } from '@/app/auth/AuthContext'
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -7,12 +8,9 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation()
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
-          aria-label="Loading"
-        />
-      </div>
+      <Flex style={{ minHeight: '40vh' }} align="center" justify="center">
+        <Spin size="large" aria-label="Loading" />
+      </Flex>
     )
   }
   if (!user) {

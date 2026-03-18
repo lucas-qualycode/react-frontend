@@ -1,12 +1,16 @@
 import { useLocation } from 'react-router-dom'
+import { Layout, Typography } from 'antd'
+
+const { Content } = Layout
+const { Title, Text } = Typography
 
 export function PlaceholderPage({ title }: { title?: string }) {
   const location = useLocation()
   const name = title ?? (location.pathname || 'Page')
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900">{name}</h1>
-      <p className="mt-2 text-gray-600">Placeholder for this route.</p>
-    </div>
+    <Content style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
+      <Title level={2}>{name}</Title>
+      <Text type="secondary">Placeholder for this route.</Text>
+    </Content>
   )
 }

@@ -1,15 +1,20 @@
 import { Outlet } from 'react-router-dom'
-import { Toolbar } from '@/app/components/Toolbar'
+import { Layout as AntLayout } from 'antd'
+import { AppHeader } from '@/app/components/AppHeader'
 import { ScreenLoader } from '@/app/components/ScreenLoader'
+
+const { Header, Content } = AntLayout
 
 export function Layout() {
   return (
-    <div className="flex min-h-screen w-full flex-col bg-[var(--bg)]">
-      <Toolbar />
-      <main className="flex-1 w-full">
+    <AntLayout style={{ minHeight: '100vh' }}>
+      <Header style={{ padding: 0, height: 'auto', lineHeight: 'normal' }}>
+        <AppHeader />
+      </Header>
+      <Content style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Outlet />
-      </main>
+      </Content>
       <ScreenLoader />
-    </div>
+    </AntLayout>
   )
 }

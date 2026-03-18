@@ -15,12 +15,12 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.90.21",
+    "antd": "^6.3.3",
     "firebase": "^12.10.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.71.2",
     "react-router-dom": "^7.13.1",
-    "sonner": "^2.0.7",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },
@@ -37,6 +37,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-tools": "^13.0.0",
     "globals": "^17.4.0",
     "jsdom": "^28.1.0",
     "postcss": "^8.5.8",
@@ -45,7 +46,6 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.0",
-    "vitest": "^4.1.0",
-    "firebase-tools": "^13.0.0"
+    "vitest": "^4.1.0"
   }
 }

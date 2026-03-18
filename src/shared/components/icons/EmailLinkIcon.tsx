@@ -1,6 +1,8 @@
-export function EmailLinkIcon({ className = 'h-5 w-5' }: { className?: string }) {
+const defaultSize = { width: 20, height: 20, display: 'inline-block', verticalAlign: 'middle' }
+
+export function EmailLinkIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+    <svg className={className} style={{ ...defaultSize, ...style }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

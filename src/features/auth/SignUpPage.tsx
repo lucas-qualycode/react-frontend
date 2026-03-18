@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { Alert, Button, Card, Divider, Form, Input, Layout, message, Space, Typography } from 'antd'
 import { z } from 'zod'
 import type { OAuthCredential } from 'firebase/auth'
 import { useAuth } from '@/app/auth/AuthContext'
 import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
-import { Button } from '@/shared/components/Button'
+import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
 import { GoogleIcon, EmailLinkIcon, PhoneIcon } from '@/shared/components/icons'
 
 const signUpSchema = z
@@ -21,7 +19,7 @@ const signUpSchema = z
     path: ['confirmPassword'],
   })
 
-type SignUpForm = z.infer<typeof signUpSchema>
+type SignUpFormValues = z.infer<typeof signUpSchema>
 
 function getSignUpErrorMessage(err: unknown): string {
   const code =
@@ -43,30 +41,18 @@ function getSignUpErrorMessage(err: unknown): string {
   )
 }
 
-const inputClass =
-  'w-full rounded-lg border border-border bg-input px-3 py-2 text-[var(--text)] outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20'
-const labelClass = 'mb-1 block text-sm font-medium text-[var(--text)]'
-
 type PendingLink = { email: string; credential: OAuthCredential }
 
 export function SignUpPage() {
   const { user, signUp, signInWithGoogle, signIn, linkWithCredential } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const [form] = Form.useForm<SignUpFormValues>()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [linkLoading, setLinkLoading] = useState(false)
   const [pendingLink, setPendingLink] = useState<PendingLink | null>(null)
   const [linkPassword, setLinkPassword] = useState('')
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<SignUpForm>({
-    resolver: zodResolver(signUpSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '' },
-  })
 
   const from = (location.state as { from?: { pathname: string } })?.from
   const redirectTo = from?.pathname ?? '/'
@@ -75,16 +61,16 @@ export function SignUpPage() {
     return <Navigate to={redirectTo} replace />
   }
 
-  async function onSignUpSubmit(data: SignUpForm) {
+  async function onFinish(values: SignUpFormValues) {
     setIsSubmitting(true)
     try {
-      await signUp(data.email, data.password)
-      toast.success(
-        `You're signed up. We sent a verification email to ${data.email}. Please verify so you can link Google or other sign-in methods later.`
+      await signUp(values.email, values.password)
+      message.success(
+        `You're signed up. We sent a verification email to ${values.email}. Please verify so you can link Google or other sign-in methods later.`
       )
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      toast.error(getSignUpErrorMessage(err))
+      message.error(getSignUpErrorMessage(err))
     } finally {
       setIsSubmitting(false)
     }
@@ -102,7 +88,7 @@ export function SignUpPage() {
           credential: (err as { credential?: OAuthCredential }).credential!,
         })
       } else {
-        toast.error(getSignUpErrorMessage(err))
+        message.error(getSignUpErrorMessage(err))
       }
     } finally {
       setGoogleLoading(false)
@@ -118,166 +104,127 @@ export function SignUpPage() {
       await linkWithCredential(pendingLink.credential)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      toast.error(getSignUpErrorMessage(err))
+      message.error(getSignUpErrorMessage(err))
     } finally {
       setLinkLoading(false)
     }
   }
 
+  const { Content } = Layout
+  const { Title, Text } = Typography
   return (
-    <div className="mx-auto max-w-sm px-4 py-8">
-      <h1 className="text-2xl font-semibold text-[var(--text-h)]">Sign up</h1>
-
+    <Content style={{ padding: 32, maxWidth: 384, margin: '0 auto', width: '100%' }}>
+      <Title level={2}>Sign up</Title>
       {pendingLink ? (
-        <div className="mt-6 rounded-lg border border-border bg-muted/30 p-4">
-          <p className="text-sm text-[var(--text)]">
-            An account already exists for {pendingLink.email}. Enter your password to link your Google account.
-          </p>
-          <form onSubmit={onLinkAccountSubmit} className="mt-4 flex flex-col gap-4" noValidate>
-            <div>
-              <label htmlFor="signup-link-email" className={labelClass}>
-                Email
-              </label>
-              <input
-                id="signup-link-email"
-                type="email"
-                value={pendingLink.email}
-                readOnly
-                className={inputClass + ' bg-muted'}
-                aria-readonly
-              />
-            </div>
-            <div>
-              <label htmlFor="signup-link-password" className={labelClass}>
-                Password
-              </label>
-              <input
-                id="signup-link-password"
-                type="password"
-                autoComplete="current-password"
-                className={inputClass}
-                value={linkPassword}
-                onChange={(e) => setLinkPassword(e.target.value)}
-                disabled={linkLoading}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={linkLoading} className="mt-2">
-                {linkLoading ? 'Linking…' : 'Link account'}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setPendingLink(null)
-                  setLinkPassword('')
-                }}
-                disabled={linkLoading}
-                className="mt-2"
-              >
-                Cancel
-              </Button>
-            </div>
+        <Card style={{ marginTop: 24 }}>
+          <Alert
+            message={`An account already exists for ${pendingLink.email}. Enter your password to link your Google account.`}
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+          <form onSubmit={onLinkAccountSubmit}>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Form.Item label="Email">
+                <Input value={pendingLink.email} readOnly disabled />
+              </Form.Item>
+              <Form.Item label="Password">
+                <Input.Password
+                  value={linkPassword}
+                  onChange={(e) => setLinkPassword(e.target.value)}
+                  disabled={linkLoading}
+                  autoComplete="current-password"
+                />
+              </Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit" loading={linkLoading}>
+                  Link account
+                </Button>
+                <Button
+                  type="text"
+                  disabled={linkLoading}
+                  onClick={() => {
+                    setPendingLink(null)
+                    setLinkPassword('')
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Space>
+            </Space>
           </form>
-        </div>
+        </Card>
       ) : (
         <>
-      <form
-        onSubmit={handleSubmit(onSignUpSubmit)}
-        className="mt-6 flex flex-col gap-4"
-        noValidate
-      >
-        <div>
-          <label htmlFor="signup-email" className={labelClass}>
-            Email
-          </label>
-          <input
-            id="signup-email"
-            type="email"
-            autoComplete="email"
-            className={inputClass}
-            {...register('email')}
-          />
-          {errors.email && (
-            <p className="mt-1 text-sm text-danger">{errors.email.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="signup-password" className={labelClass}>
-            Password
-          </label>
-          <input
-            id="signup-password"
-            type="password"
-            autoComplete="new-password"
-            className={inputClass}
-            {...register('password')}
-          />
-          {errors.password && (
-            <p className="mt-1 text-sm text-danger">{errors.password.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="signup-confirm" className={labelClass}>
-            Confirm password
-          </label>
-          <input
-            id="signup-confirm"
-            type="password"
-            autoComplete="new-password"
-            className={inputClass}
-            {...register('confirmPassword')}
-          />
-          {errors.confirmPassword && (
-            <p className="mt-1 text-sm text-danger">{errors.confirmPassword.message}</p>
-          )}
-        </div>
-        <Button type="submit" disabled={isSubmitting} className="mt-2">
-          {isSubmitting ? 'Signing up…' : 'Sign up'}
-        </Button>
-      </form>
+          <Form
+            form={form}
+            layout="vertical"
+            style={{ marginTop: 24 }}
+            onFinish={(values) => {
+              const parsed = signUpSchema.safeParse(values)
+              if (parsed.success) onFinish(parsed.data)
+              else form.setFields(parsed.error.issues.map((issue) => ({ name: issue.path[0] as 'email' | 'password' | 'confirmPassword', errors: [issue.message] })))
+            }}
+          >
+            <Form.Item name="email" label="Email" rules={[{ required: true, message: 'Email is required' }, { type: 'email', message: 'Invalid email' }]}>
+              <Input autoComplete="email" />
+            </Form.Item>
+            <Form.Item name="password" label="Password" rules={[{ required: true, message: 'Password is required' }, { min: 6, message: 'Password must be at least 6 characters' }]}>
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+            <Form.Item
+              name="confirmPassword"
+              label="Confirm password"
+              dependencies={['password']}
+              rules={[
+                { required: true, message: 'Confirm your password' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('password') === value) return Promise.resolve()
+                    return Promise.reject(new Error('Passwords do not match.'))
+                  },
+                }),
+              ]}
+            >
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+            <Form.Item style={{ marginTop: 24 }}>
+              <Button type="primary" htmlType="submit" loading={isSubmitting} block>
+                Sign up
+              </Button>
+            </Form.Item>
+          </Form>
 
-      <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6 text-center text-sm text-[var(--text)]">
-        <Button
-          type="button"
-          variant="secondary"
-          className="flex w-full items-center justify-center gap-2"
-          disabled={googleLoading}
-          onClick={onGoogleClick}
-          aria-busy={googleLoading}
-          aria-label={googleLoading ? 'Signing up with Google…' : 'Sign up with Google'}
-        >
-          <GoogleIcon className="h-5 w-5 shrink-0" />
-          <span>{googleLoading ? 'Signing up…' : 'Sign up with Google'}</span>
-        </Button>
-        <Link
-          to="/signin/link"
-          state={location.state}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-        >
-          <EmailLinkIcon className="h-5 w-5 shrink-0" />
-          <span>Sign up with email link</span>
-        </Link>
-        <Link
-          to="/signin/phone"
-          state={location.state}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-        >
-          <PhoneIcon className="h-5 w-5 shrink-0" />
-          <span>Sign up with phone number</span>
-        </Link>
-      </div>
+          <Divider />
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Button
+              type="default"
+              block
+              loading={googleLoading}
+              onClick={onGoogleClick}
+              aria-label={googleLoading ? 'Signing up with Google…' : 'Sign up with Google'}
+              icon={<GoogleIcon />}
+            >
+              Sign up with Google
+            </Button>
+            <Link to="/signin/link" state={location.state} style={{ display: 'block' }}>
+              <Button type="default" block icon={<EmailLinkIcon />}>
+                Sign up with email link
+              </Button>
+            </Link>
+            <Link to="/signin/phone" state={location.state} style={{ display: 'block' }}>
+              <Button type="default" block icon={<PhoneIcon />}>
+                Sign up with phone number
+              </Button>
+            </Link>
+          </Space>
 
-      <div className="mt-6 border-t border-border pt-6 text-center text-sm text-[var(--text)]">
-        <p>
-          Already have an account?{' '}
-          <Link to="/signin" className="font-medium text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </div>
+          <Divider />
+          <Text style={{ display: 'block', textAlign: 'center' }}>
+            Already have an account? <AuthFooterLink to="/signin">Sign in</AuthFooterLink>
+          </Text>
         </>
       )}
-    </div>
+    </Content>
   )
 }

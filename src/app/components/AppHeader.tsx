@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Avatar, Button, Dropdown, Flex, Input, Popover, theme } from 'antd'
+import { Link, useNavigate } from 'react-router-dom'
+import { Avatar, Button, Dropdown, Flex, Grid, Input, Popover, theme } from 'antd'
 import type { MenuProps } from 'antd'
 import { useAuth } from '@/app/auth/AuthContext'
 import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
@@ -21,6 +21,8 @@ export function AppHeader() {
   const { token } = theme.useToken()
   const navRef = useRef<HTMLElement>(null)
   const searchTriggerRef = useRef<HTMLSpanElement>(null)
+  const navigate = useNavigate()
+  const screens = Grid.useBreakpoint()
   const [navWidth, setNavWidth] = useState(0)
   const [hoveredNav, setHoveredNav] = useState<string | null>(null)
   const [hoveredBrand, setHoveredBrand] = useState(false)
@@ -29,6 +31,8 @@ export function AppHeader() {
   const displayName = user?.displayName ?? user?.email ?? ''
   const initial = (displayName || 'U').charAt(0).toUpperCase()
   const searchInNav = navWidth >= NAV_WIDTH_FIT_INPUT
+  const signedOutNarrow = !!screens.xs
+  const [hoveredMenu, setHoveredMenu] = useState(false)
 
   useEffect(() => {
     const el = navRef.current
@@ -75,6 +79,39 @@ export function AppHeader() {
       key: 'signout',
       label: 'Finalizar sessão',
       onClick: () => signOut(),
+    },
+  ]
+
+  const unauthMenuItems: MenuProps['items'] = [
+    {
+      key: 'favorites',
+      label: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <HeartIcon />
+          Favorites
+        </span>
+      ),
+      onClick: () => navigate('/favorites'),
+    },
+    {
+      key: 'cart',
+      label: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <CartIcon />
+          Cart
+        </span>
+      ),
+      onClick: () => navigate('/orders'),
+    },
+    {
+      key: 'signin',
+      label: 'Sign in',
+      onClick: () => navigate('/signin'),
+    },
+    {
+      key: 'signup',
+      label: 'Sign up',
+      onClick: () => navigate('/signup'),
     },
   ]
 
@@ -160,23 +197,26 @@ export function AppHeader() {
               </span>
             </Popover>
           )}
-          {NAV_ICONS.map(({ to, label, icon: Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              style={{
-                color: hoveredNav === to ? token.colorPrimary : token.colorTextSecondary,
-                padding: 8,
-                borderRadius: 8,
-                display: 'inline-flex',
-              }}
-              onMouseEnter={() => setHoveredNav(to)}
-              onMouseLeave={() => setHoveredNav(null)}
-              aria-label={label}
-            >
-              <Icon />
-            </Link>
-          ))}
+          {NAV_ICONS.map(({ to, label, icon: Icon }) => {
+            if (!user && signedOutNarrow && to === '/favorites') return null
+            return (
+              <Link
+                key={to}
+                to={to}
+                style={{
+                  color: hoveredNav === to ? token.colorPrimary : token.colorTextSecondary,
+                  padding: 8,
+                  borderRadius: 8,
+                  display: 'inline-flex',
+                }}
+                onMouseEnter={() => setHoveredNav(to)}
+                onMouseLeave={() => setHoveredNav(null)}
+                aria-label={label}
+              >
+                <Icon />
+              </Link>
+            )
+          })}
           {user ? (
             <Dropdown
               menu={{ items: accountMenuItems }}
@@ -205,15 +245,51 @@ export function AppHeader() {
               </Button>
             </Dropdown>
           ) : (
-            <Flex align="center" gap={12} style={{ marginLeft: 12 }}>
-              <span style={{ fontSize: 14, color: token.colorTextSecondary, lineHeight: 1.4, whiteSpace: 'pre-line', textAlign: 'right' }}>
-                {'Don\'t have an account?\n'}
-                <AuthFooterLink to="/signup">Sign up</AuthFooterLink>
-              </span>
-              <Link to="/signin">
-                <Button type="primary">Sign in</Button>
-              </Link>
-            </Flex>
+            signedOutNarrow ? (
+              <Dropdown menu={{ items: unauthMenuItems }} trigger={['click']} placement="bottomRight">
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Menu"
+                  style={{
+                    marginLeft: 12,
+                    padding: 8,
+                    borderRadius: 8,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: hoveredMenu ? token.colorPrimary : token.colorTextSecondary,
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={() => setHoveredMenu(true)}
+                  onMouseLeave={() => setHoveredMenu(false)}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M4 6h16" />
+                    <path d="M4 12h16" />
+                    <path d="M4 18h16" />
+                  </svg>
+                </span>
+              </Dropdown>
+            ) : (
+              <Flex align="center" gap={12} style={{ marginLeft: 12 }}>
+                <span
+                  style={{
+                    fontSize: 14,
+                    color: token.colorTextSecondary,
+                    lineHeight: 1.4,
+                    whiteSpace: 'pre-line',
+                    textAlign: 'right',
+                  }}
+                >
+                  {'Don\'t have an account?\n'}
+                  <AuthFooterLink to="/signup">Sign up</AuthFooterLink>
+                </span>
+                <Link to="/signin">
+                  <Button type="primary">Sign in</Button>
+                </Link>
+              </Flex>
+            )
           )}
         </nav>
       </Flex>

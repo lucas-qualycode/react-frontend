@@ -12,9 +12,9 @@ This document is the reference for the **react-frontend** app: stack, structure,
 | **Routing** | React Router (v6) | Use for all routes. |
 | **Server/API state** | TanStack Query (React Query) | All API data: cache, loading, error, refetch. No global store for server state. |
 | **Client state** | React state or Zustand | Zustand only when shared client state is needed across many components. |
-| **Forms** | React Hook Form + Zod | Validation with Zod; avoid uncontrolled forms without validation. |
+| **Forms** | Ant Design `Form` + Zod | Use Ant Form (`Form`, `Form.Item`) with validation via Zod schemas/messages. |
 | **HTTP** | fetch or Axios | Centralized in an API layer; TanStack Query hooks call this layer. |
-| **Styling** | Tailwind CSS or MUI | One of these; avoid mixing multiple styling systems. |
+| **Styling** | Ant Design | Use `ConfigProvider` theme/tokens (see `src/app/antdTheme.ts`) for app-wide colors/typography. |
 | **Testing** | Vitest + React Testing Library | Unit and component tests. |
 | **E2E** | Playwright | When E2E is added. |
 
@@ -74,13 +74,24 @@ Colocate tests next to the code (e.g. `*.test.tsx` or `__tests__/`) or in a sing
 - **Debugging**: Use `import ipdb; ipdb.set_trace();` only in dev (or the JS equivalent if needed in browser).
 
 ---
+## AppHeader UI behavior (current convention)
 
+For `src/app/components/AppHeader.tsx`, the navbar search follows this interaction pattern:
+
+- Always render the **search icon** in the navbar.
+- On click, render the **search input inline in the nav** if there is enough space; otherwise render it **below the nav** (popover).
+- When closing (blur/click outside/Escape), unmount/hide the input.
+- While the input is open below the nav, keep the **search icon visually in the hovered/active state**.
+
+Keep this behavior consistent when adjusting hover colors, spacing, or responsive thresholds.
+
+---
 ## Adding a new feature
 
 1. Add `features/<feature>/` with `components/`, `hooks/`, `api.ts`, `types.ts` as needed.
 2. In `api.ts`: define API functions and TanStack Query hooks that call the backend; use the shared API base URL.
 3. Add routes in the app router; use lazy loading for the feature page if appropriate.
-4. Use React Hook Form + Zod for forms; TanStack Query for any server state.
+4. Use Ant Design `Form` + Zod for forms; TanStack Query for any server state.
 5. Update this file if you introduce a new lib or change structure.
 
 ---

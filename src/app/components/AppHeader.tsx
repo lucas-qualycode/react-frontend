@@ -83,7 +83,7 @@ export function AppHeader() {
           Settings
         </span>
       ),
-      onClick: () => navigate('/settings'),
+      onClick: () => navigate('/settings/profile'),
     },
     {
       key: 'signout',

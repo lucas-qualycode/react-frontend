@@ -123,9 +123,39 @@ const OrdersPage = lazy(() =>
     default: m.OrdersPage,
   }))
 )
-const SettingsPage = lazy(() =>
-  import('@/features/settings/SettingsPage').then((m) => ({
-    default: m.SettingsPage,
+const SettingsLayout = lazy(() =>
+  import('@/features/settings/SettingsLayout').then((m) => ({
+    default: m.SettingsLayout,
+  }))
+)
+const ProfileSettingsSection = lazy(() =>
+  import('@/features/settings/sections/ProfileSettingsSection').then((m) => ({
+    default: m.ProfileSettingsSection,
+  }))
+)
+const NotificationsSettingsSection = lazy(() =>
+  import('@/features/settings/sections/NotificationsSettingsSection').then((m) => ({
+    default: m.NotificationsSettingsSection,
+  }))
+)
+const LanguageRegionSettingsSection = lazy(() =>
+  import('@/features/settings/sections/LanguageRegionSettingsSection').then((m) => ({
+    default: m.LanguageRegionSettingsSection,
+  }))
+)
+const PrivacySettingsSection = lazy(() =>
+  import('@/features/settings/sections/settingsPlaceholders').then((m) => ({
+    default: m.PrivacySettingsSection,
+  }))
+)
+const AppearanceSettingsSection = lazy(() =>
+  import('@/features/settings/sections/settingsPlaceholders').then((m) => ({
+    default: m.AppearanceSettingsSection,
+  }))
+)
+const SecurityPlaceholderSettingsSection = lazy(() =>
+  import('@/features/settings/sections/settingsPlaceholders').then((m) => ({
+    default: m.SecurityPlaceholderSettingsSection,
   }))
 )
 
@@ -285,7 +315,63 @@ export const router = createBrowserRouter([
       },
       {
         path: 'settings',
-        element: <Protected><SettingsPage /></Protected>,
+        element: (
+          <Protected>
+            <SettingsLayout />
+          </Protected>
+        ),
+        children: [
+          { index: true, element: <Navigate to="profile" replace /> },
+          {
+            path: 'profile',
+            element: (
+              <SuspensePage>
+                <ProfileSettingsSection />
+              </SuspensePage>
+            ),
+          },
+          {
+            path: 'notifications',
+            element: (
+              <SuspensePage>
+                <NotificationsSettingsSection />
+              </SuspensePage>
+            ),
+          },
+          {
+            path: 'privacy',
+            element: (
+              <SuspensePage>
+                <PrivacySettingsSection />
+              </SuspensePage>
+            ),
+          },
+          {
+            path: 'appearance',
+            element: (
+              <SuspensePage>
+                <AppearanceSettingsSection />
+              </SuspensePage>
+            ),
+          },
+          {
+            path: 'language',
+            element: (
+              <SuspensePage>
+                <LanguageRegionSettingsSection />
+              </SuspensePage>
+            ),
+          },
+          {
+            path: 'security',
+            element: (
+              <SuspensePage>
+                <SecurityPlaceholderSettingsSection />
+              </SuspensePage>
+            ),
+          },
+          { path: '*', element: <Navigate to="/settings/profile" replace /> },
+        ],
       },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

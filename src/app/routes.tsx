@@ -153,9 +153,9 @@ const AppearanceSettingsSection = lazy(() =>
     default: m.AppearanceSettingsSection,
   }))
 )
-const SecurityPlaceholderSettingsSection = lazy(() =>
-  import('@/features/settings/sections/settingsPlaceholders').then((m) => ({
-    default: m.SecurityPlaceholderSettingsSection,
+const SecuritySettingsSection = lazy(() =>
+  import('@/features/settings/sections/SecuritySettingsSection').then((m) => ({
+    default: m.SecuritySettingsSection,
   }))
 )
 
@@ -366,7 +366,7 @@ export const router = createBrowserRouter([
             path: 'security',
             element: (
               <SuspensePage>
-                <SecurityPlaceholderSettingsSection />
+                <SecuritySettingsSection />
               </SuspensePage>
             ),
           },

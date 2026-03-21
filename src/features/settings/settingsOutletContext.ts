@@ -10,5 +10,10 @@ export type SettingsOutletContext = {
   profile: UserProfile | undefined
   updateMutation: UseMutationResult<UserProfile, Error, UpdateUserProfileInput, unknown>
   updateProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>
+  updateEmailWithPassword: (newEmail: string, currentPassword: string) => Promise<void>
+  updatePasswordWithPassword: (currentPassword: string, newPassword: string) => Promise<void>
+  revokeAllSessions: () => Promise<void>
+  signOut: () => Promise<void>
+  sendVerificationEmail: () => Promise<void>
   modalApi: ModalHookApi
 }

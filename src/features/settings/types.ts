@@ -27,6 +27,8 @@ export interface CreateUserProfileInput {
 }
 
 export interface UpdateUserProfileInput {
+  email?: string | null
+  emailVerified?: boolean | null
   displayName?: string | null
   photoURL?: string | null
   phoneNumber?: string | null

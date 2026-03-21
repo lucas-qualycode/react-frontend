@@ -1,4 +1,4 @@
-import { Suspense, useMemo } from 'react'
+import { Suspense, useEffect, useMemo } from 'react'
 import { Breadcrumb, Flex, Layout, Menu, Modal, Spin, Typography } from 'antd'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/app/auth/AuthContext'
@@ -11,7 +11,15 @@ const { Content } = Layout
 export function SettingsLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, updateProfile } = useAuth()
+  const {
+    user,
+    updateProfile,
+    updateEmailWithPassword,
+    updatePasswordWithPassword,
+    revokeAllSessions,
+    signOut,
+    sendVerificationEmail,
+  } = useAuth()
   const [modalApi, modalContextHolder] = Modal.useModal()
 
   const getCreatePayload = user
@@ -30,6 +38,22 @@ export function SettingsLayout() {
   )
   const updateMutation = useUpdateUserProfile(user?.uid ?? '')
 
+  useEffect(() => {
+    if (!user?.uid || !profile) return
+    const email = user.email ?? ''
+    const verified = user.emailVerified
+    if (profile.email === email && profile.emailVerified === verified) return
+    updateMutation.mutate({ email, emailVerified: verified })
+  }, [
+    user?.uid,
+    user?.email,
+    user?.emailVerified,
+    profile?.id,
+    profile?.email,
+    profile?.emailVerified,
+    updateMutation,
+  ])
+
   const segment = location.pathname.replace(/^\/settings\/?/, '').split('/')[0] || 'profile'
   const activeKey = isSettingsSectionKey(segment) ? segment : 'profile'
 
@@ -42,9 +66,25 @@ export function SettingsLayout() {
       profile,
       updateMutation,
       updateProfile,
+      updateEmailWithPassword,
+      updatePasswordWithPassword,
+      revokeAllSessions,
+      signOut,
+      sendVerificationEmail,
       modalApi,
     }),
-    [user, profile, updateMutation, updateProfile, modalApi]
+    [
+      user,
+      profile,
+      updateMutation,
+      updateProfile,
+      updateEmailWithPassword,
+      updatePasswordWithPassword,
+      revokeAllSessions,
+      signOut,
+      sendVerificationEmail,
+      modalApi,
+    ]
   )
 
   if (profileLoading && !profile) {

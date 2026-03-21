@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, Card, Form, Switch, message } from 'antd'
 import { useOutletContext } from 'react-router-dom'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
@@ -10,6 +10,7 @@ type NotificationsFormValues = {
 export function NotificationsSettingsSection() {
   const { profile, updateMutation } = useOutletContext<SettingsOutletContext>()
   const [notificationsForm] = Form.useForm<NotificationsFormValues>()
+  const [notificationsSaving, setNotificationsSaving] = useState(false)
 
   useEffect(() => {
     if (profile) {
@@ -19,6 +20,7 @@ export function NotificationsSettingsSection() {
 
   async function onFinish(values: NotificationsFormValues) {
     if (!profile) return
+    setNotificationsSaving(true)
     try {
       await updateMutation.mutateAsync({
         preferences: {
@@ -30,6 +32,8 @@ export function NotificationsSettingsSection() {
       message.success('Notifications saved.')
     } catch {
       message.error('Could not save. Please try again.')
+    } finally {
+      setNotificationsSaving(false)
     }
   }
 
@@ -49,7 +53,7 @@ export function NotificationsSettingsSection() {
           <Switch />
         </Form.Item>
         <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
+          <Button type="primary" htmlType="submit" loading={notificationsSaving}>
             Save
           </Button>
         </Form.Item>

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, Card, Form, Select, message } from 'antd'
 import { useOutletContext } from 'react-router-dom'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
@@ -11,6 +11,7 @@ type LanguageFormValues = {
 export function LanguageRegionSettingsSection() {
   const { profile, updateMutation } = useOutletContext<SettingsOutletContext>()
   const [languageForm] = Form.useForm<LanguageFormValues>()
+  const [languageSaving, setLanguageSaving] = useState(false)
 
   useEffect(() => {
     if (profile) {
@@ -23,6 +24,7 @@ export function LanguageRegionSettingsSection() {
 
   async function onFinish(values: LanguageFormValues) {
     if (!profile) return
+    setLanguageSaving(true)
     try {
       await updateMutation.mutateAsync({
         preferences: {
@@ -34,6 +36,8 @@ export function LanguageRegionSettingsSection() {
       message.success('Language & region saved.')
     } catch {
       message.error('Could not save. Please try again.')
+    } finally {
+      setLanguageSaving(false)
     }
   }
 
@@ -62,7 +66,7 @@ export function LanguageRegionSettingsSection() {
           />
         </Form.Item>
         <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
+          <Button type="primary" htmlType="submit" loading={languageSaving}>
             Save
           </Button>
         </Form.Item>

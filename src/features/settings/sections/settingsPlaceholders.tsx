@@ -17,12 +17,3 @@ export function AppearanceSettingsSection() {
     />
   )
 }
-
-export function SecurityPlaceholderSettingsSection() {
-  return (
-    <PlaceholderSettingsSection
-      title="Security"
-      description="Password, two-factor authentication, and sessions."
-    />
-  )
-}

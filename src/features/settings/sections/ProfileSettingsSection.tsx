@@ -40,6 +40,7 @@ export function ProfileSettingsSection() {
   const [photoUploading, setPhotoUploading] = useState(false)
   const [photoRemoving, setPhotoRemoving] = useState(false)
   const [photoEditOpen, setPhotoEditOpen] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
 
   useEffect(() => {
     const values = toProfileFormValues(profile)
@@ -51,6 +52,7 @@ export function ProfileSettingsSection() {
       displayName: values.displayName || null,
       phoneNumber: values.phoneNumber || null,
     }
+    setProfileSaving(true)
     try {
       await updateMutation.mutateAsync(payload)
       await updateProfile({
@@ -59,6 +61,8 @@ export function ProfileSettingsSection() {
       message.success('Profile saved.')
     } catch {
       message.error('Could not save. Please try again.')
+    } finally {
+      setProfileSaving(false)
     }
   }
 
@@ -148,7 +152,7 @@ export function ProfileSettingsSection() {
             <Input placeholder="+1 234 567 8900" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button type="primary" htmlType="submit" loading={updateMutation.isPending}>
+            <Button type="primary" htmlType="submit" loading={profileSaving}>
               Save
             </Button>
           </Form.Item>

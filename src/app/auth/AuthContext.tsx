@@ -9,10 +9,12 @@ import {
 } from 'react'
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   getAuth,
   GoogleAuthProvider,
   linkWithCredential as firebaseLinkWithCredential,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   RecaptchaVerifier,
   sendEmailVerification,
   sendSignInLinkToEmail,
@@ -21,7 +23,9 @@ import {
   signInWithPhoneNumber,
   signInWithPopup,
   signOut as firebaseSignOut,
+  updatePassword,
   updateProfile as firebaseUpdateProfile,
+  verifyBeforeUpdateEmail,
   type ConfirmationResult,
   type OAuthCredential,
   type User as FirebaseUser,
@@ -48,6 +52,11 @@ export interface AuthState {
   signInWithGoogle: () => Promise<void>
   linkWithCredential: (credential: OAuthCredential) => Promise<void>
   updateProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>
+  reauthenticateWithPassword: (currentPassword: string) => Promise<void>
+  updateEmailWithPassword: (newEmail: string, currentPassword: string) => Promise<void>
+  updatePasswordWithPassword: (currentPassword: string, newPassword: string) => Promise<void>
+  revokeAllSessions: () => Promise<void>
+  sendVerificationEmail: () => Promise<void>
 }
 
 export const ACCOUNT_EXISTS_DIFFERENT_CREDENTIAL = 'auth/account-exists-with-different-credential' as const
@@ -151,6 +160,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     []
   )
+  const reauthenticateWithPassword = useCallback(async (currentPassword: string) => {
+    const currentUser = auth.currentUser
+    if (!currentUser?.email) throw new Error('This account has no email password sign-in.')
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword)
+    await reauthenticateWithCredential(currentUser, credential)
+  }, [])
+  const updateEmailWithPassword = useCallback(
+    async (newEmail: string, currentPassword: string) => {
+      const currentUser = auth.currentUser
+      if (!currentUser) throw new Error('Must be signed in.')
+      await reauthenticateWithPassword(currentPassword)
+      const u = auth.currentUser
+      if (!u) throw new Error('Must be signed in.')
+      const continueUrl =
+        typeof window !== 'undefined' ? `${window.location.origin}/settings/security` : ''
+      await verifyBeforeUpdateEmail(u, newEmail, {
+        url: continueUrl,
+        handleCodeInApp: false,
+      })
+    },
+    [reauthenticateWithPassword]
+  )
+  const updatePasswordWithPassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      const currentUser = auth.currentUser
+      if (!currentUser) throw new Error('Must be signed in.')
+      await reauthenticateWithPassword(currentPassword)
+      const u = auth.currentUser
+      if (!u) throw new Error('Must be signed in.')
+      await updatePassword(u, newPassword)
+    },
+    [reauthenticateWithPassword]
+  )
+  const revokeAllSessions = useCallback(async () => {
+    const currentUser = auth.currentUser
+    if (!currentUser) throw new Error('Must be signed in.')
+    const idToken = await currentUser.getIdToken(true)
+    const apiKey = app.options.apiKey
+    if (!apiKey || typeof apiKey !== 'string') throw new Error('Missing API key.')
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          validSince: String(Math.floor(Date.now() / 1000)),
+          returnSecureToken: true,
+        }),
+      }
+    )
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+      const msg = body?.error?.message ?? `Request failed (${res.status})`
+      throw new Error(msg)
+    }
+  }, [])
+  const sendVerificationEmail = useCallback(async () => {
+    const currentUser = auth.currentUser
+    if (!currentUser) throw new Error('Must be signed in.')
+    const continueUrl =
+      typeof window !== 'undefined' ? `${window.location.origin}/settings/security` : ''
+    await sendEmailVerification(currentUser, {
+      url: continueUrl,
+      handleCodeInApp: false,
+    })
+  }, [])
   useEffect(() => {
     let unsub: (() => void) | undefined
     try {
@@ -186,6 +262,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle,
       linkWithCredential,
       updateProfile,
+      reauthenticateWithPassword,
+      updateEmailWithPassword,
+      updatePasswordWithPassword,
+      revokeAllSessions,
+      sendVerificationEmail,
     }),
     [
       user,
@@ -200,6 +281,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle,
       linkWithCredential,
       updateProfile,
+      reauthenticateWithPassword,
+      updateEmailWithPassword,
+      updatePasswordWithPassword,
+      revokeAllSessions,
+      sendVerificationEmail,
     ]
   )
   return (

@@ -12,6 +12,7 @@ import {
   Spin,
   Typography,
   Upload,
+  theme,
 } from 'antd'
 import { CameraOutlined, DeleteOutlined } from '@ant-design/icons'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
@@ -41,6 +42,8 @@ export function ProfileSettingsSection() {
   const [photoRemoving, setPhotoRemoving] = useState(false)
   const [photoEditOpen, setPhotoEditOpen] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
+  const [editHover, setEditHover] = useState(false)
+  const { token } = theme.useToken()
 
   useEffect(() => {
     const values = toProfileFormValues(profile)
@@ -164,7 +167,18 @@ export function ProfileSettingsSection() {
           >
             {!photoURL && initial}
           </Avatar>
-          <Button type="link" onClick={() => setPhotoEditOpen(true)} style={{ padding: 0 }}>
+          <Button
+            type="text"
+            className="profile-avatar-edit"
+            onClick={() => setPhotoEditOpen(true)}
+            onMouseEnter={() => setEditHover(true)}
+            onMouseLeave={() => setEditHover(false)}
+            style={{
+              padding: 0,
+              height: 'auto',
+              color: editHover ? token.colorPrimary : token.colorTextSecondary,
+            }}
+          >
             Edit
           </Button>
           <Modal

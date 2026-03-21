@@ -28,6 +28,11 @@
   box-sizing: border-box;
 }
 
+button.profile-avatar-edit.ant-btn:hover,
+button.profile-avatar-edit.ant-btn:focus-visible {
+  background: transparent !important;
+}
+
 body {
   margin: 0;
 }

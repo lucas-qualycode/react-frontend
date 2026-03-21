@@ -123,6 +123,11 @@ const OrdersPage = lazy(() =>
     default: m.OrdersPage,
   }))
 )
+const SettingsPage = lazy(() =>
+  import('@/features/settings/SettingsPage').then((m) => ({
+    default: m.SettingsPage,
+  }))
+)
 
 function PageFallback() {
   return (
@@ -183,7 +188,7 @@ export const router = createBrowserRouter([
         element: <Protected><EventDetailPage /></Protected>,
       },
       {
-        path: 'events/:id/user-products',
+        path: 'events/:id/guests',
         element: (
           <SuspensePage>
             <EventUserProductsPage />
@@ -277,6 +282,10 @@ export const router = createBrowserRouter([
       {
         path: 'orders',
         element: <Protected><OrdersPage /></Protected>,
+      },
+      {
+        path: 'settings',
+        element: <Protected><SettingsPage /></Protected>,
       },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

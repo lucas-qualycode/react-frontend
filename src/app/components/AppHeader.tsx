@@ -4,7 +4,7 @@ import { Avatar, Button, Dropdown, Flex, Grid, Input, Popover, theme } from 'ant
 import type { MenuProps } from 'antd'
 import { useAuth } from '@/app/auth/AuthContext'
 import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
-import { HeartOutlined, LoginOutlined, MenuOutlined, SearchOutlined, ShoppingCartOutlined, UserAddOutlined } from '@ant-design/icons'
+import { HeartOutlined, LoginOutlined, MenuOutlined, SearchOutlined, SettingOutlined, ShoppingCartOutlined, UserAddOutlined } from '@ant-design/icons'
 
 const BRAND_NAME = 'Partiiu.com'
 
@@ -76,8 +76,18 @@ export function AppHeader() {
 
   const accountMenuItems: MenuProps['items'] = [
     {
+      key: 'settings',
+      label: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <SettingOutlined style={{ fontSize: 18 }} />
+          Settings
+        </span>
+      ),
+      onClick: () => navigate('/settings'),
+    },
+    {
       key: 'signout',
-      label: 'Finalizar sessão',
+      label: 'Sign out',
       onClick: () => signOut(),
     },
   ]

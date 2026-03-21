@@ -21,6 +21,7 @@ import {
   signInWithPhoneNumber,
   signInWithPopup,
   signOut as firebaseSignOut,
+  updateProfile as firebaseUpdateProfile,
   type ConfirmationResult,
   type OAuthCredential,
   type User as FirebaseUser,
@@ -46,6 +47,7 @@ export interface AuthState {
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   linkWithCredential: (credential: OAuthCredential) => Promise<void>
+  updateProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>
 }
 
 export const ACCOUNT_EXISTS_DIFFERENT_CREDENTIAL = 'auth/account-exists-with-different-credential' as const
@@ -141,6 +143,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentUser) throw new Error('Must be signed in to link account.')
     await firebaseLinkWithCredential(currentUser, credential)
   }, [])
+  const updateProfile = useCallback(
+    async (updates: { displayName?: string; photoURL?: string }) => {
+      const currentUser = auth.currentUser
+      if (!currentUser) throw new Error('Must be signed in to update profile.')
+      await firebaseUpdateProfile(currentUser, updates)
+    },
+    []
+  )
   useEffect(() => {
     let unsub: (() => void) | undefined
     try {
@@ -175,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       signInWithGoogle,
       linkWithCredential,
+      updateProfile,
     }),
     [
       user,
@@ -188,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       signInWithGoogle,
       linkWithCredential,
+      updateProfile,
     ]
   )
   return (

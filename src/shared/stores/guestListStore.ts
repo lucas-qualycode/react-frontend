@@ -15,13 +15,14 @@ function clearStoredToken(eventId: string): void {
   sessionStorage.removeItem(STORAGE_PREFIX + eventId)
 }
 
-const GUEST_LIST_PATH = /\/user-products|\/attendees/
+const GUEST_LIST_API_PATH_REGEX = /\/user-products|\/attendees/
 
 function getEventIdFromUrl(url: string): string | null {
-  const m = url.match(/(?:^|\/)events\/([^/?#]+)\/(?:user-products|attendees)/)
+  const m =
+    url.match(/(?:^|\/)events\/([^/?#]+)\/guests/)
     ?? url.match(/(?:^|\/)api\/events\/([^/?#]+)\//)
   if (m) return m[1]
-  if (GUEST_LIST_PATH.test(url)) {
+  if (GUEST_LIST_API_PATH_REGEX.test(url)) {
     return guestListStore.getState().currentEventId
   }
   return null

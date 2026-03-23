@@ -143,11 +143,6 @@ const LanguageRegionSettingsSection = lazy(() =>
     default: m.LanguageRegionSettingsSection,
   }))
 )
-const PrivacySettingsSection = lazy(() =>
-  import('@/features/settings/sections/settingsPlaceholders').then((m) => ({
-    default: m.PrivacySettingsSection,
-  }))
-)
 const AppearanceSettingsSection = lazy(() =>
   import('@/features/settings/sections/AppearanceSettingsSection').then((m) => ({
     default: m.AppearanceSettingsSection,
@@ -340,11 +335,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'privacy',
-            element: (
-              <SuspensePage>
-                <PrivacySettingsSection />
-              </SuspensePage>
-            ),
+            element: <Navigate to="/settings/profile" replace />,
           },
           {
             path: 'appearance',

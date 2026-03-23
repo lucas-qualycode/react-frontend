@@ -149,7 +149,7 @@ const PrivacySettingsSection = lazy(() =>
   }))
 )
 const AppearanceSettingsSection = lazy(() =>
-  import('@/features/settings/sections/settingsPlaceholders').then((m) => ({
+  import('@/features/settings/sections/AppearanceSettingsSection').then((m) => ({
     default: m.AppearanceSettingsSection,
   }))
 )

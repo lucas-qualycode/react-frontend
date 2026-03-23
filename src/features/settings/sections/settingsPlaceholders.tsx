@@ -9,11 +9,3 @@ export function PrivacySettingsSection() {
   )
 }
 
-export function AppearanceSettingsSection() {
-  return (
-    <PlaceholderSettingsSection
-      title="Appearance"
-      description="Theme, font size, and display options."
-    />
-  )
-}

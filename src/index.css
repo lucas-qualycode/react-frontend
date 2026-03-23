@@ -28,6 +28,15 @@
   box-sizing: border-box;
 }
 
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
 button.profile-avatar-edit.ant-btn:hover,
 button.profile-avatar-edit.ant-btn:focus-visible {
   background: transparent !important;

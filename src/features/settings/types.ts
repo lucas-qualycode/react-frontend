@@ -1,7 +1,16 @@
+export type ThemeMode = 'system' | 'light' | 'dark'
+export type DensityPref = 'default' | 'compact' | 'comfortable'
+export type FontSizePref = 'standard' | 'large'
+export type ReducedMotionPref = 'system' | 'reduce' | 'full'
+
 export interface UserPreferences {
   notifications: boolean
   language: string
   timezone: string
+  themeMode: ThemeMode
+  density: DensityPref
+  fontSize: FontSizePref
+  reducedMotion: ReducedMotionPref
 }
 
 export interface UserProfile {

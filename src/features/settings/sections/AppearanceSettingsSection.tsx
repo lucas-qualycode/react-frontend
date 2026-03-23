@@ -108,11 +108,15 @@ export function AppearanceSettingsSection() {
   }, [profile, persist, form])
 
   return (
-    <Card title="Appearance">
-      <Flex vertical gap={8} style={{ maxWidth: 480 }}>
-        {saving && (
+    <Card
+      title="Appearance"
+      extra={
+        saving ? (
           <Typography.Text type="secondary">Saving…</Typography.Text>
-        )}
+        ) : undefined
+      }
+    >
+      <Flex vertical style={{ maxWidth: 480 }}>
         <Form
           form={form}
           layout="vertical"
@@ -153,7 +157,7 @@ export function AppearanceSettingsSection() {
               ]}
             />
           </Form.Item>
-          <Form.Item name="reducedMotion" label="Motion" style={{ marginBottom: 0 }}>
+          <Form.Item name="reducedMotion" label="Motion">
             <Segmented
               block
               options={[

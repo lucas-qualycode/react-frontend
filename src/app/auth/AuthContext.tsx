@@ -242,10 +242,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsub?.()
     }
   }, [])
-  useEffect(() => {
-    setApiAuthGetter(getIdToken)
-    setApiGuestListGetter((url) => guestListStore.getState().getTokenForRequest(url))
-  }, [getIdToken])
+  setApiAuthGetter(getIdToken)
+  setApiGuestListGetter((url) => guestListStore.getState().getTokenForRequest(url))
   const value = useMemo<AuthState>(
     () => ({
       user,

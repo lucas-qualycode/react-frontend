@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import { useUserProfile, useUpdateUserProfile } from '@/features/settings/hooks'
+import { initialUserPreferencesForCreate } from '@/features/settings/initialUserPreferences'
 import { SETTINGS_MENU_ITEMS, isSettingsSectionKey } from '@/features/settings/settingsMenu'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
 
@@ -31,6 +32,7 @@ export function SettingsLayout() {
         displayName: user.displayName ?? null,
         photoURL: user.photoURL ?? null,
         emailVerified: user.emailVerified,
+        preferences: initialUserPreferencesForCreate(),
       })
     : null
 

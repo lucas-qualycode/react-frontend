@@ -12,6 +12,7 @@ import {
 } from '@/app/appearance/mergeAppearancePreferences'
 import { darkTheme, lightTheme } from '@/app/antdTheme'
 import { useUserProfile } from '@/features/settings/hooks'
+import { initialUserPreferencesForCreate } from '@/features/settings/initialUserPreferences'
 import type { UserPreferences } from '@/features/settings/types'
 
 const DENSITY_TO_SIZE = {
@@ -41,6 +42,7 @@ export function AppearanceThemeProvider({ children }: { children: ReactNode }) {
             displayName: user.displayName ?? null,
             photoURL: user.photoURL ?? null,
             emailVerified: user.emailVerified,
+            preferences: initialUserPreferencesForCreate(),
           })
         : null,
     [user]

@@ -1,0 +1,211 @@
+{
+  "settings": {
+    "title": "Settings",
+    "loadError": "Failed to load profile.",
+    "menu": {
+      "profile": "Profile",
+      "notifications": "Notifications",
+      "appearance": "Appearance",
+      "language": "Language & region",
+      "security": "Security"
+    },
+    "save": "Save",
+    "saveError": "Could not save. Please try again.",
+    "notifications": {
+      "cardTitle": "Notifications",
+      "switchLabel": "Email and in-app notifications",
+      "saved": "Notifications saved."
+    },
+    "profile": {
+      "cardTitle": "Profile",
+      "nameLabel": "Name",
+      "namePlaceholder": "Your name",
+      "phoneLabel": "Phone",
+      "phonePlaceholder": "+1 234 567 8900",
+      "saved": "Profile saved.",
+      "photoRemoved": "Photo removed.",
+      "photoRemoveError": "Could not remove photo. Please try again.",
+      "removePhotoModalTitle": "Remove profile photo?",
+      "removePhotoModalBody": "This will permanently remove your current profile photo.",
+      "removePhotoOk": "Remove",
+      "notImageFile": "Please select an image file.",
+      "photoUpdated": "Photo updated.",
+      "photoUploadError": "Could not upload photo. Please try again.",
+      "editPhoto": "Edit",
+      "photoModalTitle": "Profile photo",
+      "profileImageAlt": "Profile",
+      "changePhoto": "Change",
+      "uploadPhoto": "Upload",
+      "removePhoto": "Remove"
+    },
+    "appearance": {
+      "cardTitle": "Appearance",
+      "saving": "Saving…",
+      "saved": "Appearance saved.",
+      "theme": "Theme",
+      "density": "Density",
+      "fontSize": "Font size",
+      "motion": "Motion",
+      "themeOptions": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "densityOptions": {
+        "compact": "Compact",
+        "default": "Default",
+        "comfortable": "Comfortable"
+      },
+      "fontSizeOptions": {
+        "standard": "Standard",
+        "large": "Large"
+      },
+      "motionOptions": {
+        "system": "System",
+        "reduce": "Reduce",
+        "full": "Full"
+      }
+    },
+    "security": {
+      "emailCard": "Email",
+      "passwordCard": "Password",
+      "twoFactorCard": "Two-factor authentication",
+      "sessionsCard": "Sessions",
+      "signedInAs": "Signed in as",
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "confirmEmailHint": "Confirm your email to secure your account.",
+      "resendVerification": "Resend verification email",
+      "passwordProviderRequired": "Email and password changes require an email/password sign-in method on this account.",
+      "passwordChangeGoogleOnly": "Password change is only available when you sign in with email and password.",
+      "newEmail": "New email",
+      "currentPassword": "Current password",
+      "changeEmail": "Change email",
+      "enterNewEmail": "Enter a new email",
+      "enterCurrentPassword": "Enter your current password",
+      "alreadyThatEmail": "That is already your email.",
+      "changeEmailModalTitle": "Change email?",
+      "changeEmailModalBody": "We will send a link to the new address. Your sign-in email stays the same until you open that link and confirm. After that, your profile syncs automatically.",
+      "sendVerification": "Send verification",
+      "emailChangeSuccess": "Check the new inbox for a verification link. The change completes only after you open it.",
+      "newPassword": "New password",
+      "confirmNewPassword": "Confirm new password",
+      "updatePassword": "Update password",
+      "enterNewPassword": "Enter a new password",
+      "confirmNewPasswordRequired": "Confirm your new password",
+      "atLeast6": "At least 6 characters",
+      "passwordUpdated": "Password updated.",
+      "twoFactorHint": "Extra verification for your account.",
+      "authenticatorApp": "Authenticator app",
+      "comingSoon": "Coming soon.",
+      "sessionsHint": "Sign out on all devices and invalidate existing sessions.",
+      "signOutEverywhere": "Sign out everywhere",
+      "signOutEverywhereModalTitle": "Sign out everywhere?",
+      "signOutEverywhereModalBody": "This will invalidate other sessions. You will need to sign in again on this device.",
+      "signOutEverywhereOk": "Sign out everywhere",
+      "verificationSent": "Verification email sent. Check your inbox.",
+      "errors": {
+        "wrongPassword": "Current password is incorrect.",
+        "requiresRecentLogin": "Please sign in again and retry.",
+        "emailInUse": "That email is already in use.",
+        "invalidEmail": "Invalid email address.",
+        "weakPassword": "Password is too weak.",
+        "tooManyRequests": "Too many attempts. Please try again later.",
+        "network": "Network error. Please check your connection.",
+        "operationNotAllowed": "Email could not be changed. If this persists, check Firebase Auth settings (authorized domains / email actions).",
+        "internalError": "Could not send email. Try again in a few minutes.",
+        "generic": "Something went wrong. Please try again."
+      }
+    },
+    "language": {
+      "cardTitle": "Language & region",
+      "languageLabel": "Language",
+      "timezoneLabel": "Timezone",
+      "save": "Save",
+      "saved": "Language & region saved.",
+      "saveError": "Could not save. Please try again.",
+      "options": {
+        "ptBR": "Portuguese (Brazil)",
+        "en": "English"
+      },
+      "timezones": {
+        "utcMinus3": "UTC-3 (Brasília)",
+        "utc": "UTC"
+      }
+    }
+  },
+  "shell": {
+    "brand": "Partiiu.com",
+    "search": "Search",
+    "searchAria": "Search",
+    "mainNav": "Main",
+    "favorites": "Favorites",
+    "cart": "Cart",
+    "settings": "Settings",
+    "signOut": "Sign out",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "menu": "Menu",
+    "account": "Account",
+    "noAccount": "Don't have an account?",
+    "signUpLink": "Sign up"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign in",
+      "email": "Email",
+      "password": "Password",
+      "passwordRequired": "Password is required",
+      "submit": "Sign in",
+      "google": "Sign in with Google",
+      "googleAria": "Sign in with Google",
+      "googleAriaLoading": "Signing in with Google…",
+      "phone": "Sign in with phone",
+      "emailLink": "Sign in with email link",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "linkAlert": "An account already exists for {{email}}. Enter your password to link your Google account.",
+      "linkSubmit": "Link account",
+      "cancel": "Cancel"
+    },
+    "validation": {
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email",
+      "passwordMin": "Password must be at least 6 characters"
+    },
+    "signUp": {
+      "title": "Sign up",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordRequired": "Confirm your password",
+      "passwordsMismatch": "Passwords do not match.",
+      "submit": "Sign up",
+      "google": "Sign up with Google",
+      "googleAria": "Sign up with Google",
+      "googleAriaLoading": "Signing up with Google…",
+      "emailLink": "Sign up with email link",
+      "phone": "Sign up with phone number",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in",
+      "success": "You're signed up. We sent a verification email to {{email}}. Please verify so you can link Google or other sign-in methods later.",
+      "passwordRequired": "Password is required",
+      "errors": {
+        "emailInUse": "An account with this email already exists.",
+        "weakPassword": "Password is too weak.",
+        "generic": "Something went wrong. Please try again."
+      }
+    },
+    "errors": {
+      "invalidCredential": "Invalid email or password.",
+      "invalidEmail": "Invalid email address.",
+      "userDisabled": "This account has been disabled.",
+      "userNotFound": "Invalid email or password.",
+      "wrongPassword": "Invalid email or password.",
+      "tooManyRequests": "Too many attempts. Please try again later.",
+      "network": "Network error. Please check your connection.",
+      "popupClosed": "Sign-in cancelled.",
+      "popupBlocked": "Popup was blocked. Allow popups for this site and try again.",
+      "generic": "Something went wrong. Please try again."
+    }
+  }
+}

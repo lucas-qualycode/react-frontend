@@ -12,6 +12,7 @@ import {
   Typography,
 } from 'antd'
 import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
 import { securityAuthErrorMessage } from '@/features/settings/utils/securityAuthErrorMessage'
 
@@ -29,6 +30,7 @@ type SecurityPasswordFormValues = {
 }
 
 export function SecuritySettingsSection() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const {
     user,
@@ -52,24 +54,21 @@ export function SecuritySettingsSection() {
     if (!user?.email) return
     const next = values.newEmail.trim()
     if (next.toLowerCase() === user.email.toLowerCase()) {
-      message.info('That is already your email.')
+      message.info(t('settings.security.alreadyThatEmail'))
       return
     }
     modalApi.confirm({
-      title: 'Change email?',
-      content:
-        'We will send a link to the new address. Your sign-in email stays the same until you open that link and confirm. After that, your profile syncs automatically.',
-      okText: 'Send verification',
-      cancelText: 'Cancel',
+      title: t('settings.security.changeEmailModalTitle'),
+      content: t('settings.security.changeEmailModalBody'),
+      okText: t('settings.security.sendVerification'),
+      cancelText: t('auth.signIn.cancel'),
       onOk: async () => {
         try {
           await updateEmailWithPassword(next, values.currentPassword)
           securityEmailForm.resetFields(['newEmail', 'currentPassword'])
-          message.success(
-            'Check the new inbox for a verification link. The change completes only after you open it.'
-          )
+          message.success(t('settings.security.emailChangeSuccess'))
         } catch (err) {
-          message.error(securityAuthErrorMessage(err))
+          message.error(securityAuthErrorMessage(err, t))
           throw err
         }
       },
@@ -81,9 +80,9 @@ export function SecuritySettingsSection() {
     try {
       await updatePasswordWithPassword(values.currentPassword, values.newPassword)
       securityPasswordForm.resetFields()
-      message.success('Password updated.')
+      message.success(t('settings.security.passwordUpdated'))
     } catch (err) {
-      message.error(securityAuthErrorMessage(err))
+      message.error(securityAuthErrorMessage(err, t))
     } finally {
       setPasswordSaving(false)
     }
@@ -91,12 +90,11 @@ export function SecuritySettingsSection() {
 
   function requestSignOutEverywhere() {
     modalApi.confirm({
-      title: 'Sign out everywhere?',
-      content:
-        'This will invalidate other sessions. You will need to sign in again on this device.',
-      okText: 'Sign out everywhere',
+      title: t('settings.security.signOutEverywhereModalTitle'),
+      content: t('settings.security.signOutEverywhereModalBody'),
+      okText: t('settings.security.signOutEverywhereOk'),
       okType: 'danger',
-      cancelText: 'Cancel',
+      cancelText: t('auth.signIn.cancel'),
       onOk: async () => {
         setSignOutEverywhereLoading(true)
         try {
@@ -104,7 +102,7 @@ export function SecuritySettingsSection() {
           await signOut()
           navigate('/signin', { replace: true })
         } catch (err) {
-          message.error(securityAuthErrorMessage(err))
+          message.error(securityAuthErrorMessage(err, t))
           throw err
         } finally {
           setSignOutEverywhereLoading(false)
@@ -117,9 +115,9 @@ export function SecuritySettingsSection() {
     setResendVerificationLoading(true)
     try {
       await sendVerificationEmail()
-      message.success('Verification email sent. Check your inbox.')
+      message.success(t('settings.security.verificationSent'))
     } catch (err) {
-      message.error(securityAuthErrorMessage(err))
+      message.error(securityAuthErrorMessage(err, t))
     } finally {
       setResendVerificationLoading(false)
     }
@@ -127,27 +125,27 @@ export function SecuritySettingsSection() {
 
   return (
     <Flex vertical gap={24}>
-      <Card title="Email">
+      <Card title={t('settings.security.emailCard')}>
         <Flex vertical gap={16}>
           <div>
-            <Text type="secondary">Signed in as </Text>
+            <Text type="secondary">{t('settings.security.signedInAs')} </Text>
             <Text strong>{user?.email ?? '—'}</Text>
             {user && (
               <Tag color={user.emailVerified ? 'success' : 'warning'} style={{ marginLeft: 8 }}>
-                {user.emailVerified ? 'Verified' : 'Unverified'}
+                {user.emailVerified ? t('settings.security.verified') : t('settings.security.unverified')}
               </Tag>
             )}
           </div>
           {user?.email && !user.emailVerified && (
             <Flex align="center" gap={12} wrap="wrap">
-              <Text type="secondary">Confirm your email to secure your account.</Text>
+              <Text type="secondary">{t('settings.security.confirmEmailHint')}</Text>
               <Button
                 type="default"
                 loading={resendVerificationLoading}
                 disabled={resendVerificationLoading}
                 onClick={handleResendVerification}
               >
-                Resend verification email
+                {t('settings.security.resendVerification')}
               </Button>
             </Flex>
           )}
@@ -155,7 +153,7 @@ export function SecuritySettingsSection() {
             <Alert
               type="info"
               showIcon
-              message="Email and password changes require an email/password sign-in method on this account."
+              message={t('settings.security.passwordProviderRequired')}
             />
           )}
           <Flex vertical gap={16} style={{ width: '100%' }}>
@@ -169,18 +167,18 @@ export function SecuritySettingsSection() {
               <div style={{ maxWidth: 400 }}>
                 <Form.Item
                   name="newEmail"
-                  label="New email"
+                  label={t('settings.security.newEmail')}
                   rules={[
-                    { required: true, message: 'Enter a new email' },
-                    { type: 'email', message: 'Invalid email' },
+                    { required: true, message: t('settings.security.enterNewEmail') },
+                    { type: 'email', message: t('auth.validation.emailInvalid') },
                   ]}
                 >
                   <Input autoComplete="email" disabled={!hasPasswordProvider} />
                 </Form.Item>
                 <Form.Item
                   name="currentPassword"
-                  label="Current password"
-                  rules={[{ required: true, message: 'Enter your current password' }]}
+                  label={t('settings.security.currentPassword')}
+                  rules={[{ required: true, message: t('settings.security.enterCurrentPassword') }]}
                 >
                   <Input.Password autoComplete="current-password" disabled={!hasPasswordProvider} />
                 </Form.Item>
@@ -193,18 +191,18 @@ export function SecuritySettingsSection() {
                 form="settings-security-email"
                 disabled={!hasPasswordProvider}
               >
-                Change email
+                {t('settings.security.changeEmail')}
               </Button>
             </Flex>
           </Flex>
         </Flex>
       </Card>
-      <Card title="Password">
+      <Card title={t('settings.security.passwordCard')}>
         {!hasPasswordProvider && (
           <Alert
             type="info"
             showIcon
-            message="Password change is only available when you sign in with email and password."
+            message={t('settings.security.passwordChangeGoogleOnly')}
             style={{ marginBottom: 16 }}
           />
         )}
@@ -219,31 +217,31 @@ export function SecuritySettingsSection() {
             <div style={{ maxWidth: 400 }}>
               <Form.Item
                 name="currentPassword"
-                label="Current password"
-                rules={[{ required: true, message: 'Enter your current password' }]}
+                label={t('settings.security.currentPassword')}
+                rules={[{ required: true, message: t('settings.security.enterCurrentPassword') }]}
               >
                 <Input.Password autoComplete="current-password" disabled={!hasPasswordProvider} />
               </Form.Item>
               <Form.Item
                 name="newPassword"
-                label="New password"
+                label={t('settings.security.newPassword')}
                 rules={[
-                  { required: true, message: 'Enter a new password' },
-                  { min: 6, message: 'At least 6 characters' },
+                  { required: true, message: t('settings.security.enterNewPassword') },
+                  { min: 6, message: t('settings.security.atLeast6') },
                 ]}
               >
                 <Input.Password autoComplete="new-password" disabled={!hasPasswordProvider} />
               </Form.Item>
               <Form.Item
                 name="confirmPassword"
-                label="Confirm new password"
+                label={t('settings.security.confirmNewPassword')}
                 dependencies={['newPassword']}
                 rules={[
-                  { required: true, message: 'Confirm your new password' },
+                  { required: true, message: t('settings.security.confirmNewPasswordRequired') },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
                       if (!value || getFieldValue('newPassword') === value) return Promise.resolve()
-                      return Promise.reject(new Error('Passwords do not match.'))
+                      return Promise.reject(new Error(t('auth.signUp.passwordsMismatch')))
                     },
                   }),
                 ]}
@@ -260,28 +258,28 @@ export function SecuritySettingsSection() {
               disabled={!hasPasswordProvider}
               loading={passwordSaving}
             >
-              Update password
+              {t('settings.security.updatePassword')}
             </Button>
           </Flex>
         </Flex>
       </Card>
-      <Card title="Two-factor authentication">
+      <Card title={t('settings.security.twoFactorCard')}>
         <Flex vertical gap={12}>
-          <Text type="secondary">Extra verification for your account.</Text>
+          <Text type="secondary">{t('settings.security.twoFactorHint')}</Text>
           <Flex align="center" gap={12}>
-            <Text>Authenticator app</Text>
+            <Text>{t('settings.security.authenticatorApp')}</Text>
             <Switch disabled checked={false} />
           </Flex>
-          <Text type="secondary">Coming soon.</Text>
+          <Text type="secondary">{t('settings.security.comingSoon')}</Text>
         </Flex>
       </Card>
-      <Card title="Sessions">
+      <Card title={t('settings.security.sessionsCard')}>
         <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-          Sign out on all devices and invalidate existing sessions.
+          {t('settings.security.sessionsHint')}
         </Text>
         <Flex justify="flex-end">
           <Button danger loading={signOutEverywhereLoading} onClick={requestSignOutEverywhere}>
-            Sign out everywhere
+            {t('settings.security.signOutEverywhere')}
           </Button>
         </Flex>
       </Card>

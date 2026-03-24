@@ -1,0 +1,211 @@
+{
+  "settings": {
+    "title": "Configurações",
+    "loadError": "Não foi possível carregar o perfil.",
+    "menu": {
+      "profile": "Perfil",
+      "notifications": "Notificações",
+      "appearance": "Aparência",
+      "language": "Idioma e região",
+      "security": "Segurança"
+    },
+    "save": "Salvar",
+    "saveError": "Não foi possível salvar. Tente novamente.",
+    "notifications": {
+      "cardTitle": "Notificações",
+      "switchLabel": "Notificações por e-mail e no app",
+      "saved": "Notificações salvas."
+    },
+    "profile": {
+      "cardTitle": "Perfil",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Seu nome",
+      "phoneLabel": "Telefone",
+      "phonePlaceholder": "+55 11 91234-5678",
+      "saved": "Perfil salvo.",
+      "photoRemoved": "Foto removida.",
+      "photoRemoveError": "Não foi possível remover a foto. Tente novamente.",
+      "removePhotoModalTitle": "Remover foto do perfil?",
+      "removePhotoModalBody": "Isso removerá permanentemente sua foto de perfil atual.",
+      "removePhotoOk": "Remover",
+      "notImageFile": "Selecione um arquivo de imagem.",
+      "photoUpdated": "Foto atualizada.",
+      "photoUploadError": "Não foi possível enviar a foto. Tente novamente.",
+      "editPhoto": "Editar",
+      "photoModalTitle": "Foto do perfil",
+      "profileImageAlt": "Perfil",
+      "changePhoto": "Alterar",
+      "uploadPhoto": "Enviar",
+      "removePhoto": "Remover"
+    },
+    "appearance": {
+      "cardTitle": "Aparência",
+      "saving": "Salvando…",
+      "saved": "Aparência salva.",
+      "theme": "Tema",
+      "density": "Densidade",
+      "fontSize": "Tamanho da fonte",
+      "motion": "Movimento",
+      "themeOptions": {
+        "system": "Sistema",
+        "light": "Claro",
+        "dark": "Escuro"
+      },
+      "densityOptions": {
+        "compact": "Compacto",
+        "default": "Padrão",
+        "comfortable": "Confortável"
+      },
+      "fontSizeOptions": {
+        "standard": "Padrão",
+        "large": "Grande"
+      },
+      "motionOptions": {
+        "system": "Sistema",
+        "reduce": "Reduzir",
+        "full": "Completo"
+      }
+    },
+    "security": {
+      "emailCard": "E-mail",
+      "passwordCard": "Senha",
+      "twoFactorCard": "Autenticação em duas etapas",
+      "sessionsCard": "Sessões",
+      "signedInAs": "Conectado como",
+      "verified": "Verificado",
+      "unverified": "Não verificado",
+      "confirmEmailHint": "Confirme seu e-mail para proteger sua conta.",
+      "resendVerification": "Reenviar e-mail de verificação",
+      "passwordProviderRequired": "Alterações de e-mail e senha exigem login com e-mail e senha nesta conta.",
+      "passwordChangeGoogleOnly": "A alteração de senha só está disponível quando você entra com e-mail e senha.",
+      "newEmail": "Novo e-mail",
+      "currentPassword": "Senha atual",
+      "changeEmail": "Alterar e-mail",
+      "enterNewEmail": "Digite um novo e-mail",
+      "enterCurrentPassword": "Digite sua senha atual",
+      "alreadyThatEmail": "Este já é o seu e-mail.",
+      "changeEmailModalTitle": "Alterar e-mail?",
+      "changeEmailModalBody": "Enviaremos um link para o novo endereço. O e-mail de login permanece o mesmo até você abrir esse link e confirmar. Depois disso, o perfil sincroniza automaticamente.",
+      "sendVerification": "Enviar verificação",
+      "emailChangeSuccess": "Verifique a caixa de entrada do novo e-mail. A alteração só é concluída depois que você abrir o link.",
+      "newPassword": "Nova senha",
+      "confirmNewPassword": "Confirmar nova senha",
+      "updatePassword": "Atualizar senha",
+      "enterNewPassword": "Digite uma nova senha",
+      "confirmNewPasswordRequired": "Confirme sua nova senha",
+      "atLeast6": "Pelo menos 6 caracteres",
+      "passwordUpdated": "Senha atualizada.",
+      "twoFactorHint": "Verificação extra para sua conta.",
+      "authenticatorApp": "App autenticador",
+      "comingSoon": "Em breve.",
+      "sessionsHint": "Sair em todos os dispositivos e invalidar sessões existentes.",
+      "signOutEverywhere": "Sair em todos os dispositivos",
+      "signOutEverywhereModalTitle": "Sair em todos os dispositivos?",
+      "signOutEverywhereModalBody": "Isso invalidará outras sessões. Você precisará entrar novamente neste dispositivo.",
+      "signOutEverywhereOk": "Sair em todos os dispositivos",
+      "verificationSent": "E-mail de verificação enviado. Verifique sua caixa de entrada.",
+      "errors": {
+        "wrongPassword": "A senha atual está incorreta.",
+        "requiresRecentLogin": "Entre novamente e tente de novo.",
+        "emailInUse": "Este e-mail já está em uso.",
+        "invalidEmail": "Endereço de e-mail inválido.",
+        "weakPassword": "A senha é muito fraca.",
+        "tooManyRequests": "Muitas tentativas. Tente novamente mais tarde.",
+        "network": "Erro de rede. Verifique sua conexão.",
+        "operationNotAllowed": "Não foi possível alterar o e-mail. Se persistir, verifique as configurações do Firebase Auth (domínios autorizados / ações de e-mail).",
+        "internalError": "Não foi possível enviar o e-mail. Tente de novo em alguns minutos.",
+        "generic": "Algo deu errado. Tente novamente."
+      }
+    },
+    "language": {
+      "cardTitle": "Idioma e região",
+      "languageLabel": "Idioma",
+      "timezoneLabel": "Fuso horário",
+      "save": "Salvar",
+      "saved": "Idioma e região salvos.",
+      "saveError": "Não foi possível salvar. Tente novamente.",
+      "options": {
+        "ptBR": "Português (Brasil)",
+        "en": "Inglês"
+      },
+      "timezones": {
+        "utcMinus3": "UTC-3 (Brasília)",
+        "utc": "UTC"
+      }
+    }
+  },
+  "shell": {
+    "brand": "Partiiu.com",
+    "search": "Buscar",
+    "searchAria": "Buscar",
+    "mainNav": "Principal",
+    "favorites": "Favoritos",
+    "cart": "Carrinho",
+    "settings": "Configurações",
+    "signOut": "Sair",
+    "signIn": "Entrar",
+    "signUp": "Cadastrar",
+    "menu": "Menu",
+    "account": "Conta",
+    "noAccount": "Não tem uma conta?",
+    "signUpLink": "Cadastre-se"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Entrar",
+      "email": "E-mail",
+      "password": "Senha",
+      "passwordRequired": "Senha é obrigatória",
+      "submit": "Entrar",
+      "google": "Continuar com Google",
+      "googleAria": "Entrar com Google",
+      "googleAriaLoading": "Entrando com Google…",
+      "phone": "Entrar com telefone",
+      "emailLink": "Entrar com link por e-mail",
+      "forgotPassword": "Esqueceu a senha?",
+      "noAccount": "Não tem uma conta?",
+      "signUp": "Cadastre-se",
+      "linkAlert": "Já existe uma conta para {{email}}. Digite sua senha para vincular sua conta Google.",
+      "linkSubmit": "Vincular conta",
+      "cancel": "Cancelar"
+    },
+    "validation": {
+      "emailRequired": "E-mail é obrigatório",
+      "emailInvalid": "E-mail inválido",
+      "passwordMin": "A senha deve ter pelo menos 6 caracteres"
+    },
+    "signUp": {
+      "title": "Cadastrar",
+      "confirmPassword": "Confirmar senha",
+      "confirmPasswordRequired": "Confirme sua senha",
+      "passwordsMismatch": "As senhas não coincidem.",
+      "submit": "Cadastrar",
+      "google": "Cadastrar com Google",
+      "googleAria": "Cadastrar com Google",
+      "googleAriaLoading": "Cadastrando com Google…",
+      "emailLink": "Cadastrar com link por e-mail",
+      "phone": "Cadastrar com telefone",
+      "hasAccount": "Já tem uma conta?",
+      "signInLink": "Entrar",
+      "success": "Cadastro concluído. Enviamos um e-mail de verificação para {{email}}. Verifique para poder vincular o Google ou outros métodos de login depois.",
+      "passwordRequired": "Senha é obrigatória",
+      "errors": {
+        "emailInUse": "Já existe uma conta com este e-mail.",
+        "weakPassword": "A senha é muito fraca.",
+        "generic": "Algo deu errado. Tente novamente."
+      }
+    },
+    "errors": {
+      "invalidCredential": "E-mail ou senha inválidos.",
+      "invalidEmail": "Endereço de e-mail inválido.",
+      "userDisabled": "Esta conta foi desativada.",
+      "userNotFound": "E-mail ou senha inválidos.",
+      "wrongPassword": "E-mail ou senha inválidos.",
+      "tooManyRequests": "Muitas tentativas. Tente novamente mais tarde.",
+      "network": "Erro de rede. Verifique sua conexão.",
+      "popupClosed": "Login cancelado.",
+      "popupBlocked": "O pop-up foi bloqueado. Permita pop-ups para este site e tente novamente.",
+      "generic": "Algo deu errado. Tente novamente."
+    }
+  }
+}

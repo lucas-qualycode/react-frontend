@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Card, Flex, Form, Segmented, Typography, message } from 'antd'
 import { useOutletContext } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   mergeAppearancePreferences,
   saveAppearanceToStorage,
@@ -43,21 +44,57 @@ function valuesFromProfile(profile: UserProfile): AppearanceFormValues {
 }
 
 export function AppearanceSettingsSection() {
+  const { t } = useTranslation()
   const { profile, updateMutation } = useOutletContext<SettingsOutletContext>()
   const [form] = Form.useForm<AppearanceFormValues>()
   const [saving, setSaving] = useState(false)
   const skipAutoSaveRef = useRef(true)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const themeOptions = useMemo(
+    () => [
+      { label: t('settings.appearance.themeOptions.system'), value: 'system' as const },
+      { label: t('settings.appearance.themeOptions.light'), value: 'light' as const },
+      { label: t('settings.appearance.themeOptions.dark'), value: 'dark' as const },
+    ],
+    [t]
+  )
+
+  const densityOptions = useMemo(
+    () => [
+      { label: t('settings.appearance.densityOptions.compact'), value: 'compact' as const },
+      { label: t('settings.appearance.densityOptions.default'), value: 'default' as const },
+      { label: t('settings.appearance.densityOptions.comfortable'), value: 'comfortable' as const },
+    ],
+    [t]
+  )
+
+  const fontSizeOptions = useMemo(
+    () => [
+      { label: t('settings.appearance.fontSizeOptions.standard'), value: 'standard' as const },
+      { label: t('settings.appearance.fontSizeOptions.large'), value: 'large' as const },
+    ],
+    [t]
+  )
+
+  const motionOptions = useMemo(
+    () => [
+      { label: t('settings.appearance.motionOptions.system'), value: 'system' as const },
+      { label: t('settings.appearance.motionOptions.reduce'), value: 'reduce' as const },
+      { label: t('settings.appearance.motionOptions.full'), value: 'full' as const },
+    ],
+    [t]
+  )
+
   useEffect(() => {
     if (!profile) return
     const next = valuesFromProfile(profile)
     skipAutoSaveRef.current = true
     form.setFieldsValue(next)
-    const t = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       skipAutoSaveRef.current = false
     }, 0)
-    return () => window.clearTimeout(t)
+    return () => window.clearTimeout(timer)
   }, [profile, form])
 
   useEffect(() => {
@@ -87,14 +124,14 @@ export function AppearanceSettingsSection() {
           fontSize: values.fontSize,
           reducedMotion: values.reducedMotion,
         })
-        message.success('Appearance saved.')
+        message.success(t('settings.appearance.saved'))
       } catch {
-        message.error('Could not save. Please try again.')
+        message.error(t('settings.saveError'))
       } finally {
         setSaving(false)
       }
     },
-    [profile, updateMutation]
+    [profile, updateMutation, t]
   )
 
   const onValuesChange = useCallback(() => {
@@ -109,10 +146,10 @@ export function AppearanceSettingsSection() {
 
   return (
     <Card
-      title="Appearance"
+      title={t('settings.appearance.cardTitle')}
       extra={
         saving ? (
-          <Typography.Text type="secondary">Saving…</Typography.Text>
+          <Typography.Text type="secondary">{t('settings.appearance.saving')}</Typography.Text>
         ) : undefined
       }
     >
@@ -128,44 +165,17 @@ export function AppearanceSettingsSection() {
             reducedMotion: 'system',
           }}
         >
-          <Form.Item name="themeMode" label="Theme">
-            <Segmented
-              block
-              options={[
-                { label: 'System', value: 'system' },
-                { label: 'Light', value: 'light' },
-                { label: 'Dark', value: 'dark' },
-              ]}
-            />
+          <Form.Item name="themeMode" label={t('settings.appearance.theme')}>
+            <Segmented block options={themeOptions} />
           </Form.Item>
-          <Form.Item name="density" label="Density">
-            <Segmented
-              block
-              options={[
-                { label: 'Compact', value: 'compact' },
-                { label: 'Default', value: 'default' },
-                { label: 'Comfortable', value: 'comfortable' },
-              ]}
-            />
+          <Form.Item name="density" label={t('settings.appearance.density')}>
+            <Segmented block options={densityOptions} />
           </Form.Item>
-          <Form.Item name="fontSize" label="Font size">
-            <Segmented
-              block
-              options={[
-                { label: 'Standard', value: 'standard' },
-                { label: 'Large', value: 'large' },
-              ]}
-            />
+          <Form.Item name="fontSize" label={t('settings.appearance.fontSize')}>
+            <Segmented block options={fontSizeOptions} />
           </Form.Item>
-          <Form.Item name="reducedMotion" label="Motion">
-            <Segmented
-              block
-              options={[
-                { label: 'System', value: 'system' },
-                { label: 'Reduce', value: 'reduce' },
-                { label: 'Full', value: 'full' },
-              ]}
-            />
+          <Form.Item name="reducedMotion" label={t('settings.appearance.motion')}>
+            <Segmented block options={motionOptions} />
           </Form.Item>
         </Form>
       </Flex>

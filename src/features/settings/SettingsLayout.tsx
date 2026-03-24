@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo } from 'react'
 import { Breadcrumb, Flex, Layout, Menu, Modal, Spin, Typography } from 'antd'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import { useUserProfile, useUpdateUserProfile } from '@/features/settings/hooks'
 import { SETTINGS_MENU_ITEMS, isSettingsSectionKey } from '@/features/settings/settingsMenu'
@@ -9,6 +10,7 @@ import type { SettingsOutletContext } from '@/features/settings/settingsOutletCo
 const { Content } = Layout
 
 export function SettingsLayout() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const {
@@ -57,8 +59,7 @@ export function SettingsLayout() {
   const segment = location.pathname.replace(/^\/settings\/?/, '').split('/')[0] || 'profile'
   const activeKey = isSettingsSectionKey(segment) ? segment : 'profile'
 
-  const sectionLabel =
-    SETTINGS_MENU_ITEMS.find((i) => i.key === activeKey)?.label ?? 'Settings'
+  const sectionLabel = t(`settings.menu.${activeKey}`)
 
   const outletContext = useMemo<SettingsOutletContext>(
     () => ({
@@ -93,7 +94,7 @@ export function SettingsLayout() {
         <Breadcrumb
           style={{ marginBottom: 24 }}
           items={[
-            { title: <Link to="/settings/profile">Settings</Link> },
+            { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
             { title: sectionLabel },
           ]}
         />
@@ -108,11 +109,11 @@ export function SettingsLayout() {
         <Breadcrumb
           style={{ marginBottom: 24 }}
           items={[
-            { title: <Link to="/settings/profile">Settings</Link> },
+            { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
             { title: sectionLabel },
           ]}
         />
-        <Typography.Text type="danger">Failed to load profile.</Typography.Text>
+        <Typography.Text type="danger">{t('settings.loadError')}</Typography.Text>
       </Content>
     )
   }
@@ -125,7 +126,7 @@ export function SettingsLayout() {
           <Breadcrumb
             style={{ marginBottom: 24 }}
             items={[
-              { title: <Link to="/settings/profile">Settings</Link> },
+              { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
               { title: sectionLabel },
             ]}
           />
@@ -144,7 +145,11 @@ export function SettingsLayout() {
           onSelect={({ key }) => navigate(`/settings/${key}`)}
           mode="vertical"
           style={{ width: 220, flexShrink: 0 }}
-          items={SETTINGS_MENU_ITEMS.map(({ key, label, icon }) => ({ key, label, icon }))}
+          items={SETTINGS_MENU_ITEMS.map(({ key, icon }) => ({
+            key,
+            icon,
+            label: t(`settings.menu.${key}`),
+          }))}
         />
       </Flex>
     </Content>

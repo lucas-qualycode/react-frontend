@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Card, Form, Switch, message } from 'antd'
 import { useOutletContext } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
 
 type NotificationsFormValues = {
@@ -8,6 +9,7 @@ type NotificationsFormValues = {
 }
 
 export function NotificationsSettingsSection() {
+  const { t } = useTranslation()
   const { profile, updateMutation } = useOutletContext<SettingsOutletContext>()
   const [notificationsForm] = Form.useForm<NotificationsFormValues>()
   const [notificationsSaving, setNotificationsSaving] = useState(false)
@@ -29,16 +31,16 @@ export function NotificationsSettingsSection() {
           timezone: profile.preferences.timezone,
         },
       })
-      message.success('Notifications saved.')
+      message.success(t('settings.notifications.saved'))
     } catch {
-      message.error('Could not save. Please try again.')
+      message.error(t('settings.saveError'))
     } finally {
       setNotificationsSaving(false)
     }
   }
 
   return (
-    <Card title="Notifications">
+    <Card title={t('settings.notifications.cardTitle')}>
       <Form
         form={notificationsForm}
         layout="vertical"
@@ -47,14 +49,14 @@ export function NotificationsSettingsSection() {
       >
         <Form.Item
           name="notifications"
-          label="Email and in-app notifications"
+          label={t('settings.notifications.switchLabel')}
           valuePropName="checked"
         >
           <Switch />
         </Form.Item>
         <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
           <Button type="primary" htmlType="submit" loading={notificationsSaving}>
-            Save
+            {t('settings.save')}
           </Button>
         </Form.Item>
       </Form>

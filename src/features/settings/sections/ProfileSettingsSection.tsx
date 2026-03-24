@@ -17,6 +17,7 @@ import {
 import { CameraOutlined, DeleteOutlined } from '@ant-design/icons'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { useOutletContext } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
 import { settingsStorage } from '@/features/settings/storage'
 import type { UpdateUserProfileInput, UserProfile } from '@/features/settings/types'
@@ -35,6 +36,7 @@ function toProfileFormValues(p: UserProfile | undefined): Partial<ProfileFormVal
 }
 
 export function ProfileSettingsSection() {
+  const { t } = useTranslation()
   const { user, profile, updateMutation, updateProfile, modalApi } =
     useOutletContext<SettingsOutletContext>()
   const [profileForm] = Form.useForm<ProfileFormValues>()
@@ -61,9 +63,9 @@ export function ProfileSettingsSection() {
       await updateProfile({
         displayName: payload.displayName ?? '',
       })
-      message.success('Profile saved.')
+      message.success(t('settings.profile.saved'))
     } catch {
-      message.error('Could not save. Please try again.')
+      message.error(t('settings.saveError'))
     } finally {
       setProfileSaving(false)
     }
@@ -74,10 +76,10 @@ export function ProfileSettingsSection() {
     try {
       await updateMutation.mutateAsync({ photoURL: null })
       await updateProfile({ photoURL: '' })
-      message.success('Photo removed.')
+      message.success(t('settings.profile.photoRemoved'))
     } catch (err) {
       const text =
-        err instanceof Error ? err.message : 'Could not remove photo. Please try again.'
+        err instanceof Error ? err.message : t('settings.profile.photoRemoveError')
       message.error(text)
     } finally {
       setPhotoRemoving(false)
@@ -87,11 +89,11 @@ export function ProfileSettingsSection() {
   function requestRemovePhoto() {
     if (!profile?.photoURL) return
     modalApi.confirm({
-      title: 'Remove profile photo?',
-      content: 'This will permanently remove your current profile photo.',
-      okText: 'Remove',
+      title: t('settings.profile.removePhotoModalTitle'),
+      content: t('settings.profile.removePhotoModalBody'),
+      okText: t('settings.profile.removePhotoOk'),
       okType: 'danger',
-      cancelText: 'Cancel',
+      cancelText: t('auth.signIn.cancel'),
       onOk: async () => {
         if (photoRemoving) return
         await handleRemovePhoto()
@@ -105,7 +107,7 @@ export function ProfileSettingsSection() {
     const file = options.file
     if (!file || !user || !(file instanceof File)) return
     if (!file.type.startsWith('image/')) {
-      message.error('Please select an image file.')
+      message.error(t('settings.profile.notImageFile'))
       options.onError?.(new Error('Not an image'))
       return
     }
@@ -117,10 +119,10 @@ export function ProfileSettingsSection() {
       const photoURL = await getDownloadURL(storageRef)
       await updateMutation.mutateAsync({ photoURL })
       await updateProfile({ photoURL })
-      message.success('Photo updated.')
+      message.success(t('settings.profile.photoUpdated'))
       options.onSuccess?.(photoURL)
     } catch (err) {
-      let text = 'Could not upload photo. Please try again.'
+      let text = t('settings.profile.photoUploadError')
       if (err instanceof Error) {
         text = err.message
       }
@@ -136,7 +138,7 @@ export function ProfileSettingsSection() {
   const initial = displayName ? displayName.charAt(0).toUpperCase() : 'U'
 
   return (
-    <Card title="Profile">
+    <Card title={t('settings.profile.cardTitle')}>
       <Flex gap={40} align="flex-start" wrap="wrap">
         <Form
           form={profileForm}
@@ -148,15 +150,15 @@ export function ProfileSettingsSection() {
           }}
           style={{ flex: 1, minWidth: 280 }}
         >
-          <Form.Item name="displayName" label="Name">
-            <Input placeholder="Your name" />
+          <Form.Item name="displayName" label={t('settings.profile.nameLabel')}>
+            <Input placeholder={t('settings.profile.namePlaceholder')} />
           </Form.Item>
-          <Form.Item name="phoneNumber" label="Phone">
-            <Input placeholder="+1 234 567 8900" />
+          <Form.Item name="phoneNumber" label={t('settings.profile.phoneLabel')}>
+            <Input placeholder={t('settings.profile.phonePlaceholder')} />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
             <Button type="primary" htmlType="submit" loading={profileSaving}>
-              Save
+              {t('settings.save')}
             </Button>
           </Form.Item>
         </Form>
@@ -179,10 +181,10 @@ export function ProfileSettingsSection() {
               color: editHover ? token.colorPrimary : token.colorTextSecondary,
             }}
           >
-            Edit
+            {t('settings.profile.editPhoto')}
           </Button>
           <Modal
-            title="Profile photo"
+            title={t('settings.profile.photoModalTitle')}
             open={photoEditOpen}
             onCancel={() => setPhotoEditOpen(false)}
             footer={null}
@@ -204,7 +206,7 @@ export function ProfileSettingsSection() {
                 {photoURL ? (
                   <img
                     src={photoURL}
-                    alt="Profile"
+                    alt={t('settings.profile.profileImageAlt')}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
@@ -224,7 +226,7 @@ export function ProfileSettingsSection() {
                     loading={photoUploading}
                     disabled={photoUploading}
                   >
-                    {photoURL ? 'Change' : 'Upload'}
+                    {photoURL ? t('settings.profile.changePhoto') : t('settings.profile.uploadPhoto')}
                   </Button>
                 </Upload>
                 {photoURL && (
@@ -235,7 +237,7 @@ export function ProfileSettingsSection() {
                     disabled={photoRemoving}
                     onClick={requestRemovePhoto}
                   >
-                    Remove
+                    {t('settings.profile.removePhoto')}
                   </Button>
                 )}
               </Flex>

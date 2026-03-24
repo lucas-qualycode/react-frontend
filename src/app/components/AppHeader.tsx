@@ -1,23 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Avatar, Button, Dropdown, Flex, Grid, Input, Popover, theme } from 'antd'
 import type { MenuProps } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
 import { HeartOutlined, LoginOutlined, MenuOutlined, SearchOutlined, SettingOutlined, ShoppingCartOutlined, UserAddOutlined } from '@ant-design/icons'
-
-const BRAND_NAME = 'Partiiu.com'
-
-const NAV_ICONS = [
-  { to: '/favorites', label: 'Favorites', icon: HeartOutlined },
-  { to: '/orders', label: 'Cart', icon: ShoppingCartOutlined },
-] as const
 
 const SEARCH_INPUT_WIDTH = 256
 const NAV_WIDTH_FIT_INPUT = 400
 
 export function AppHeader() {
+  const { t } = useTranslation()
   const { user, signOut } = useAuth()
+  const navIcons = useMemo(
+    () =>
+      [
+        { to: '/favorites' as const, labelKey: 'shell.favorites' as const, icon: HeartOutlined },
+        { to: '/orders' as const, labelKey: 'shell.cart' as const, icon: ShoppingCartOutlined },
+      ] as const,
+    []
+  )
   const { token } = theme.useToken()
   const navRef = useRef<HTMLElement>(null)
   const searchTriggerRef = useRef<HTMLSpanElement>(null)
@@ -80,14 +83,14 @@ export function AppHeader() {
       label: (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <SettingOutlined style={{ fontSize: 18 }} />
-          Settings
+          {t('shell.settings')}
         </span>
       ),
       onClick: () => navigate('/settings/profile'),
     },
     {
       key: 'signout',
-      label: 'Sign out',
+      label: t('shell.signOut'),
       onClick: () => signOut(),
     },
   ]
@@ -98,7 +101,7 @@ export function AppHeader() {
       label: (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <HeartOutlined style={{ fontSize: 18 }} />
-          Favorites
+          {t('shell.favorites')}
         </span>
       ),
       onClick: () => navigate('/favorites'),
@@ -108,7 +111,7 @@ export function AppHeader() {
       label: (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <LoginOutlined style={{ fontSize: 18 }} />
-          Sign in
+          {t('shell.signIn')}
         </span>
       ),
       onClick: () => navigate('/signin'),
@@ -118,7 +121,7 @@ export function AppHeader() {
       label: (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <UserAddOutlined style={{ fontSize: 18 }} />
-          Sign up
+          {t('shell.signUp')}
         </span>
       ),
       onClick: () => navigate('/signup'),
@@ -149,17 +152,21 @@ export function AppHeader() {
           onMouseEnter={() => setHoveredBrand(true)}
           onMouseLeave={() => setHoveredBrand(false)}
         >
-          {BRAND_NAME}
+          {t('shell.brand')}
         </Link>
-        <nav ref={navRef} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1, justifyContent: 'flex-end' }} aria-label="Main">
+        <nav
+          ref={navRef}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1, justifyContent: 'flex-end' }}
+          aria-label={t('shell.mainNav')}
+        >
           {searchOpen && searchInNav ? (
             <Input
               id="app-header-search"
               type="search"
-              placeholder="Search"
+              placeholder={t('shell.search')}
               prefix={<SearchOutlined style={{ fontSize: 18 }} />}
               style={{ width: SEARCH_INPUT_WIDTH }}
-              aria-label="Search"
+              aria-label={t('shell.searchAria')}
               variant="outlined"
               autoFocus
               onBlur={closeSearch}
@@ -175,10 +182,10 @@ export function AppHeader() {
                 <Input
                   id="app-header-search-popover"
                   type="search"
-                  placeholder="Search"
+                  placeholder={t('shell.search')}
                   prefix={<SearchOutlined style={{ fontSize: 18 }} />}
                   style={{ width: SEARCH_INPUT_WIDTH }}
-                  aria-label="Search"
+                  aria-label={t('shell.searchAria')}
                   variant="outlined"
                 />
               }
@@ -187,7 +194,7 @@ export function AppHeader() {
                 ref={searchTriggerRef}
                 role="button"
                 tabIndex={0}
-                aria-label="Search"
+                aria-label={t('shell.searchAria')}
                 aria-expanded={searchOpen}
                 style={{
                   padding: 8,
@@ -207,7 +214,7 @@ export function AppHeader() {
               </span>
             </Popover>
           )}
-          {NAV_ICONS.map(({ to, label, icon: Icon }) => {
+          {navIcons.map(({ to, labelKey, icon: Icon }) => {
             if (!user && signedOutNarrow && to === '/favorites') return null
             return (
               <Link
@@ -221,7 +228,7 @@ export function AppHeader() {
                 }}
                 onMouseEnter={() => setHoveredNav(to)}
                 onMouseLeave={() => setHoveredNav(null)}
-                aria-label={label}
+                aria-label={t(labelKey)}
               >
                 <Icon style={{ fontSize: 20 }} />
               </Link>
@@ -249,7 +256,7 @@ export function AppHeader() {
                 }}
                 aria-expanded={false}
                 aria-haspopup="true"
-                aria-label="Conta"
+                aria-label={t('shell.account')}
               >
                 <Avatar size={36}>{initial}</Avatar>
               </Button>
@@ -260,7 +267,7 @@ export function AppHeader() {
                 <span
                   role="button"
                   tabIndex={0}
-                  aria-label="Menu"
+                  aria-label={t('shell.menu')}
                   style={{
                     marginLeft: 12,
                     padding: 8,
@@ -288,11 +295,11 @@ export function AppHeader() {
                     textAlign: 'right',
                   }}
                 >
-                  {'Don\'t have an account?\n'}
-                  <AuthFooterLink to="/signup">Sign up</AuthFooterLink>
+                  {`${t('shell.noAccount')}\n`}
+                  <AuthFooterLink to="/signup">{t('shell.signUpLink')}</AuthFooterLink>
                 </span>
                 <Link to="/signin">
-                  <Button type="primary">Sign in</Button>
+                  <Button type="primary">{t('shell.signIn')}</Button>
                 </Link>
               </Flex>
             )

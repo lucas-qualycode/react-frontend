@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ConfigProvider } from 'antd'
+import enUS from 'antd/locale/en_US'
+import ptBR from 'antd/locale/pt_BR'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import {
   APPEARANCE_STORAGE_KEY,
@@ -27,6 +30,7 @@ function pickAppearanceFields(p: UserPreferences): Partial<UserPreferences> {
 }
 
 export function AppearanceThemeProvider({ children }: { children: ReactNode }) {
+  const { i18n } = useTranslation()
   const { user } = useAuth()
   const getCreatePayload = useMemo(
     () =>
@@ -95,6 +99,20 @@ export function AppearanceThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle('reduce-motion', shouldReduceMotion)
   }, [shouldReduceMotion])
 
+  const antdLocale = i18n.language === 'pt-BR' ? ptBR : enUS
+
+  useEffect(() => {
+    document.documentElement.lang = i18n.language === 'pt-BR' ? 'pt-BR' : 'en'
+  }, [i18n.language])
+
+  useEffect(() => {
+    if (!user || !profile?.preferences?.language) return
+    const lng = profile.preferences.language
+    if (lng !== i18n.language && (lng === 'pt-BR' || lng === 'en')) {
+      void i18n.changeLanguage(lng)
+    }
+  }, [user, profile?.preferences?.language, i18n])
+
   const componentSize = DENSITY_TO_SIZE[effective.density]
 
   const themeConfig = useMemo(() => {
@@ -124,7 +142,7 @@ export function AppearanceThemeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <ConfigProvider theme={themeConfig} componentSize={componentSize}>
+    <ConfigProvider theme={themeConfig} componentSize={componentSize} locale={antdLocale}>
       {children}
     </ConfigProvider>
   )

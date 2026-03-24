@@ -15,14 +15,13 @@ export type SettingsSectionKey =
 
 export const SETTINGS_MENU_ITEMS: {
   key: SettingsSectionKey
-  label: string
   icon: React.ReactNode
 }[] = [
-  { key: 'profile', label: 'Profile', icon: <UserOutlined /> },
-  { key: 'notifications', label: 'Notifications', icon: <BellOutlined /> },
-  { key: 'appearance', label: 'Appearance', icon: <BgColorsOutlined /> },
-  { key: 'language', label: 'Language & region', icon: <GlobalOutlined /> },
-  { key: 'security', label: 'Security', icon: <LockOutlined /> },
+  { key: 'profile', icon: <UserOutlined /> },
+  { key: 'notifications', icon: <BellOutlined /> },
+  { key: 'appearance', icon: <BgColorsOutlined /> },
+  { key: 'language', icon: <GlobalOutlined /> },
+  { key: 'security', icon: <LockOutlined /> },
 ]
 
 export const SETTINGS_SECTION_KEYS = SETTINGS_MENU_ITEMS.map((i) => i.key)

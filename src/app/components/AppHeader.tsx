@@ -5,7 +5,16 @@ import type { MenuProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
-import { HeartOutlined, LoginOutlined, MenuOutlined, SearchOutlined, SettingOutlined, ShoppingCartOutlined, UserAddOutlined } from '@ant-design/icons'
+import {
+  HeartOutlined,
+  LoginOutlined,
+  LogoutOutlined,
+  MenuOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  ShoppingCartOutlined,
+  UserAddOutlined,
+} from '@ant-design/icons'
 
 const SEARCH_INPUT_WIDTH = 256
 const NAV_WIDTH_FIT_INPUT = 400
@@ -80,16 +89,13 @@ export function AppHeader() {
   const accountMenuItems: MenuProps['items'] = [
     {
       key: 'settings',
-      label: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <SettingOutlined style={{ fontSize: 18 }} />
-          {t('shell.settings')}
-        </span>
-      ),
+      icon: <SettingOutlined />,
+      label: t('shell.settings'),
       onClick: () => navigate('/settings/profile'),
     },
     {
       key: 'signout',
+      icon: <LogoutOutlined />,
       label: t('shell.signOut'),
       onClick: () => signOut(),
     },
@@ -98,32 +104,20 @@ export function AppHeader() {
   const unauthMenuItems: MenuProps['items'] = [
     {
       key: 'favorites',
-      label: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <HeartOutlined style={{ fontSize: 18 }} />
-          {t('shell.favorites')}
-        </span>
-      ),
+      icon: <HeartOutlined />,
+      label: t('shell.favorites'),
       onClick: () => navigate('/favorites'),
     },
     {
       key: 'signin',
-      label: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <LoginOutlined style={{ fontSize: 18 }} />
-          {t('shell.signIn')}
-        </span>
-      ),
+      icon: <LoginOutlined />,
+      label: t('shell.signIn'),
       onClick: () => navigate('/signin'),
     },
     {
       key: 'signup',
-      label: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <UserAddOutlined style={{ fontSize: 18 }} />
-          {t('shell.signUp')}
-        </span>
-      ),
+      icon: <UserAddOutlined />,
+      label: t('shell.signUp'),
       onClick: () => navigate('/signup'),
     },
   ]

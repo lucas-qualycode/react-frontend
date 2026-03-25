@@ -2,6 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          var s = localStorage.getItem('i18nextLng')
+          if (s === 'pt-BR' || s === 'en') {
+            document.documentElement.lang = s === 'pt-BR' ? 'pt-BR' : 'en'
+            return
+          }
+          var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]
+          for (var i = 0; i < langs.length; i++) {
+            var tag = String(langs[i]).toLowerCase()
+            if (tag.indexOf('pt') === 0) {
+              document.documentElement.lang = 'pt-BR'
+              return
+            }
+            if (tag.indexOf('en') === 0) {
+              document.documentElement.lang = 'en'
+              return
+            }
+          }
+        } catch (e) {}
+      })()
+    </script>
     <link rel="icon" type="image/png" href="/partiiu-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Partiiu!</title>

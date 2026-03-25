@@ -12,6 +12,11 @@ function initialLanguage(): string {
   return browserPreferredLocale()
 }
 
+function syncDocumentHtmlLang(lng: string) {
+  if (typeof document === 'undefined') return
+  document.documentElement.lang = lng
+}
+
 void i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
@@ -24,9 +29,12 @@ void i18n.use(initReactI18next).init({
   react: { useSuspense: false },
 })
 
+syncDocumentHtmlLang(i18n.language)
+
 i18n.on('languageChanged', (lng) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem(I18N_STORAGE_KEY, lng)
+    syncDocumentHtmlLang(lng)
   }
 })
 

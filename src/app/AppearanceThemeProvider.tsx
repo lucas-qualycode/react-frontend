@@ -104,10 +104,6 @@ export function AppearanceThemeProvider({ children }: { children: ReactNode }) {
   const antdLocale = i18n.language === 'pt-BR' ? ptBR : enUS
 
   useEffect(() => {
-    document.documentElement.lang = i18n.language === 'pt-BR' ? 'pt-BR' : 'en'
-  }, [i18n.language])
-
-  useEffect(() => {
     if (!user || !profile?.preferences?.language) return
     const lng = profile.preferences.language
     if (lng !== i18n.language && (lng === 'pt-BR' || lng === 'en')) {

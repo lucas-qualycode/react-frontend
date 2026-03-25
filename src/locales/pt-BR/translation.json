@@ -1,4 +1,92 @@
 {
+  "home": {
+    "hero": {
+      "title": "Seu casamento, organizado em um só lugar",
+      "subtitle": "O Partiiu é o gerenciador de eventos pensado para casamentos—do save-the-date ao último brinde. Ideal para noivos que querem clareza; robusto para assessores e produtores.",
+      "ctaSignUp": "Criar conta grátis",
+      "ctaSignIn": "Entrar",
+      "ctaSignedIn": "Ir para meus eventos",
+      "imageAlt": "Ambiente de celebração de casamento, decorativo"
+    },
+    "value": {
+      "title": "Por que o Partiiu",
+      "body": "Planilhas, grupos de mensagens e ferramentas espalhadas estressam o planejamento. O Partiiu reúne cronograma, experiência do convidado, produtos e convites para todos ficarem alinhados—sem perder a magia do grande dia."
+    },
+    "features": {
+      "title": "Feito para como os casamentos realmente acontecem",
+      "events": {
+        "title": "Eventos e programação",
+        "desc": "Crie seu casamento como um hub principal e mantenha cada detalhe sob controle."
+      },
+      "schedules": {
+        "title": "Cronograma e horários",
+        "desc": "Organize cerimônia, recepção e logística para fornecedores e equipe saberem o que acontece e quando."
+      },
+      "products": {
+        "title": "Produtos e pedidos",
+        "desc": "Venda experiências, complementos ou ingressos e acompanhe pedidos em um só fluxo."
+      },
+      "invites": {
+        "title": "Convites digitais",
+        "desc": "Convide pessoas, acompanhe status e mantenha a comunicação clara antes do dia."
+      },
+      "guests": {
+        "title": "Lista de convidados e confirmação",
+        "desc": "Gerencie quem vem e ofereça um caminho simples para responder e participar."
+      },
+      "guestExperience": {
+        "title": "Experiência do convidado",
+        "desc": "Compartilhe links com acabamento profissional—confirmações, acesso e detalhes do grande dia sem atrito."
+      }
+    },
+    "steps": {
+      "title": "Como funciona",
+      "step1": {
+        "title": "Crie o evento do casamento",
+        "desc": "Configure a celebração como seu espaço de trabalho central."
+      },
+      "step2": {
+        "title": "Monte cronograma, produtos e convites",
+        "desc": "Inclua o que acontece no dia, o que você oferece aos convidados e quem você quer presente."
+      },
+      "step3": {
+        "title": "Acompanhe confirmações e pedidos",
+        "desc": "Fique por dentro de RSVP e vendas para reduzir surpresas de última hora."
+      }
+    },
+    "social": {
+      "title": "Histórias de casais e equipes",
+      "body": "Estamos começando—depoimentos reais e parceiros aparecerão aqui conforme mais celebrações rodam no Partiiu."
+    },
+    "faq": {
+      "title": "Perguntas frequentes",
+      "q1": "Para quem é o Partiiu?",
+      "a1": "Noivos que organizam o próprio casamento e profissionais—assessores, produtores, espaços—que precisam de um lugar único para coordenar o evento.",
+      "q2": "O Partiiu é um site de casamento como o iCasei?",
+      "a2": "O Partiiu foca na operação do evento: cronograma, experiência do convidado, convites, produtos e pedidos. Complementa—ou substitui—planilhas e conversas espalhadas; não é um produto completo de site de casamento para o consumidor.",
+      "q3": "Convidados podem comprar ou confirmar sem criar conta?",
+      "a3": "Os fluxos dependem de como você configura convites e produtos; o Partiiu foi pensado para o convidado interagir por links claros e passos guiados.",
+      "q4": "Como vocês lidam com dados e privacidade?",
+      "a4": "Tratamos dados de convidados e noivos com seriedade. Use senhas fortes, confirme o e-mail e revise as configurações de segurança da conta. Políticas detalhadas podem ser publicadas no site conforme vocês formalizarem.",
+      "q5": "Existe plano gratuito?",
+      "a5": "Preços podem evoluir—crie uma conta para ver o que está disponível hoje ou fale conosco pelo contato abaixo.",
+      "q6": "Onde consigo ajuda?",
+      "a6": "Use o canal de contato no rodapé para dúvidas sobre o produto. Ajuda dentro do app pode crescer com o tempo."
+    },
+    "ctaBand": {
+      "title": "Pronto para planejar com menos ruído?",
+      "subtitle": "Crie sua conta e configure seu primeiro evento de casamento em poucos minutos.",
+      "primary": "Começar agora",
+      "secondary": "Já tem cadastro? Entrar"
+    },
+    "footer": {
+      "rights": "Todos os direitos reservados.",
+      "contact": "Contato",
+      "contactEmailSubject": "Olá Partiiu",
+      "signIn": "Entrar",
+      "signUp": "Cadastrar"
+    }
+  },
   "settings": {
     "title": "Configurações",
     "loadError": "Não foi possível carregar o perfil.",

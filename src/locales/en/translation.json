@@ -1,4 +1,92 @@
 {
+  "home": {
+    "hero": {
+      "title": "Your wedding celebration, organized in one place",
+      "subtitle": "Partiiu is the event manager made for weddings—from the first save-the-date to the last toast. Perfect for couples who want clarity; powerful enough for planners and producers.",
+      "ctaSignUp": "Create free account",
+      "ctaSignIn": "Sign in",
+      "ctaSignedIn": "Go to my events",
+      "imageAlt": "Wedding celebration mood, decorative"
+    },
+    "value": {
+      "title": "Why Partiiu",
+      "body": "Spreadsheets, endless group chats, and scattered tools make wedding planning stressful. Partiiu brings your timeline, guest experience, products, and invitations together so everyone stays aligned—without losing the magic of the day."
+    },
+    "features": {
+      "title": "Built for how weddings really run",
+      "events": {
+        "title": "Events & programs",
+        "desc": "Create your wedding as an event hub and keep every detail under control."
+      },
+      "schedules": {
+        "title": "Timeline & schedules",
+        "desc": "Line up ceremonies, receptions, and logistics so vendors and ushers know what happens when."
+      },
+      "products": {
+        "title": "Products & orders",
+        "desc": "Sell experiences, add-ons, or tickets and track orders in one flow."
+      },
+      "invites": {
+        "title": "Digital invitations",
+        "desc": "Invite guests, track status, and keep communication clear before the big day."
+      },
+      "guests": {
+        "title": "Guest lists & RSVP",
+        "desc": "Manage who is coming and give guests a smooth path to respond and participate."
+      },
+      "guestExperience": {
+        "title": "Guest experience",
+        "desc": "Share links that feel polished—confirmations, access, and day-of details without friction."
+      }
+    },
+    "steps": {
+      "title": "How it works",
+      "step1": {
+        "title": "Create your wedding event",
+        "desc": "Set up the celebration as your central workspace."
+      },
+      "step2": {
+        "title": "Build schedule, products & invites",
+        "desc": "Add the program, what you offer guests, and who you want there."
+      },
+      "step3": {
+        "title": "Track confirmations & orders",
+        "desc": "Stay on top of RSVP and sales so there are fewer surprises."
+      }
+    },
+    "social": {
+      "title": "Stories from couples and teams",
+      "body": "We’re just getting started—real testimonials and partners will appear here as more celebrations run on Partiiu."
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "q1": "Who is Partiiu for?",
+      "a1": "Couples organizing their own wedding and professionals—planners, producers, venues—who need one place to coordinate the event.",
+      "q2": "Is Partiiu a wedding website builder like iCasei?",
+      "a2": "Partiiu focuses on event operations: schedules, guest experience, invitations, products, and orders. It complements—or replaces—scattered spreadsheets and chats; it is not a full consumer wedding-site product.",
+      "q3": "Can guests buy or confirm without creating an account?",
+      "a3": "Flows depend on how you configure invitations and products; Partiiu is designed so guests interact through clear links and guided steps.",
+      "q4": "How do you handle data and privacy?",
+      "a4": "We treat guest and couple data seriously. Use strong passwords, verify email, and check your account security settings. Detailed policies can be published on your site as you formalize them.",
+      "q5": "Is there a free plan?",
+      "a5": "Pricing may evolve—create an account to see what is available today or reach out via contact below.",
+      "q6": "Where can I get help?",
+      "a6": "Use the contact channel in the footer for product questions. In-app help may expand over time."
+    },
+    "ctaBand": {
+      "title": "Ready to plan with less noise?",
+      "subtitle": "Create your account and set up your first wedding event in minutes.",
+      "primary": "Get started",
+      "secondary": "Already registered? Sign in"
+    },
+    "footer": {
+      "rights": "All rights reserved.",
+      "contact": "Contact",
+      "contactEmailSubject": "Hello Partiiu",
+      "signIn": "Sign in",
+      "signUp": "Sign up"
+    }
+  },
   "settings": {
     "title": "Settings",
     "loadError": "Failed to load profile.",

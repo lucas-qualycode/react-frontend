@@ -223,6 +223,23 @@
       }
     }
   },
+  "userEvents": {
+    "title": "My events",
+    "subtitle": "Manage your weddings and keep everything organized.",
+    "create": "Create event",
+    "loadError": "Failed to load your events.",
+    "retry": "Try again",
+    "emptyDescription": "You haven't created any events yet.",
+    "badgeActive": "Active",
+    "badgeInactive": "Inactive",
+    "deleteAria": "Delete {{name}}",
+    "deleteModalTitle": "Delete event?",
+    "deleteModalContent": "This will remove \"{{name}}\" from your account. You can recreate it later.",
+    "deleteOk": "Delete",
+    "cancel": "Cancel",
+    "deleteSuccess": "Event deleted.",
+    "deleteError": "Could not delete the event."
+  },
   "shell": {
     "brand": "Partiiu.com",
     "search": "Search",

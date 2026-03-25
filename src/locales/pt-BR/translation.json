@@ -223,6 +223,23 @@
       }
     }
   },
+  "userEvents": {
+    "title": "Meus eventos",
+    "subtitle": "Gerencie seus eventos e mantenha tudo organizado.",
+    "create": "Criar evento",
+    "loadError": "Não foi possível carregar seus eventos.",
+    "retry": "Tentar novamente",
+    "emptyDescription": "Você ainda não criou nenhum evento.",
+    "badgeActive": "Ativo",
+    "badgeInactive": "Inativo",
+    "deleteAria": "Excluir {{name}}",
+    "deleteModalTitle": "Excluir evento?",
+    "deleteModalContent": "Isso remove \"{{name}}\" da sua conta. Você pode recriar depois.",
+    "deleteOk": "Excluir",
+    "cancel": "Cancelar",
+    "deleteSuccess": "Evento excluído.",
+    "deleteError": "Não foi possível excluir o evento."
+  },
   "shell": {
     "brand": "Partiiu.com",
     "search": "Buscar",

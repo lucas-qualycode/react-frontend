@@ -1,3 +1,9 @@
+export interface EventTagEmbed {
+  id: string
+  name: string
+  parent_tag_id?: string | null
+}
+
 export interface Event {
   id: string
   name: string
@@ -8,7 +14,7 @@ export interface Event {
   active: boolean
   is_paid: boolean
   is_online: boolean
-  type_ids: string[]
+  tags?: EventTagEmbed[]
   imageURL?: string
   deleted?: boolean
   created_at?: string
@@ -17,13 +23,19 @@ export interface Event {
   last_updated_by?: string
 }
 
-export interface EventType {
+export interface Tag {
   id: string
   name: string
   description?: string
+  parent_tag_id?: string | null
+  applies_to: string[]
+  depth?: number
   active?: boolean
   deleted?: boolean
-  [key: string]: unknown
+  created_at?: string
+  updated_at?: string
+  created_by?: string
+  last_updated_by?: string
 }
 
 export interface Invitation {

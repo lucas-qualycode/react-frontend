@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { listEventTypes, listUserEvents, createEventType } from './api'
+import { listTags, listUserEvents, createTag } from './api'
 import { fetchApi } from '@/shared/api/client'
 
 vi.mock('@/shared/api/client', () => ({
@@ -24,35 +24,35 @@ describe('features/events/api', () => {
     expect(fetchApiMock).toHaveBeenCalledWith('events?created_by=user-1&deleted=false')
   })
 
-  it('builds listEventTypes query string', async () => {
+  it('builds listTags query string', async () => {
     fetchApiMock.mockResolvedValue({
       ok: true,
       json: async () => [],
     } as unknown as Response)
 
-    await listEventTypes({ active: true, deleted: false })
+    await listTags({ active: true, deleted: false, applies_to: 'EVENT' })
 
-    expect(fetchApiMock).toHaveBeenCalledWith('event-types?active=true&deleted=false')
+    expect(fetchApiMock).toHaveBeenCalledWith('tags?active=true&deleted=false&applies_to=EVENT')
   })
 
-  it('posts createEventType payload', async () => {
+  it('posts createTag payload', async () => {
     fetchApiMock.mockResolvedValue({
       ok: true,
       json: async () => ({
-        id: 'type-1',
+        id: 'tag-1',
         name: 'Wedding',
+        applies_to: ['EVENT'],
         active: true,
         deleted: false,
       }),
     } as unknown as Response)
 
-    await createEventType({ name: 'Wedding', description: 'Big day', active: true })
+    await createTag({ name: 'Wedding', description: 'Big day', active: true, applies_to: ['EVENT'] })
 
-    expect(fetchApiMock).toHaveBeenCalledWith('event-types', {
+    expect(fetchApiMock).toHaveBeenCalledWith('tags', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: '{"name":"Wedding","description":"Big day","active":true}',
+      body: '{"name":"Wedding","description":"Big day","active":true,"applies_to":["EVENT"]}',
     })
   })
 })
-

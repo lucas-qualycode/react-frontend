@@ -22,7 +22,7 @@ export function EventEditPage() {
         location_address: event.location_address ?? '',
         location_link: event.location_link ?? '',
         imageURL: event.imageURL ?? '',
-        type_ids: event.type_ids ?? [],
+        tag_ids: event.tags?.map((x) => x.id) ?? [],
         active: event.active,
         is_paid: event.is_paid,
         is_online: event.is_online,

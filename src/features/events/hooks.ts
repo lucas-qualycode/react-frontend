@@ -1,17 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createEvent,
-  createEventType,
+  createTag,
   deleteEvent,
   getEvent,
-  listEventTypes,
+  listTags,
   listUserEvents,
   updateEvent,
   type CreateEventPayload,
-  type CreateEventTypePayload,
+  type CreateTagPayload,
   type UpdateEventPayload,
 } from './api'
-import type { Event, EventType } from '@/shared/types/api'
+import type { Event, Tag } from '@/shared/types/api'
 
 function compareByCreatedAtDesc(a: Event, b: Event): number {
   const at = a.created_at ? new Date(a.created_at).getTime() : 0
@@ -48,10 +48,10 @@ export function useEvent(eventId: string | undefined) {
   })
 }
 
-export function useEventTypes() {
+export function useEventTags() {
   return useQuery({
-    queryKey: ['eventTypes'],
-    queryFn: async (): Promise<EventType[]> => listEventTypes({ active: true, deleted: false }),
+    queryKey: ['eventTags'],
+    queryFn: async (): Promise<Tag[]> => listTags({ active: true, deleted: false, applies_to: 'EVENT' }),
     staleTime: 60_000,
   })
 }
@@ -79,13 +79,12 @@ export function useUpdateEvent() {
   })
 }
 
-export function useCreateEventType() {
+export function useCreateTag() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: CreateEventTypePayload) => createEventType(payload),
+    mutationFn: (payload: CreateTagPayload) => createTag(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['eventTypes'] })
+      queryClient.invalidateQueries({ queryKey: ['eventTags'] })
     },
   })
 }
-

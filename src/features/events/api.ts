@@ -1,5 +1,5 @@
 import { fetchApi } from '@/shared/api/client'
-import type { Event, EventType } from '@/shared/types/api'
+import type { Event, Tag } from '@/shared/types/api'
 
 export type CreateEventPayload = {
   name: string
@@ -7,7 +7,7 @@ export type CreateEventPayload = {
   location?: string
   location_address?: string
   location_link?: string
-  type_ids: string[]
+  tag_ids: string[]
   imageURL?: string
   active?: boolean
   is_paid?: boolean
@@ -20,7 +20,7 @@ export type UpdateEventPayload = {
   location?: string
   location_address?: string
   location_link?: string
-  type_ids?: string[]
+  tag_ids?: string[]
   imageURL?: string
   active?: boolean
   is_paid?: boolean
@@ -69,33 +69,36 @@ export async function deleteEvent(eventId: string): Promise<Event> {
   return res.json() as Promise<Event>
 }
 
-export async function listEventTypes(params?: {
+export async function listTags(params?: {
   active?: boolean
   deleted?: boolean
-}): Promise<EventType[]> {
+  applies_to?: string
+}): Promise<Tag[]> {
   const q = new URLSearchParams()
   if (params?.active !== undefined) q.set('active', String(params.active))
   if (params?.deleted !== undefined) q.set('deleted', String(params.deleted))
+  if (params?.applies_to !== undefined) q.set('applies_to', params.applies_to)
   const qs = q.toString()
-  const path = qs ? `event-types?${qs}` : 'event-types'
+  const path = qs ? `tags?${qs}` : 'tags'
   const res = await fetchApi(path)
-  if (!res.ok) throw new Error('Failed to load event types')
-  return res.json() as Promise<EventType[]>
+  if (!res.ok) throw new Error('Failed to load tags')
+  return res.json() as Promise<Tag[]>
 }
 
-export type CreateEventTypePayload = {
+export type CreateTagPayload = {
   name: string
   description?: string
   active?: boolean
+  parent_tag_id?: string | null
+  applies_to: string[]
 }
 
-export async function createEventType(payload: CreateEventTypePayload): Promise<EventType> {
-  const res = await fetchApi('event-types', {
+export async function createTag(payload: CreateTagPayload): Promise<Tag> {
+  const res = await fetchApi('tags', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error('Failed to create event type')
-  return res.json() as Promise<EventType>
+  if (!res.ok) throw new Error('Failed to create tag')
+  return res.json() as Promise<Tag>
 }
-

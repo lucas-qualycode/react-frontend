@@ -19,7 +19,7 @@ export function EventCreatePage() {
     location_address: '',
     location_link: '',
     imageURL: '',
-    type_ids: [],
+        tag_ids: [],
     active: true,
     is_paid: false,
     is_online: false,

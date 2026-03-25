@@ -2,16 +2,10 @@ import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Modal, Spin, Tag, Typography, message, Space } from 'antd'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useDeleteEvent, useEvent, useEventTypes } from './hooks'
-import type { Event, EventType } from '@/shared/types/api'
+import { useDeleteEvent, useEvent } from './hooks'
+import type { Event } from '@/shared/types/api'
 
 const { Title, Text, Paragraph } = Typography
-
-function typeLabelMap(types: EventType[] | undefined) {
-  const m = new Map<string, string>()
-  for (const et of types ?? []) m.set(et.id, et.name)
-  return m
-}
 
 export function EventDetailPage() {
   const { t } = useTranslation()
@@ -19,9 +13,6 @@ export function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
   const deleteMutation = useDeleteEvent()
   const { data: event, isLoading, isError, refetch } = useEvent(id)
-  const { data: types, isLoading: typesLoading } = useEventTypes()
-
-  const map = typeLabelMap(types)
 
   async function requestDelete(e: Event) {
     if (deleteMutation.isPending) return
@@ -138,12 +129,10 @@ export function EventDetailPage() {
               ) : null}
 
               <Flex vertical gap={8} style={{ marginTop: 8 }}>
-                <Text strong>{t('events.detail.types')}</Text>
+                <Text strong>{t('events.detail.tagsHeading')}</Text>
                 <Flex gap={8} wrap>
-                  {event.type_ids.map((typeId) => (
-                    <Tag key={typeId}>
-                      {typesLoading ? typeId : map.get(typeId) ?? typeId}
-                    </Tag>
+                  {(event.tags ?? []).map((tg) => (
+                    <Tag key={tg.id}>{tg.name}</Tag>
                   ))}
                 </Flex>
               </Flex>
@@ -165,9 +154,6 @@ export function EventDetailPage() {
           </Flex>
         </Card>
       ) : null}
-
-      <div />
     </Flex>
   )
 }
-

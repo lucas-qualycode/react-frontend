@@ -118,7 +118,7 @@
       "badgeOnline": "Online",
       "badgeOffline": "Offline",
       "locationLink": "Location link",
-      "types": "Categories & tags",
+      "tagsHeading": "Tags",
       "goToSchedules": "Schedules",
       "goToProducts": "Products",
       "goToInvitations": "Invitations"
@@ -138,7 +138,7 @@
       "locationLinkPlaceholder": "https://...",
       "imageURLLabel": "Image URL",
       "imageURLPlaceholder": "https://...",
-      "typeIdsRequired": "Select at least one category/tag.",
+      "tagIdsRequired": "Select at least one tag.",
       "urlInvalid": "Please enter a valid URL starting with http:// or https://.",
       "pickerPlaceholder": "Select one or more categories/tags",
       "activeLabel": "Active",
@@ -147,26 +147,28 @@
       "sectionIdentity": "Event identity",
       "sectionVenue": "Venue & location",
       "sectionMedia": "Media",
-      "sectionTypes": "Categories & tags",
+      "sectionTags": "Tags",
       "sectionVisibility": "Visibility & payment",
       "submitError": "Could not save. Please try again."
     },
-    "types": {
-      "pickerLabel": "Categories & tags",
-      "pickerPlaceholder": "Select one or more categories/tags",
-      "helpText": "Choose one or more categories/tags to describe the theme/audience of your event (required).",
-      "createButton": "Create new category/tag",
-      "createModalTitle": "Create category/tag",
+    "tags": {
+      "pickerLabel": "Tags",
+      "pickerPlaceholder": "Select one or more tags",
+      "helpText": "Choose one or more tags to describe the theme or audience of your event (required).",
+      "createButton": "Create new tag",
+      "createModalTitle": "Create tag",
       "createOk": "Create",
       "cancel": "Cancel",
-      "nameLabel": "Category/tag name",
-      "nameRequired": "Please enter a category/tag name.",
+      "nameLabel": "Tag name",
+      "nameRequired": "Please enter a tag name.",
       "namePlaceholder": "e.g. Wedding",
+      "parentLabel": "Parent tag",
+      "parentPlaceholder": "None — top-level tag",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Optional description",
       "activeLabel": "Active",
-      "createSuccess": "Category/tag created.",
-      "createError": "Could not create category/tag."
+      "createSuccess": "Tag created.",
+      "createError": "Could not create tag."
     }
   },
   "settings": {

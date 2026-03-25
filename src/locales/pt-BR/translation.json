@@ -118,7 +118,7 @@
       "badgeOnline": "Online",
       "badgeOffline": "Presencial",
       "locationLink": "Link do local",
-      "types": "Categorias e tags",
+      "tagsHeading": "Tags",
       "goToSchedules": "Cronogramas",
       "goToProducts": "Produtos",
       "goToInvitations": "Convites"
@@ -138,7 +138,7 @@
       "locationLinkPlaceholder": "https://...",
       "imageURLLabel": "URL da imagem",
       "imageURLPlaceholder": "https://...",
-      "typeIdsRequired": "Selecione pelo menos uma categoria/tag.",
+      "tagIdsRequired": "Selecione pelo menos uma tag.",
       "urlInvalid": "Informe uma URL válida começando com http:// ou https://.",
       "pickerPlaceholder": "Selecione uma ou mais categorias/tags",
       "activeLabel": "Ativo",
@@ -147,26 +147,28 @@
       "sectionIdentity": "Identidade do evento",
       "sectionVenue": "Local e endereço",
       "sectionMedia": "Mídia",
-      "sectionTypes": "Categorias e tags",
+      "sectionTags": "Tags",
       "sectionVisibility": "Visibilidade e pagamento",
       "submitError": "Não foi possível salvar. Tente novamente."
     },
-    "types": {
-      "pickerLabel": "Categorias e tags",
-      "pickerPlaceholder": "Selecione uma ou mais categorias/tags",
-      "helpText": "Selecione uma ou mais categorias/tags para descrever o tema/público do seu evento (obrigatório).",
-      "createButton": "Criar nova categoria/tag",
-      "createModalTitle": "Criar categoria/tag",
+    "tags": {
+      "pickerLabel": "Tags",
+      "pickerPlaceholder": "Selecione uma ou mais tags",
+      "helpText": "Selecione uma ou mais tags para descrever o tema ou o público do seu evento (obrigatório).",
+      "createButton": "Criar nova tag",
+      "createModalTitle": "Criar tag",
       "createOk": "Criar",
       "cancel": "Cancelar",
-      "nameLabel": "Nome da categoria/tag",
-      "nameRequired": "Por favor, informe um nome para a categoria/tag.",
+      "nameLabel": "Nome da tag",
+      "nameRequired": "Por favor, informe um nome para a tag.",
       "namePlaceholder": "Ex.: Casamento",
+      "parentLabel": "Tag pai",
+      "parentPlaceholder": "Nenhuma — tag de nível superior",
       "descriptionLabel": "Descrição",
       "descriptionPlaceholder": "Descrição opcional",
       "activeLabel": "Ativo",
-      "createSuccess": "Categoria/tag criada.",
-      "createError": "Não foi possível criar a categoria/tag."
+      "createSuccess": "Tag criada.",
+      "createError": "Não foi possível criar a tag."
     }
   },
   "settings": {

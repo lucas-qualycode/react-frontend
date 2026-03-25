@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Card, Collapse, Flex, Form, Input, Modal, Select, Space, Switch, Tag, Tooltip, Typography, message } from 'antd'
-import type { SelectProps } from 'antd'
+import {
+  Button,
+  Card,
+  Collapse,
+  Flex,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Switch,
+  Tag as AntTag,
+  Tooltip,
+  TreeSelect,
+  Typography,
+  message,
+} from 'antd'
+import type { SelectProps, TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { useEventTypes, useCreateEventType } from '../hooks'
+import { useEventTags, useCreateTag } from '../hooks'
 
-import type { EventType } from '@/shared/types/api'
+import type { Tag as EventTag } from '@/shared/types/api'
 import type { CreateEventPayload, UpdateEventPayload } from '../api'
 
 type EventFormValues = {
@@ -14,7 +30,7 @@ type EventFormValues = {
   location_address: string
   location_link: string
   imageURL: string
-  type_ids: string[]
+  tag_ids: string[]
   active: boolean
   is_paid: boolean
   is_online: boolean
@@ -36,7 +52,7 @@ function toOptionalString(s: string | undefined): string | undefined {
 
 function normalizePayload(values: EventFormValues, mode: 'create' | 'edit'): CreateEventPayload | UpdateEventPayload {
   const common = {
-    type_ids: values.type_ids,
+    tag_ids: values.tag_ids,
     active: values.active,
     is_paid: values.is_paid,
     is_online: values.is_online,
@@ -61,7 +77,7 @@ function normalizePayload(values: EventFormValues, mode: 'create' | 'edit'): Cre
     location_address: base.location_address,
     location_link: base.location_link,
     imageURL: base.imageURL,
-    type_ids: base.type_ids,
+    tag_ids: base.tag_ids,
     active: base.active,
     is_paid: base.is_paid,
     is_online: base.is_online,
@@ -72,15 +88,15 @@ function normalizePayload(values: EventFormValues, mode: 'create' | 'edit'): Cre
 export function EventForm({ mode, initialValues, submitLoading, onSubmit }: EventFormProps) {
   const { t } = useTranslation()
   const [form] = Form.useForm<EventFormValues>()
-  const { data: types, isLoading: typesLoading, refetch: refetchTypes } = useEventTypes()
-  const createTypeMutation = useCreateEventType()
-  const [typeModalOpen, setTypeModalOpen] = useState(false)
-  const [typeForm] = Form.useForm<{ name: string; description?: string }>()
+  const { data: tags, isLoading: tagsLoading, refetch: refetchTags } = useEventTags()
+  const createTagMutation = useCreateTag()
+  const [tagModalOpen, setTagModalOpen] = useState(false)
+  const [tagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
   const [activePanelKey, setActivePanelKey] = useState<string>('identity')
 
   const fieldItemStyle = { marginBottom: 10 } as const
   const [imagePreviewSrc, setImagePreviewSrc] = useState<string>('')
-  const selectedTypeIds = Form.useWatch('type_ids', form) as string[] | undefined
+  const selectedTagIds = Form.useWatch('tag_ids', form) as string[] | undefined
   const panelKeyByField: Record<string, string> = {
     name: 'identity',
     description: 'identity',
@@ -88,7 +104,7 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
     location_address: 'venue',
     location_link: 'venue',
     imageURL: 'identity',
-    type_ids: 'types',
+    tag_ids: 'tags',
     active: 'visibility',
     is_paid: 'visibility',
     is_online: 'visibility',
@@ -102,7 +118,7 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
       location_address: initialValues.location_address ?? '',
       location_link: initialValues.location_link ?? '',
       imageURL: initialValues.imageURL ?? '',
-      type_ids: initialValues.type_ids ?? [],
+      tag_ids: initialValues.tag_ids ?? [],
       active: initialValues.active ?? true,
       is_paid: initialValues.is_paid ?? false,
       is_online: initialValues.is_online ?? false,
@@ -111,35 +127,68 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
   }, [form, initialValues])
 
   useEffect(() => {
-    if (!typeModalOpen) {
-      typeForm.resetFields()
+    if (!tagModalOpen) {
+      tagForm.resetFields()
     }
-  }, [typeModalOpen, typeForm])
+  }, [tagModalOpen, tagForm])
 
-  const typeOptions: SelectProps<string[]>['options'] = useMemo(() => {
+  const tagOptions: SelectProps<string[]>['options'] = useMemo(() => {
     return (
-      types?.map((et: EventType) => ({
-        value: et.id,
-        label: et.name,
+      tags?.map((tg: EventTag) => ({
+        value: tg.id,
+        label: tg.name,
       })) ?? []
     )
-  }, [types])
+  }, [tags])
 
-  async function handleCreateType(values: { name: string; description?: string }) {
+  const tagParentTreeData: TreeSelectProps['treeData'] = useMemo(() => {
+    if (!tags?.length) return []
+    const byParent = new Map<string | null, EventTag[]>()
+    for (const t of tags) {
+      const pid = t.parent_tag_id ?? null
+      const arr = byParent.get(pid) ?? []
+      arr.push(t)
+      byParent.set(pid, arr)
+    }
+    function toNodes(parentId: string | null): NonNullable<TreeSelectProps['treeData']> {
+      return (byParent.get(parentId) ?? [])
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((t) => {
+          const children = toNodes(t.id)
+          return {
+            title: t.name,
+            value: t.id,
+            key: t.id,
+            ...(children.length > 0 ? { children } : {}),
+          }
+        })
+    }
+    return toNodes(null)
+  }, [tags])
+
+  async function handleCreateTag(values: {
+    name: string
+    description?: string
+    parent_tag_id?: string
+  }) {
     try {
-      const created = await createTypeMutation.mutateAsync({
+      const parentId = values.parent_tag_id?.trim()
+      const created = await createTagMutation.mutateAsync({
         name: values.name,
         description: values.description?.trim() ? values.description : undefined,
         active: true,
+        applies_to: ['EVENT'],
+        ...(parentId ? { parent_tag_id: parentId } : {}),
       })
-      const currentTypeIds = form.getFieldValue('type_ids') ?? []
-      const nextTypeIds = Array.from(new Set([...currentTypeIds, created.id]))
-      form.setFieldsValue({ type_ids: nextTypeIds })
-      setTypeModalOpen(false)
-      message.success(t('events.types.createSuccess'))
-      await refetchTypes()
+      const currentTagIds = form.getFieldValue('tag_ids') ?? []
+      const nextTagIds = Array.from(new Set([...currentTagIds, created.id]))
+      form.setFieldsValue({ tag_ids: nextTagIds })
+      setTagModalOpen(false)
+      message.success(t('events.tags.createSuccess'))
+      await refetchTags()
     } catch {
-      message.error(t('events.types.createError'))
+      message.error(t('events.tags.createError'))
     }
   }
 
@@ -296,63 +345,63 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
               ),
             },
             {
-              key: 'types',
-              label: t('events.form.sectionTypes'),
+              key: 'tags',
+              label: t('events.form.sectionTags'),
               children: (
                 <Space direction="vertical" size={0} style={{ width: '100%' }}>
                   <Form.Item
                     style={fieldItemStyle}
-                    name="type_ids"
-                    label={t('events.types.pickerLabel')}
+                    name="tag_ids"
+                    label={t('events.tags.pickerLabel')}
                     rules={[
                       {
                         validator: async (_: unknown, value: string[] | undefined) => {
                           if (value && value.length > 0) return
-                          throw new Error(t('events.form.typeIdsRequired'))
+                          throw new Error(t('events.form.tagIdsRequired'))
                         },
                       },
                     ]}
                   >
                     <Space direction="vertical" size={8} style={{ width: '100%' }}>
                       <Typography.Text type="secondary" style={{ display: 'block' }}>
-                        {t('events.types.helpText')}
+                        {t('events.tags.helpText')}
                       </Typography.Text>
                       <Select
                         mode="multiple"
                         allowClear
-                        options={typeOptions}
-                        loading={typesLoading}
-                        placeholder={t('events.types.pickerPlaceholder')}
+                        options={tagOptions}
+                        loading={tagsLoading}
+                        placeholder={t('events.tags.pickerPlaceholder')}
                         maxTagCount={3}
                         optionFilterProp="label"
                         onDropdownVisibleChange={(open) => {
-                          if (open) void refetchTypes()
+                          if (open) void refetchTags()
                         }}
                       />
-                      {selectedTypeIds && selectedTypeIds.length > 0 ? (
+                      {selectedTagIds && selectedTagIds.length > 0 ? (
                         <Flex gap={8} wrap style={{ marginTop: 2 }}>
-                          {(types ?? [])
-                            .filter((et) => selectedTypeIds.includes(et.id))
-                            .map((et) => (
+                          {(tags ?? [])
+                            .filter((tg) => selectedTagIds.includes(tg.id))
+                            .map((tg) => (
                               <Tooltip
-                                key={et.id}
+                                key={tg.id}
                                 title={
-                                  typeof et.description === 'string' && et.description.trim().length > 0
-                                    ? et.description
-                                    : et.name
+                                  typeof tg.description === 'string' && tg.description.trim().length > 0
+                                    ? tg.description
+                                    : tg.name
                                 }
                               >
-                                <Tag>{et.name}</Tag>
+                                <AntTag>{tg.name}</AntTag>
                               </Tooltip>
                             ))}
                         </Flex>
                       ) : null}
                       <Button
                         type="default"
-                        onClick={() => setTypeModalOpen(true)}
-                        disabled={createTypeMutation.isPending}
+                        onClick={() => setTagModalOpen(true)}
+                        disabled={createTagMutation.isPending}
                       >
-                        {t('events.types.createButton')}
+                        {t('events.tags.createButton')}
                       </Button>
                     </Space>
                   </Form.Item>
@@ -389,28 +438,44 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
       </Form>
 
       <Modal
-        title={t('events.types.createModalTitle')}
-        open={typeModalOpen}
-        onCancel={() => setTypeModalOpen(false)}
+        title={t('events.tags.createModalTitle')}
+        open={tagModalOpen}
+        onCancel={() => setTagModalOpen(false)}
         onOk={async () => {
           try {
-            const values = await typeForm.validateFields()
-            await handleCreateType(values)
+            const values = await tagForm.validateFields()
+            await handleCreateTag(values)
           } catch {
             return
           }
         }}
-        okText={t('events.types.createOk')}
-        cancelText={t('events.types.cancel')}
-        confirmLoading={createTypeMutation.isPending}
+        okText={t('events.tags.createOk')}
+        cancelText={t('events.tags.cancel')}
+        confirmLoading={createTagMutation.isPending}
         destroyOnClose
       >
-        <Form form={typeForm} layout="vertical" initialValues={{ active: true }}>
-          <Form.Item name="name" label={t('events.types.nameLabel')} rules={[{ required: true, message: t('events.types.nameRequired') }]}>
-            <Input placeholder={t('events.types.namePlaceholder')} />
+        <Form form={tagForm} layout="vertical" initialValues={{ active: true }}>
+          <Form.Item name="name" label={t('events.tags.nameLabel')} rules={[{ required: true, message: t('events.tags.nameRequired') }]}>
+            <Input placeholder={t('events.tags.namePlaceholder')} />
           </Form.Item>
-          <Form.Item name="description" label={t('events.types.descriptionLabel')}>
-            <Input.TextArea rows={3} placeholder={t('events.types.descriptionPlaceholder')} />
+          <Form.Item name="parent_tag_id" label={t('events.tags.parentLabel')}>
+            <TreeSelect
+              allowClear
+              showSearch
+              treeDefaultExpandAll
+              style={{ width: '100%' }}
+              placeholder={t('events.tags.parentPlaceholder')}
+              treeData={tagParentTreeData}
+              disabled={tagsLoading}
+              filterTreeNode={(input, node) =>
+                String(node?.title ?? '')
+                  .toLowerCase()
+                  .includes(input.trim().toLowerCase())
+              }
+            />
+          </Form.Item>
+          <Form.Item name="description" label={t('events.tags.descriptionLabel')}>
+            <Input.TextArea rows={3} placeholder={t('events.tags.descriptionPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>

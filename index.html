@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <script>
@@ -7,7 +7,7 @@
         try {
           var s = localStorage.getItem('i18nextLng')
           if (s === 'pt-BR' || s === 'en') {
-            document.documentElement.lang = s === 'pt-BR' ? 'pt-BR' : 'en'
+            document.documentElement.lang = s
             return
           }
           var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]

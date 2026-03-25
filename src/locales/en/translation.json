@@ -2,6 +2,7 @@
   "settings": {
     "title": "Settings",
     "loadError": "Failed to load profile.",
+    "menuDropdownAria": "Settings sections",
     "menu": {
       "profile": "Profile",
       "notifications": "Notifications",

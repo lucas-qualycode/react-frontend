@@ -6,6 +6,7 @@ import {
   Card,
   Flex,
   Form,
+  Grid,
   Input,
   message,
   Modal,
@@ -46,6 +47,8 @@ export function ProfileSettingsSection() {
   const [profileSaving, setProfileSaving] = useState(false)
   const [editHover, setEditHover] = useState(false)
   const { token } = theme.useToken()
+  const screens = Grid.useBreakpoint()
+  const stackProfileLayout = screens.md === false
 
   useEffect(() => {
     const values = toProfileFormValues(profile)
@@ -139,7 +142,12 @@ export function ProfileSettingsSection() {
 
   return (
     <Card title={t('settings.profile.cardTitle')}>
-      <Flex gap={40} align="flex-start" wrap="wrap">
+      <Flex
+        gap={stackProfileLayout ? 24 : 40}
+        align={stackProfileLayout ? 'center' : 'flex-start'}
+        vertical={stackProfileLayout}
+        wrap={stackProfileLayout ? false : 'wrap'}
+      >
         <Form
           form={profileForm}
           layout="vertical"
@@ -148,7 +156,12 @@ export function ProfileSettingsSection() {
             displayName: '',
             phoneNumber: '',
           }}
-          style={{ flex: 1, minWidth: 280 }}
+          style={{
+            flex: stackProfileLayout ? undefined : 1,
+            minWidth: stackProfileLayout ? undefined : 200,
+            width: stackProfileLayout ? '100%' : undefined,
+            order: stackProfileLayout ? 2 : 0,
+          }}
         >
           <Form.Item name="displayName" label={t('settings.profile.nameLabel')}>
             <Input placeholder={t('settings.profile.namePlaceholder')} />
@@ -162,7 +175,13 @@ export function ProfileSettingsSection() {
             </Button>
           </Form.Item>
         </Form>
-        <Flex vertical align="center" flex="none" gap={8}>
+        <Flex
+          vertical
+          align="center"
+          flex="none"
+          gap={8}
+          style={{ order: stackProfileLayout ? 1 : 0 }}
+        >
           <Avatar
             src={photoURL || undefined}
             style={{ width: 160, height: 160, borderRadius: '50%', fontSize: 64 }}

@@ -2,6 +2,7 @@
   "settings": {
     "title": "Configurações",
     "loadError": "Não foi possível carregar o perfil.",
+    "menuDropdownAria": "Seções das configurações",
     "menu": {
       "profile": "Perfil",
       "notifications": "Notificações",

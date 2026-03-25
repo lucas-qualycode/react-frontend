@@ -1,5 +1,7 @@
 import { Suspense, useEffect, useMemo } from 'react'
-import { Breadcrumb, Flex, Layout, Menu, Modal, Spin, Typography } from 'antd'
+import { MenuOutlined } from '@ant-design/icons'
+import { Breadcrumb, Button, Dropdown, Flex, Grid, Layout, Menu, Modal, Spin, Typography } from 'antd'
+import type { MenuProps } from 'antd'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
@@ -14,6 +16,8 @@ export function SettingsLayout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const screens = Grid.useBreakpoint()
+  const settingsIconNav = screens.md === false
   const {
     user,
     updateProfile,
@@ -62,6 +66,26 @@ export function SettingsLayout() {
   const activeKey = isSettingsSectionKey(segment) ? segment : 'profile'
 
   const sectionLabel = t(`settings.menu.${activeKey}`)
+
+  const menuItems = useMemo(
+    () =>
+      SETTINGS_MENU_ITEMS.map(({ key, icon }) => ({
+        key,
+        icon,
+        label: t(`settings.menu.${key}`),
+      })),
+    [t]
+  )
+
+  const settingsDropdownItems: MenuProps['items'] = useMemo(
+    () =>
+      SETTINGS_MENU_ITEMS.map(({ key, icon }) => ({
+        key,
+        icon,
+        label: t(`settings.menu.${key}`),
+      })),
+    [t]
+  )
 
   const outletContext = useMemo<SettingsOutletContext>(
     () => ({
@@ -122,16 +146,44 @@ export function SettingsLayout() {
 
   return (
     <Content style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-      <Flex gap={32} align="flex-start">
-        <Flex flex={1} vertical style={{ minWidth: 0 }}>
+      <Flex gap={settingsIconNav ? 0 : 32} vertical={settingsIconNav} align="flex-start">
+        <Flex flex={1} vertical style={{ minWidth: 0, width: '100%' }}>
           {modalContextHolder}
-          <Breadcrumb
-            style={{ marginBottom: 24 }}
-            items={[
-              { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
-              { title: sectionLabel },
-            ]}
-          />
+          {settingsIconNav ? (
+            <Flex justify="space-between" align="center" gap={12} style={{ marginBottom: 24 }}>
+              <Breadcrumb
+                style={{ marginBottom: 0, flex: 1, minWidth: 0 }}
+                items={[
+                  { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
+                  { title: sectionLabel },
+                ]}
+              />
+              <Dropdown
+                menu={{
+                  items: settingsDropdownItems,
+                  selectedKeys: [activeKey],
+                  onClick: ({ key }) => navigate(`/settings/${key}`),
+                }}
+                trigger={['hover', 'click']}
+                placement="bottomRight"
+              >
+                <Button
+                  type="text"
+                  icon={<MenuOutlined />}
+                  aria-label={t('settings.menuDropdownAria')}
+                  style={{ flexShrink: 0 }}
+                />
+              </Dropdown>
+            </Flex>
+          ) : (
+            <Breadcrumb
+              style={{ marginBottom: 24 }}
+              items={[
+                { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
+                { title: sectionLabel },
+              ]}
+            />
+          )}
           <Suspense
             fallback={
               <Flex style={{ minHeight: 200 }} align="center" justify="center">
@@ -142,17 +194,15 @@ export function SettingsLayout() {
             <Outlet context={outletContext} />
           </Suspense>
         </Flex>
-        <Menu
-          selectedKeys={[activeKey]}
-          onSelect={({ key }) => navigate(`/settings/${key}`)}
-          mode="vertical"
-          style={{ width: 220, flexShrink: 0 }}
-          items={SETTINGS_MENU_ITEMS.map(({ key, icon }) => ({
-            key,
-            icon,
-            label: t(`settings.menu.${key}`),
-          }))}
-        />
+        {!settingsIconNav ? (
+          <Menu
+            selectedKeys={[activeKey]}
+            onSelect={({ key }) => navigate(`/settings/${key}`)}
+            mode="vertical"
+            style={{ width: 220, flexShrink: 0 }}
+            items={menuItems}
+          />
+        ) : null}
       </Flex>
     </Content>
   )

@@ -43,6 +43,11 @@ const EventDetailPage = lazy(() =>
     default: m.EventDetailPage,
   }))
 )
+const EventEditPage = lazy(() =>
+  import('@/features/events/EventEditPage').then((m) => ({
+    default: m.EventEditPage,
+  }))
+)
 const EventUserProductsPage = lazy(() =>
   import('@/features/events/EventUserProductsPage').then((m) => ({
     default: m.EventUserProductsPage,
@@ -211,6 +216,10 @@ export const router = createBrowserRouter([
       {
         path: 'events/:id',
         element: <Protected><EventDetailPage /></Protected>,
+      },
+      {
+        path: 'events/:id/edit',
+        element: <Protected><EventEditPage /></Protected>,
       },
       {
         path: 'events/:id/guests',

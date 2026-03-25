@@ -3,10 +3,12 @@ export interface Event {
   name: string
   description?: string
   location?: string
-  active?: boolean
-  is_paid?: boolean
-  is_online?: boolean
-  type_ids?: string[]
+  location_address?: string
+  location_link?: string
+  active: boolean
+  is_paid: boolean
+  is_online: boolean
+  type_ids: string[]
   imageURL?: string
   deleted?: boolean
   created_at?: string
@@ -18,6 +20,9 @@ export interface Event {
 export interface EventType {
   id: string
   name: string
+  description?: string
+  active?: boolean
+  deleted?: boolean
   [key: string]: unknown
 }
 

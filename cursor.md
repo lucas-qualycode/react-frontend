@@ -83,7 +83,7 @@ src/
 
 - **`app/`**: Shell, routing, auth, theme, shared layout components.
 - **`features/`**: Own components, hooks, API hooks, types. Prefer `shared/` for generic reuse; avoid importing another feature’s internals.
-- **`shared/`**: API client, stores, cross-feature utilities.
+- **`shared/`**: API client, stores, cross-feature utilities. **`ImageEditModal`** (`shared/components/ImageEditModal.tsx`): Firebase upload + remove in a modal; profile uses `avatars/{uid}/…`, event form uses `event-images/{uid}/…` (same `settingsStorage` as settings).
 
 Tests: colocate `*.test.ts(x)` or `__tests__/` next to source.
 

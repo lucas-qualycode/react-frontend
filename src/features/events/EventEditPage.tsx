@@ -69,6 +69,7 @@ export function EventEditPage() {
       {!isLoading && !isError && initialValues ? (
         <EventForm
           mode="edit"
+          eventId={id}
           initialValues={initialValues}
           submitLoading={updateMutation.isPending}
           onSubmit={async (payload) => {

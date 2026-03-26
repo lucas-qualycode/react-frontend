@@ -2,17 +2,24 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Button,
   Card,
+  Col,
   Collapse,
   Flex,
   Form,
   Input,
   Modal,
+  Radio,
+  Row,
   Space,
-  Switch,
   TreeSelect,
   Typography,
   message,
+  theme,
 } from 'antd'
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
+import { useAuth } from '@/app/auth/AuthContext'
+import { settingsStorage } from '@/features/settings/storage'
+import { ImageEditModal } from '@/shared/components/ImageEditModal'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useEventTags, useCreateTag } from '../hooks'
@@ -28,16 +35,23 @@ type EventFormValues = {
   location_link: string
   imageURL: string
   tag_ids: string[]
-  active: boolean
   is_paid: boolean
   is_online: boolean
 }
 
+export type EventFormSubmitMeta = {
+  pendingEventImage?: File | null
+}
+
 type EventFormProps = {
   mode: 'create' | 'edit'
-  initialValues: Partial<EventFormValues>
+  eventId?: string
+  initialValues: Partial<EventFormValues> & { active?: boolean }
   submitLoading: boolean
-  onSubmit: (payload: CreateEventPayload | UpdateEventPayload) => Promise<void>
+  onSubmit: (
+    payload: CreateEventPayload | UpdateEventPayload,
+    meta?: EventFormSubmitMeta
+  ) => Promise<void>
 }
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
@@ -59,10 +73,14 @@ function toOptionalString(s: string | undefined): string | undefined {
   return v.length > 0 ? v : undefined
 }
 
-function normalizePayload(values: EventFormValues, mode: 'create' | 'edit'): CreateEventPayload | UpdateEventPayload {
+function normalizePayload(
+  values: EventFormValues,
+  mode: 'create' | 'edit',
+  active: boolean
+): CreateEventPayload | UpdateEventPayload {
   const common = {
     tag_ids: values.tag_ids,
-    active: values.active,
+    active,
     is_paid: values.is_paid,
     is_online: values.is_online,
   }
@@ -77,7 +95,10 @@ function normalizePayload(values: EventFormValues, mode: 'create' | 'edit'): Cre
     ...common,
   }
 
-  if (mode === 'create') return base as CreateEventPayload
+  if (mode === 'create') {
+    const { imageURL: _omitImage, ...rest } = base
+    return rest as CreateEventPayload
+  }
 
   const update: UpdateEventPayload = {
     name: base.name,
@@ -94,28 +115,27 @@ function normalizePayload(values: EventFormValues, mode: 'create' | 'edit'): Cre
   return update
 }
 
-export function EventForm({ mode, initialValues, submitLoading, onSubmit }: EventFormProps) {
+export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmit }: EventFormProps) {
   const { t } = useTranslation()
+  const { user } = useAuth()
+  const { token } = theme.useToken()
   const [form] = Form.useForm<EventFormValues>()
+  const [imageEditOpen, setImageEditOpen] = useState(false)
+  const [editImageHover, setEditImageHover] = useState(false)
+  const [pendingEventImage, setPendingEventImage] = useState<File | null>(null)
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null)
+  const watchedImageUrl = Form.useWatch('imageURL', form) as string | undefined
   const { data: tags, isLoading: tagsLoading, refetch: refetchTags } = useEventTags()
   const createTagMutation = useCreateTag()
   const [tagModalOpen, setTagModalOpen] = useState(false)
   const [tagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
-  const [activePanelKey, setActivePanelKey] = useState<string>('identity')
+  const [venuePanelKey, setVenuePanelKey] = useState<string | undefined>('venue')
 
   const fieldItemStyle = { marginBottom: 10 } as const
-  const [imagePreviewSrc, setImagePreviewSrc] = useState<string>('')
   const panelKeyByField: Record<string, string> = {
-    name: 'identity',
-    description: 'identity',
     location: 'venue',
     location_address: 'venue',
     location_link: 'venue',
-    imageURL: 'identity',
-    tag_ids: 'tags',
-    active: 'visibility',
-    is_paid: 'visibility',
-    is_online: 'visibility',
   }
 
   useEffect(() => {
@@ -127,11 +147,9 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
       location_link: initialValues.location_link ?? '',
       imageURL: initialValues.imageURL ?? '',
       tag_ids: initialValues.tag_ids ?? [],
-      active: initialValues.active ?? true,
       is_paid: initialValues.is_paid ?? false,
       is_online: initialValues.is_online ?? false,
     })
-    setImagePreviewSrc(initialValues.imageURL ?? '')
   }, [form, initialValues])
 
   useEffect(() => {
@@ -139,6 +157,12 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
       tagForm.resetFields()
     }
   }, [tagModalOpen, tagForm])
+
+  useEffect(() => {
+    return () => {
+      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl)
+    }
+  }, [pendingPreviewUrl])
 
   const tagTreeData: TreeSelectProps['treeData'] = useMemo(() => {
     if (!tags?.length) return []
@@ -220,8 +244,55 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
   }
 
   async function onFinish(values: EventFormValues) {
-    const payload = normalizePayload(values, mode)
-    await onSubmit(payload)
+    const active = mode === 'create' ? true : (initialValues.active ?? true)
+    const payload = normalizePayload(values, mode, active)
+    await onSubmit(
+      payload,
+      mode === 'create' ? { pendingEventImage } : undefined
+    )
+  }
+
+  async function performEventImageUpload(file: File) {
+    if (!user) return
+    if (mode === 'create') {
+      setPendingEventImage(file)
+      setPendingPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return URL.createObjectURL(file)
+      })
+      form.setFieldsValue({ imageURL: '' })
+      return
+    }
+    if (!eventId) return
+    const path = `event-images/${user.uid}/${eventId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+    try {
+      const storageRef = ref(settingsStorage, path)
+      await uploadBytes(storageRef, file)
+      const url = await getDownloadURL(storageRef)
+      form.setFieldsValue({ imageURL: url })
+    } catch (err) {
+      let text = t('events.form.imageUploadError')
+      if (err instanceof Error) {
+        text = err.message
+      }
+      message.error(text)
+      throw err instanceof Error ? err : new Error(text)
+    }
+  }
+
+  async function handleRemoveEventImage() {
+    if (mode === 'create') {
+      setPendingEventImage(null)
+      setPendingPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
+      form.setFieldsValue({ imageURL: '' })
+      message.success(t('events.form.imageRemoved'))
+      return
+    }
+    form.setFieldsValue({ imageURL: '' })
+    message.success(t('events.form.imageRemoved'))
   }
 
   const urlRule = useMemo(
@@ -235,18 +306,18 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
     [t]
   )
 
+  const { active: _omitActiveFromForm, ...formInitialRest } = initialValues
+
+  const coverPreviewSrc =
+    pendingPreviewUrl?.trim() ||
+    (watchedImageUrl?.trim() ? watchedImageUrl.trim() : '')
+
   return (
     <Card>
       <Form
         form={form}
         layout="vertical"
         onFinish={onFinish}
-        onValuesChange={(changedValues: Record<string, unknown>) => {
-          if (Object.prototype.hasOwnProperty.call(changedValues, 'imageURL')) {
-            const v = changedValues.imageURL
-            setImagePreviewSrc(typeof v === 'string' ? v : '')
-          }
-        }}
         onFinishFailed={(errorInfo) => {
           const raw = errorInfo?.errorFields?.[0]?.name
           const first =
@@ -255,196 +326,237 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
               : typeof raw === 'string'
                 ? raw
                 : null
-          if (typeof first === 'string' && panelKeyByField[first]) setActivePanelKey(panelKeyByField[first])
-          else setActivePanelKey('identity')
+          if (typeof first === 'string' && panelKeyByField[first]) setVenuePanelKey(panelKeyByField[first])
         }}
         initialValues={{
-          active: true,
           is_paid: false,
           is_online: false,
-          ...initialValues,
+          ...formInitialRest,
         }}
       >
-        <Collapse
-          accordion
-          activeKey={activePanelKey}
-          onChange={(key) => {
-            if (Array.isArray(key)) setActivePanelKey(key[0] ? String(key[0]) : 'identity')
-            else setActivePanelKey(String(key))
-          }}
-          bordered={false}
-          style={{ background: 'transparent' }}
-          items={[
-            {
-              key: 'identity',
-              label: t('events.form.sectionIdentity'),
-              children: (
-                <Flex gap={16} align="flex-start" style={{ width: '100%' }}>
-                  <div style={{ flex: 1, minWidth: 240 }}>
+        <Row gutter={[24, 24]} align="top">
+          <Col xs={24} lg={16}>
+            <Flex vertical gap={16} style={{ width: '100%' }}>
+              <div style={{ width: '100%' }}>
+                {coverPreviewSrc ? (
+                  <img
+                    src={coverPreviewSrc}
+                    alt={t('events.form.eventImageAlt')}
+                    style={{
+                      width: '100%',
+                      height: 200,
+                      objectFit: 'cover',
+                      borderRadius: 12,
+                      border: '1px solid var(--ant-color-border)',
+                      background: 'var(--ant-color-bg-elevated)',
+                      display: 'block',
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      height: 200,
+                      borderRadius: 12,
+                      border: '1px dashed var(--ant-color-border)',
+                      background: 'var(--ant-color-bg-elevated)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 16,
+                    }}
+                  >
+                    <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
+                  </div>
+                )}
+                <Button
+                  type="text"
+                  onClick={() => setImageEditOpen(true)}
+                  onMouseEnter={() => setEditImageHover(true)}
+                  onMouseLeave={() => setEditImageHover(false)}
+                  style={{
+                    padding: 0,
+                    height: 'auto',
+                    marginTop: 8,
+                    color: editImageHover ? token.colorPrimary : token.colorTextSecondary,
+                  }}
+                >
+                  {coverPreviewSrc ? t('events.form.imageEdit') : t('events.form.imageAdd')}
+                </Button>
+                <ImageEditModal
+                  open={imageEditOpen}
+                  onClose={() => setImageEditOpen(false)}
+                  imageUrl={coverPreviewSrc || undefined}
+                  imageAlt={t('events.form.eventImageAlt')}
+                  variant="roundedRect"
+                  previewFallback={
+                    <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
+                  }
+                  labels={{
+                    modalTitle: t('events.form.imageModalTitle'),
+                    changePhoto: t('events.form.changeImage'),
+                    uploadPhoto: t('events.form.uploadImage'),
+                    removePhoto: t('events.form.removeImage'),
+                    notImageFile: t('events.form.imageNotImageFile'),
+                    removeModalTitle: t('events.form.removeImageModalTitle'),
+                    removeModalBody: t('events.form.removeImageModalBody'),
+                    removeModalOk: t('events.form.removeImageOk'),
+                    cancel: t('events.tags.cancel'),
+                  }}
+                  performUpload={performEventImageUpload}
+                  onRemove={handleRemoveEventImage}
+                />
+              </div>
+
+              <Form.Item name="imageURL" hidden rules={[urlRule]}>
+                <Input />
+              </Form.Item>
+
+              <div style={{ width: '100%' }}>
+                <Form.Item
+                  style={fieldItemStyle}
+                  name="name"
+                  label={t('events.form.nameLabel')}
+                  rules={[
+                    { required: true, message: t('events.form.nameRequired') },
+                    { max: 256, message: t('events.form.nameTooLong') },
+                  ]}
+                >
+                  <Input placeholder={t('events.form.namePlaceholder')} />
+                </Form.Item>
+
+                <Form.Item style={fieldItemStyle} name="description" label={t('events.form.descriptionLabel')}>
+                  <Input.TextArea rows={4} placeholder={t('events.form.descriptionPlaceholder')} />
+                </Form.Item>
+              </div>
+            </Flex>
+
+            <Collapse
+              accordion
+              activeKey={venuePanelKey}
+              onChange={(key) => {
+                if (key === undefined || key === null) {
+                  setVenuePanelKey(undefined)
+                  return
+                }
+                const k = Array.isArray(key) ? key[0] : key
+                setVenuePanelKey(k ? String(k) : undefined)
+              }}
+              bordered={false}
+              style={{ background: 'transparent', marginTop: 8 }}
+              items={[
+                {
+                  key: 'venue',
+                  label: t('events.form.sectionVenue'),
+                  children: (
+                    <Space direction="vertical" size={0} style={{ width: '100%' }}>
+                      <Form.Item style={fieldItemStyle} name="location" label={t('events.form.locationLabel')}>
+                        <Input placeholder={t('events.form.locationPlaceholder')} />
+                      </Form.Item>
+
+                      <Form.Item
+                        style={fieldItemStyle}
+                        name="location_address"
+                        label={t('events.form.locationAddressLabel')}
+                      >
+                        <Input placeholder={t('events.form.locationAddressPlaceholder')} />
+                      </Form.Item>
+
+                      <Form.Item
+                        style={fieldItemStyle}
+                        name="location_link"
+                        label={t('events.form.locationLinkLabel')}
+                        rules={[urlRule]}
+                      >
+                        <Input placeholder={t('events.form.locationLinkPlaceholder')} />
+                      </Form.Item>
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          </Col>
+
+          <Col xs={24} lg={8}>
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+              <div>
+                <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>
+                  {t('events.form.sectionTags')}
+                </Typography.Title>
+                <Form.Item style={fieldItemStyle}>
+                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    <Typography.Text type="secondary" style={{ display: 'block' }}>
+                      {t('events.tags.helpText')}
+                    </Typography.Text>
                     <Form.Item
-                      style={fieldItemStyle}
-                      name="name"
-                      label={t('events.form.nameLabel')}
+                      name="tag_ids"
+                      noStyle
+                      getValueProps={tagIdsFormValueProps}
+                      getValueFromEvent={tagIdsFromTreeSelectEvent}
                       rules={[
-                        { required: true, message: t('events.form.nameRequired') },
-                        { max: 256, message: t('events.form.nameTooLong') },
+                        {
+                          validator: async (_: unknown, value: string[] | undefined) => {
+                            if (value && value.length > 0) return
+                            throw new Error(t('events.form.tagIdsRequired'))
+                          },
+                        },
                       ]}
                     >
-                      <Input placeholder={t('events.form.namePlaceholder')} />
-                    </Form.Item>
-
-                    <Form.Item
-                      style={fieldItemStyle}
-                      name="description"
-                      label={t('events.form.descriptionLabel')}
-                    >
-                      <Input.TextArea rows={4} placeholder={t('events.form.descriptionPlaceholder')} />
-                    </Form.Item>
-
-                    <Form.Item
-                      style={fieldItemStyle}
-                      name="imageURL"
-                      label={t('events.form.imageURLLabel')}
-                      rules={[urlRule]}
-                    >
-                      <Input placeholder={t('events.form.imageURLPlaceholder')} />
-                    </Form.Item>
-                  </div>
-
-                  <div style={{ width: 260, minWidth: 220 }}>
-                    {imagePreviewSrc ? (
-                      <img
-                        src={imagePreviewSrc}
-                        alt={t('events.detail.title')}
-                        style={{
-                          width: '100%',
-                          height: 200,
-                          objectFit: 'cover',
-                          borderRadius: 12,
-                          border: '1px solid var(--ant-color-border)',
-                          background: 'var(--ant-color-bg-elevated)',
-                          display: 'block',
+                      <TreeSelect
+                        style={{ width: '100%' }}
+                        treeData={tagTreeData}
+                        treeCheckable
+                        treeCheckStrictly
+                        showCheckedStrategy={TreeSelect.SHOW_ALL}
+                        allowClear
+                        showSearch
+                        treeDefaultExpandAll
+                        loading={tagsLoading}
+                        placeholder={t('events.tags.pickerPlaceholder')}
+                        filterTreeNode={filterTagTreeNode}
+                        onOpenChange={(open) => {
+                          if (open) void refetchTags()
                         }}
                       />
-                    ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: 200,
-                          borderRadius: 12,
-                          border: '1px dashed var(--ant-color-border)',
-                          background: 'var(--ant-color-bg-elevated)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: 16,
-                        }}
-                      >
-                        <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
-                      </div>
-                    )}
-                  </div>
-                </Flex>
-              ),
-            },
-            {
-              key: 'venue',
-              label: t('events.form.sectionVenue'),
-              children: (
-                <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                  <Form.Item style={fieldItemStyle} name="location" label={t('events.form.locationLabel')}>
-              <Input placeholder={t('events.form.locationPlaceholder')} />
-            </Form.Item>
+                    </Form.Item>
+                    <Button type="default" onClick={() => setTagModalOpen(true)} disabled={createTagMutation.isPending}>
+                      {t('events.tags.createButton')}
+                    </Button>
+                  </Space>
+                </Form.Item>
+              </div>
 
-            <Form.Item style={fieldItemStyle} name="location_address" label={t('events.form.locationAddressLabel')}>
-              <Input placeholder={t('events.form.locationAddressPlaceholder')} />
-            </Form.Item>
-
-            <Form.Item
-              style={fieldItemStyle}
-              name="location_link"
-              label={t('events.form.locationLinkLabel')}
-              rules={[urlRule]}
-            >
-              <Input placeholder={t('events.form.locationLinkPlaceholder')} />
-            </Form.Item>
-                </Space>
-              ),
-            },
-            {
-              key: 'tags',
-              label: t('events.form.sectionTags'),
-              children: (
+              <div>
+                <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>
+                  {t('events.form.sectionVisibility')}
+                </Typography.Title>
                 <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                  <Form.Item style={fieldItemStyle} label={t('events.tags.pickerLabel')}>
-                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                      <Typography.Text type="secondary" style={{ display: 'block' }}>
-                        {t('events.tags.helpText')}
-                      </Typography.Text>
-                      <Form.Item
-                        name="tag_ids"
-                        noStyle
-                        getValueProps={tagIdsFormValueProps}
-                        getValueFromEvent={tagIdsFromTreeSelectEvent}
-                        rules={[
-                          {
-                            validator: async (_: unknown, value: string[] | undefined) => {
-                              if (value && value.length > 0) return
-                              throw new Error(t('events.form.tagIdsRequired'))
-                            },
-                          },
-                        ]}
-                      >
-                        <TreeSelect
-                          style={{ width: '100%' }}
-                          treeData={tagTreeData}
-                          treeCheckable
-                          treeCheckStrictly
-                          showCheckedStrategy={TreeSelect.SHOW_ALL}
-                          allowClear
-                          showSearch
-                          treeDefaultExpandAll
-                          loading={tagsLoading}
-                          placeholder={t('events.tags.pickerPlaceholder')}
-                          filterTreeNode={filterTagTreeNode}
-                          onOpenChange={(open) => {
-                            if (open) void refetchTags()
-                          }}
-                        />
-                      </Form.Item>
-                      <Button
-                        type="default"
-                        onClick={() => setTagModalOpen(true)}
-                        disabled={createTagMutation.isPending}
-                      >
-                        {t('events.tags.createButton')}
-                      </Button>
-                    </Space>
+                  <Form.Item style={fieldItemStyle} name="is_paid" label={t('events.form.paidLabel')}>
+                    <Radio.Group
+                      optionType="button"
+                      buttonStyle="solid"
+                      options={[
+                        { label: t('events.form.yes'), value: true },
+                        { label: t('events.form.no'), value: false },
+                      ]}
+                    />
+                  </Form.Item>
+
+                  <Form.Item style={fieldItemStyle} name="is_online" label={t('events.form.onlineLabel')}>
+                    <Radio.Group
+                      optionType="button"
+                      buttonStyle="solid"
+                      options={[
+                        { label: t('events.form.onlineOptionOnline'), value: true },
+                        { label: t('events.form.onlineOptionInPerson'), value: false },
+                      ]}
+                    />
                   </Form.Item>
                 </Space>
-              ),
-            },
-            {
-              key: 'visibility',
-              label: t('events.form.sectionVisibility'),
-              children: (
-                <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                  <Form.Item style={fieldItemStyle} name="active" label={t('events.form.activeLabel')} valuePropName="checked">
-                    <Switch />
-                  </Form.Item>
-
-                  <Form.Item style={fieldItemStyle} name="is_paid" label={t('events.form.paidLabel')} valuePropName="checked">
-                    <Switch />
-                  </Form.Item>
-
-                  <Form.Item style={fieldItemStyle} name="is_online" label={t('events.form.onlineLabel')} valuePropName="checked">
-                    <Switch />
-                  </Form.Item>
-                </Space>
-              ),
-            },
-          ]}
-        />
+              </div>
+            </Space>
+          </Col>
+        </Row>
 
         <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
           <Button type="primary" htmlType="submit" loading={submitLoading}>

@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react'
 import { useEffect, useState } from 'react'
 import {
   Avatar,
@@ -9,19 +8,16 @@ import {
   Grid,
   Input,
   message,
-  Modal,
-  Spin,
   Typography,
-  Upload,
   theme,
 } from 'antd'
-import { CameraOutlined, DeleteOutlined } from '@ant-design/icons'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
 import { settingsStorage } from '@/features/settings/storage'
 import type { UpdateUserProfileInput, UserProfile } from '@/features/settings/types'
+import { ImageEditModal } from '@/shared/components/ImageEditModal'
 
 type ProfileFormValues = {
   displayName: string
@@ -38,11 +34,8 @@ function toProfileFormValues(p: UserProfile | undefined): Partial<ProfileFormVal
 
 export function ProfileSettingsSection() {
   const { t } = useTranslation()
-  const { user, profile, updateMutation, updateProfile, modalApi } =
-    useOutletContext<SettingsOutletContext>()
+  const { user, profile, updateMutation, updateProfile } = useOutletContext<SettingsOutletContext>()
   const [profileForm] = Form.useForm<ProfileFormValues>()
-  const [photoUploading, setPhotoUploading] = useState(false)
-  const [photoRemoving, setPhotoRemoving] = useState(false)
   const [photoEditOpen, setPhotoEditOpen] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [editHover, setEditHover] = useState(false)
@@ -75,7 +68,6 @@ export function ProfileSettingsSection() {
   }
 
   async function handleRemovePhoto() {
-    setPhotoRemoving(true)
     try {
       await updateMutation.mutateAsync({ photoURL: null })
       await updateProfile({ photoURL: '' })
@@ -84,55 +76,26 @@ export function ProfileSettingsSection() {
       const text =
         err instanceof Error ? err.message : t('settings.profile.photoRemoveError')
       message.error(text)
-    } finally {
-      setPhotoRemoving(false)
     }
   }
 
-  function requestRemovePhoto() {
-    if (!profile?.photoURL) return
-    modalApi.confirm({
-      title: t('settings.profile.removePhotoModalTitle'),
-      content: t('settings.profile.removePhotoModalBody'),
-      okText: t('settings.profile.removePhotoOk'),
-      okType: 'danger',
-      cancelText: t('auth.signIn.cancel'),
-      onOk: async () => {
-        if (photoRemoving) return
-        await handleRemovePhoto()
-      },
-    })
-  }
-
-  async function customPhotoRequest(
-    options: Parameters<NonNullable<ComponentProps<typeof Upload>['customRequest']>>[0]
-  ) {
-    const file = options.file
-    if (!file || !user || !(file instanceof File)) return
-    if (!file.type.startsWith('image/')) {
-      message.error(t('settings.profile.notImageFile'))
-      options.onError?.(new Error('Not an image'))
-      return
-    }
-    setPhotoUploading(true)
+  async function performPhotoUpload(file: File) {
+    if (!user) return
+    const path = `avatars/${user.uid}/${Date.now()}_${file.name}`
+    const storageRef = ref(settingsStorage, path)
+    await uploadBytes(storageRef, file)
+    const photoURL = await getDownloadURL(storageRef)
     try {
-      const path = `avatars/${user.uid}/${Date.now()}_${file.name}`
-      const storageRef = ref(settingsStorage, path)
-      await uploadBytes(storageRef, file)
-      const photoURL = await getDownloadURL(storageRef)
       await updateMutation.mutateAsync({ photoURL })
       await updateProfile({ photoURL })
       message.success(t('settings.profile.photoUpdated'))
-      options.onSuccess?.(photoURL)
     } catch (err) {
       let text = t('settings.profile.photoUploadError')
       if (err instanceof Error) {
         text = err.message
       }
       message.error(text)
-      options.onError?.(err instanceof Error ? err : new Error(text))
-    } finally {
-      setPhotoUploading(false)
+      throw err instanceof Error ? err : new Error(text)
     }
   }
 
@@ -202,66 +165,31 @@ export function ProfileSettingsSection() {
           >
             {t('settings.profile.editPhoto')}
           </Button>
-          <Modal
-            title={t('settings.profile.photoModalTitle')}
+          <ImageEditModal
             open={photoEditOpen}
-            onCancel={() => setPhotoEditOpen(false)}
-            footer={null}
-            destroyOnClose
-          >
-            <Flex vertical align="center" gap={24}>
-              <div
-                style={{
-                  width: 240,
-                  height: 240,
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  background: 'var(--ant-color-fill-quaternary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {photoURL ? (
-                  <img
-                    src={photoURL}
-                    alt={t('settings.profile.profileImageAlt')}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <Typography.Text style={{ fontSize: 96, color: 'var(--ant-color-text-tertiary)' }}>
-                    {initial}
-                  </Typography.Text>
-                )}
-              </div>
-              <Flex gap={12} justify="center">
-                <Upload
-                  showUploadList={false}
-                  accept="image/*"
-                  customRequest={customPhotoRequest}
-                >
-                  <Button
-                    icon={photoUploading ? <Spin size="small" /> : <CameraOutlined />}
-                    loading={photoUploading}
-                    disabled={photoUploading}
-                  >
-                    {photoURL ? t('settings.profile.changePhoto') : t('settings.profile.uploadPhoto')}
-                  </Button>
-                </Upload>
-                {photoURL && (
-                  <Button
-                    danger
-                    icon={photoRemoving ? <Spin size="small" /> : <DeleteOutlined />}
-                    loading={photoRemoving}
-                    disabled={photoRemoving}
-                    onClick={requestRemovePhoto}
-                  >
-                    {t('settings.profile.removePhoto')}
-                  </Button>
-                )}
-              </Flex>
-            </Flex>
-          </Modal>
+            onClose={() => setPhotoEditOpen(false)}
+            imageUrl={photoURL}
+            imageAlt={t('settings.profile.profileImageAlt')}
+            variant="circle"
+            previewFallback={
+              <Typography.Text style={{ fontSize: 96, color: 'var(--ant-color-text-tertiary)' }}>
+                {initial}
+              </Typography.Text>
+            }
+            labels={{
+              modalTitle: t('settings.profile.photoModalTitle'),
+              changePhoto: t('settings.profile.changePhoto'),
+              uploadPhoto: t('settings.profile.uploadPhoto'),
+              removePhoto: t('settings.profile.removePhoto'),
+              notImageFile: t('settings.profile.notImageFile'),
+              removeModalTitle: t('settings.profile.removePhotoModalTitle'),
+              removeModalBody: t('settings.profile.removePhotoModalBody'),
+              removeModalOk: t('settings.profile.removePhotoOk'),
+              cancel: t('auth.signIn.cancel'),
+            }}
+            performUpload={performPhotoUpload}
+            onRemove={handleRemovePhoto}
+          />
         </Flex>
       </Flex>
     </Card>

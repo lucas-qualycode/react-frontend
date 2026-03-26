@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Avatar, Button, Dropdown, Flex, Grid, Input, Popover, theme } from 'antd'
+import { Avatar, Button, Dropdown, Flex, Grid, Input, Popover, Tooltip, theme } from 'antd'
 import type { MenuProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
 import {
+  CalendarOutlined,
   HeartOutlined,
   LoginOutlined,
   LogoutOutlined,
@@ -25,6 +26,7 @@ export function AppHeader() {
   const navIcons = useMemo(
     () =>
       [
+        { to: '/user-events' as const, labelKey: 'shell.myEvents' as const, icon: CalendarOutlined },
         { to: '/favorites' as const, labelKey: 'shell.favorites' as const, icon: HeartOutlined },
         { to: '/orders' as const, labelKey: 'shell.cart' as const, icon: ShoppingCartOutlined },
       ] as const,
@@ -87,6 +89,12 @@ export function AppHeader() {
   }
 
   const accountMenuItems: MenuProps['items'] = [
+    {
+      key: 'my-events',
+      icon: <CalendarOutlined />,
+      label: t('shell.myEvents'),
+      onClick: () => navigate('/user-events'),
+    },
     {
       key: 'settings',
       icon: <SettingOutlined />,
@@ -209,23 +217,27 @@ export function AppHeader() {
             </Popover>
           )}
           {navIcons.map(({ to, labelKey, icon: Icon }) => {
+            if (!user && to === '/user-events') return null
             if (!user && signedOutNarrow && to === '/favorites') return null
             return (
-              <Link
-                key={to}
-                to={to}
-                style={{
-                  color: hoveredNav === to ? token.colorPrimary : token.colorTextSecondary,
-                  padding: 8,
-                  borderRadius: 8,
-                  display: 'inline-flex',
-                }}
-                onMouseEnter={() => setHoveredNav(to)}
-                onMouseLeave={() => setHoveredNav(null)}
-                aria-label={t(labelKey)}
-              >
-                <Icon style={{ fontSize: 20 }} />
-              </Link>
+              <Tooltip key={to} title={t(labelKey)} placement="bottom">
+                <span style={{ display: 'inline-flex' }}>
+                  <Link
+                    to={to}
+                    style={{
+                      color: hoveredNav === to ? token.colorPrimary : token.colorTextSecondary,
+                      padding: 8,
+                      borderRadius: 8,
+                      display: 'inline-flex',
+                    }}
+                    onMouseEnter={() => setHoveredNav(to)}
+                    onMouseLeave={() => setHoveredNav(null)}
+                    aria-label={t(labelKey)}
+                  >
+                    <Icon style={{ fontSize: 20 }} />
+                  </Link>
+                </span>
+              </Tooltip>
             )
           })}
           {user ? (

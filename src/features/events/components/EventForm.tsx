@@ -7,7 +7,6 @@ import {
   Form,
   Input,
   Modal,
-  Select,
   Space,
   Switch,
   Tag as AntTag,
@@ -16,7 +15,7 @@ import {
   Typography,
   message,
 } from 'antd'
-import type { SelectProps, TreeSelectProps } from 'antd'
+import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useEventTags, useCreateTag } from '../hooks'
 
@@ -44,6 +43,18 @@ type EventFormProps = {
 }
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
+
+function tagPathLabel(id: string, byId: Map<string, EventTag>): string {
+  const parts: string[] = []
+  let cur: EventTag | undefined = byId.get(id)
+  const seen = new Set<string>()
+  while (cur && !seen.has(cur.id)) {
+    seen.add(cur.id)
+    parts.unshift(cur.name)
+    cur = cur.parent_tag_id ? byId.get(cur.parent_tag_id) : undefined
+  }
+  return parts.length > 0 ? parts.join(' / ') : id
+}
 
 function toOptionalString(s: string | undefined): string | undefined {
   const v = s?.trim() ?? ''
@@ -132,16 +143,7 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
     }
   }, [tagModalOpen, tagForm])
 
-  const tagOptions: SelectProps<string[]>['options'] = useMemo(() => {
-    return (
-      tags?.map((tg: EventTag) => ({
-        value: tg.id,
-        label: tg.name,
-      })) ?? []
-    )
-  }, [tags])
-
-  const tagParentTreeData: TreeSelectProps['treeData'] = useMemo(() => {
+  const tagTreeData: TreeSelectProps['treeData'] = useMemo(() => {
     if (!tags?.length) return []
     const byParent = new Map<string | null, EventTag[]>()
     for (const t of tags) {
@@ -166,6 +168,34 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
     }
     return toNodes(null)
   }, [tags])
+
+  const tagById = useMemo(() => new Map((tags ?? []).map((tg) => [tg.id, tg])), [tags])
+
+  const filterTagTreeNode: TreeSelectProps['filterTreeNode'] = (input, node) =>
+    String(node?.title ?? '')
+      .toLowerCase()
+      .includes(input.trim().toLowerCase())
+
+  const tagIdsFormValueProps = (ids: unknown) => {
+    const list = Array.isArray(ids)
+      ? ids.filter((x): x is string => typeof x === 'string')
+      : []
+    return {
+      value: list.map((id) => ({
+        value: id,
+        label: tagPathLabel(id, tagById),
+      })),
+    }
+  }
+
+  const tagIdsFromTreeSelectEvent = (v: unknown) => {
+    if (!Array.isArray(v)) return []
+    return v.map((item) =>
+      item !== null && typeof item === 'object' && 'value' in item && typeof (item as { value: unknown }).value === 'string'
+        ? (item as { value: string }).value
+        : String(item)
+    )
+  }
 
   async function handleCreateTag(values: {
     name: string
@@ -349,35 +379,42 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
               label: t('events.form.sectionTags'),
               children: (
                 <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                  <Form.Item
-                    style={fieldItemStyle}
-                    name="tag_ids"
-                    label={t('events.tags.pickerLabel')}
-                    rules={[
-                      {
-                        validator: async (_: unknown, value: string[] | undefined) => {
-                          if (value && value.length > 0) return
-                          throw new Error(t('events.form.tagIdsRequired'))
-                        },
-                      },
-                    ]}
-                  >
+                  <Form.Item style={fieldItemStyle} label={t('events.tags.pickerLabel')}>
                     <Space direction="vertical" size={8} style={{ width: '100%' }}>
                       <Typography.Text type="secondary" style={{ display: 'block' }}>
                         {t('events.tags.helpText')}
                       </Typography.Text>
-                      <Select
-                        mode="multiple"
-                        allowClear
-                        options={tagOptions}
-                        loading={tagsLoading}
-                        placeholder={t('events.tags.pickerPlaceholder')}
-                        maxTagCount={3}
-                        optionFilterProp="label"
-                        onDropdownVisibleChange={(open) => {
-                          if (open) void refetchTags()
-                        }}
-                      />
+                      <Form.Item
+                        name="tag_ids"
+                        noStyle
+                        getValueProps={tagIdsFormValueProps}
+                        getValueFromEvent={tagIdsFromTreeSelectEvent}
+                        rules={[
+                          {
+                            validator: async (_: unknown, value: string[] | undefined) => {
+                              if (value && value.length > 0) return
+                              throw new Error(t('events.form.tagIdsRequired'))
+                            },
+                          },
+                        ]}
+                      >
+                        <TreeSelect
+                          style={{ width: '100%' }}
+                          treeData={tagTreeData}
+                          treeCheckable
+                          treeCheckStrictly
+                          showCheckedStrategy={TreeSelect.SHOW_ALL}
+                          allowClear
+                          showSearch
+                          treeDefaultExpandAll
+                          loading={tagsLoading}
+                          placeholder={t('events.tags.pickerPlaceholder')}
+                          filterTreeNode={filterTagTreeNode}
+                          onOpenChange={(open) => {
+                            if (open) void refetchTags()
+                          }}
+                        />
+                      </Form.Item>
                       {selectedTagIds && selectedTagIds.length > 0 ? (
                         <Flex gap={8} wrap style={{ marginTop: 2 }}>
                           {(tags ?? [])
@@ -391,7 +428,7 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
                                     : tg.name
                                 }
                               >
-                                <AntTag>{tg.name}</AntTag>
+                                <AntTag>{tagPathLabel(tg.id, tagById)}</AntTag>
                               </Tooltip>
                             ))}
                         </Flex>
@@ -465,13 +502,9 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
               treeDefaultExpandAll
               style={{ width: '100%' }}
               placeholder={t('events.tags.parentPlaceholder')}
-              treeData={tagParentTreeData}
+              treeData={tagTreeData}
               disabled={tagsLoading}
-              filterTreeNode={(input, node) =>
-                String(node?.title ?? '')
-                  .toLowerCase()
-                  .includes(input.trim().toLowerCase())
-              }
+              filterTreeNode={filterTagTreeNode}
             />
           </Form.Item>
           <Form.Item name="description" label={t('events.tags.descriptionLabel')}>

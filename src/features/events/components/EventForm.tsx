@@ -9,8 +9,6 @@ import {
   Modal,
   Space,
   Switch,
-  Tag as AntTag,
-  Tooltip,
   TreeSelect,
   Typography,
   message,
@@ -107,7 +105,6 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
 
   const fieldItemStyle = { marginBottom: 10 } as const
   const [imagePreviewSrc, setImagePreviewSrc] = useState<string>('')
-  const selectedTagIds = Form.useWatch('tag_ids', form) as string[] | undefined
   const panelKeyByField: Record<string, string> = {
     name: 'identity',
     description: 'identity',
@@ -415,24 +412,6 @@ export function EventForm({ mode, initialValues, submitLoading, onSubmit }: Even
                           }}
                         />
                       </Form.Item>
-                      {selectedTagIds && selectedTagIds.length > 0 ? (
-                        <Flex gap={8} wrap style={{ marginTop: 2 }}>
-                          {(tags ?? [])
-                            .filter((tg) => selectedTagIds.includes(tg.id))
-                            .map((tg) => (
-                              <Tooltip
-                                key={tg.id}
-                                title={
-                                  typeof tg.description === 'string' && tg.description.trim().length > 0
-                                    ? tg.description
-                                    : tg.name
-                                }
-                              >
-                                <AntTag>{tagPathLabel(tg.id, tagById)}</AntTag>
-                              </Tooltip>
-                            ))}
-                        </Flex>
-                      ) : null}
                       <Button
                         type="default"
                         onClick={() => setTagModalOpen(true)}

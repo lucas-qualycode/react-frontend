@@ -1,6 +1,9 @@
-import { Button, Flex, Spin, Typography, message } from 'antd'
+import { ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons'
+import { App, Button, Flex, Grid, Spin, Tooltip, Typography } from 'antd'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { EventForm } from './components/EventForm'
 import { useEvent, useUpdateEvent } from './hooks'
 import type { UpdateEventPayload } from './api'
@@ -9,35 +12,85 @@ const { Title, Text } = Typography
 
 export function EventEditPage() {
   const { t } = useTranslation()
+  const { modal, message } = App.useApp()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const updateMutation = useUpdateEvent()
   const { data: event, isLoading, isError, refetch } = useEvent(id)
+  const screens = Grid.useBreakpoint()
+  const backButtonIconOnly = screens.lg === false
+  const [formDirty, setFormDirty] = useState(false)
+  const leaveModalShownRef = useRef(false)
 
-  const initialValues = event
-    ? {
-        name: event.name,
-        description: event.description ?? '',
-        location: event.location ?? '',
-        location_address: event.location_address ?? '',
-        location_link: event.location_link ?? '',
-        imageURL: event.imageURL ?? '',
-        tag_ids: event.tags?.map((x) => x.id) ?? [],
-        active: event.active,
-        is_paid: event.is_paid,
-        is_online: event.is_online,
-      }
-    : null
+  const initialValues = useMemo(
+    () =>
+      event
+        ? {
+            name: event.name,
+            description: event.description ?? '',
+            location: event.location ?? '',
+            location_address: event.location_address ?? '',
+            location_link: event.location_link ?? '',
+            imageURL: event.imageURL ?? '',
+            tag_ids: event.tags?.map((x) => x.id) ?? [],
+            active: event.active,
+            is_paid: event.is_paid,
+            is_online: event.is_online,
+          }
+        : null,
+    [event]
+  )
 
-  async function handleSubmit(payload: UpdateEventPayload) {
-    if (!id) return
-    try {
-      await updateMutation.mutateAsync({ eventId: id, payload })
-      navigate(`/events/${id}`)
-    } catch {
-      message.error(t('events.form.submitError'))
+  const blocker = useBlocker(formDirty)
+
+  useEffect(() => {
+    if (blocker.state !== 'blocked') {
+      leaveModalShownRef.current = false
+      return
     }
-  }
+    if (leaveModalShownRef.current) return
+    leaveModalShownRef.current = true
+    modal.confirm({
+      title: t('events.edit.leaveUnsavedTitle'),
+      content: t('events.edit.leaveUnsavedBody'),
+      okText: t('events.edit.leaveUnsavedLeave'),
+      cancelText: t('events.edit.leaveUnsavedStay'),
+      onOk: () => {
+        leaveModalShownRef.current = false
+        blocker.proceed()
+      },
+      onCancel: () => {
+        leaveModalShownRef.current = false
+        blocker.reset()
+      },
+    })
+  }, [blocker, modal, t])
+
+  useEffect(() => {
+    if (!formDirty) return
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [formDirty])
+
+  const handleSubmit = useCallback(
+    async (payload: UpdateEventPayload) => {
+      if (!id) return
+      try {
+        await updateMutation.mutateAsync({ eventId: id, payload })
+        flushSync(() => {
+          setFormDirty(false)
+        })
+        navigate('/user-events')
+      } catch {
+        message.error(t('events.form.submitError'))
+      }
+    },
+    [id, navigate, t, updateMutation]
+  )
 
   return (
     <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
@@ -48,9 +101,31 @@ export function EventEditPage() {
           </Title>
           <Text type="secondary">{event?.name ?? ''}</Text>
         </div>
-        <Link to={`/events/${id}`}>
-          <Button>{t('events.detail.backToDetail')}</Button>
-        </Link>
+        <Flex align="center" gap={8} wrap="wrap" style={{ flexShrink: 0 }}>
+          {id ? (
+            <Link to={`/events/${id}`}>
+              <Button type="default" icon={<EyeOutlined />}>
+                {t('events.edit.viewEventPage')}
+              </Button>
+            </Link>
+          ) : null}
+          {backButtonIconOnly ? (
+            <Tooltip title={t('events.detail.backToMyEvents')} placement="bottom">
+              <span style={{ display: 'inline-flex' }}>
+                <Link to="/user-events">
+                  <Button
+                    icon={<ArrowLeftOutlined />}
+                    aria-label={t('events.detail.backToMyEvents')}
+                  />
+                </Link>
+              </span>
+            </Tooltip>
+          ) : (
+            <Link to="/user-events">
+              <Button icon={<ArrowLeftOutlined />}>{t('events.detail.backToMyEvents')}</Button>
+            </Link>
+          )}
+        </Flex>
       </Flex>
 
       {isLoading ? (
@@ -72,12 +147,10 @@ export function EventEditPage() {
           eventId={id}
           initialValues={initialValues}
           submitLoading={updateMutation.isPending}
-          onSubmit={async (payload) => {
-            await handleSubmit(payload)
-          }}
+          onSubmit={handleSubmit}
+          onDirtyChange={setFormDirty}
         />
       ) : null}
     </Flex>
   )
 }
-

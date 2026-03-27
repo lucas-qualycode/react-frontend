@@ -1,23 +1,17 @@
 import { ArrowLeftOutlined } from '@ant-design/icons'
-import { Button, Flex, Grid, Spin, Typography, message } from 'antd'
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { useState } from 'react'
+import { Button, Flex, Grid, Tooltip, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/app/auth/AuthContext'
-import { settingsStorage } from '@/features/settings/storage'
-import { EventForm, type EventFormSubmitMeta } from './components/EventForm'
+import { EventForm } from './components/EventForm'
 import { useCreateEvent } from './hooks'
-import { updateEvent, type CreateEventPayload, type UpdateEventPayload } from './api'
+import { type CreateEventPayload, type UpdateEventPayload } from './api'
 
 const { Title, Text } = Typography
 
 export function EventCreatePage() {
   const { t } = useTranslation()
-  const { user } = useAuth()
   const navigate = useNavigate()
   const createMutation = useCreateEvent()
-  const [postCreateImageBusy, setPostCreateImageBusy] = useState(false)
   const screens = Grid.useBreakpoint()
   const backButtonIconOnly = screens.lg === false
 
@@ -33,26 +27,10 @@ export function EventCreatePage() {
     is_online: false,
   }
 
-  async function handleSubmit(
-    payload: CreateEventPayload | UpdateEventPayload,
-    meta?: EventFormSubmitMeta
-  ) {
+  async function handleSubmit(payload: CreateEventPayload | UpdateEventPayload) {
     try {
       const created = await createMutation.mutateAsync(payload as CreateEventPayload)
-      const file = meta?.pendingEventImage
-      if (file && user) {
-        setPostCreateImageBusy(true)
-        try {
-          const path = `event-images/${user.uid}/${created.id}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
-          const storageRef = ref(settingsStorage, path)
-          await uploadBytes(storageRef, file)
-          const url = await getDownloadURL(storageRef)
-          await updateEvent(created.id, { imageURL: url })
-        } finally {
-          setPostCreateImageBusy(false)
-        }
-      }
-      navigate(`/events/${created.id}`)
+      navigate(`/events/${created.id}/edit`)
     } catch {
       message.error(t('events.form.submitError'))
     }
@@ -67,26 +45,28 @@ export function EventCreatePage() {
           </Title>
           <Text type="secondary">{t('events.create.subtitle')}</Text>
         </div>
-        <Link to="/user-events">
-          <Button
-            icon={<ArrowLeftOutlined />}
-            aria-label={t('events.detail.backToMyEvents')}
-          >
-            {backButtonIconOnly ? undefined : t('events.detail.backToMyEvents')}
-          </Button>
-        </Link>
+        {backButtonIconOnly ? (
+          <Tooltip title={t('events.detail.backToMyEvents')} placement="bottom">
+            <span style={{ display: 'inline-flex' }}>
+              <Link to="/user-events">
+                <Button
+                  icon={<ArrowLeftOutlined />}
+                  aria-label={t('events.detail.backToMyEvents')}
+                />
+              </Link>
+            </span>
+          </Tooltip>
+        ) : (
+          <Link to="/user-events">
+            <Button icon={<ArrowLeftOutlined />}>{t('events.detail.backToMyEvents')}</Button>
+          </Link>
+        )}
       </Flex>
-
-      {createMutation.isPending ? (
-        <Flex style={{ minHeight: 220 }} align="center" justify="center">
-          <Spin size="large" />
-        </Flex>
-      ) : null}
 
       <EventForm
         mode="create"
         initialValues={initialValues}
-        submitLoading={createMutation.isPending || postCreateImageBusy}
+        submitLoading={createMutation.isPending}
         onSubmit={handleSubmit}
       />
     </Flex>

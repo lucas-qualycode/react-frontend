@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { Button, Flex, Modal, Spin, Upload, message, theme } from 'antd'
+import { App, Button, Flex, Modal, Spin, Upload, theme } from 'antd'
 import { CameraOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 
@@ -39,6 +39,7 @@ export function ImageEditModal({
   variant,
   previewFallback,
 }: ImageEditModalProps) {
+  const { modal, message } = App.useApp()
   const { token } = theme.useToken()
   const [uploading, setUploading] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -65,7 +66,7 @@ export function ImageEditModal({
 
   function requestRemove() {
     if (!imageUrl) return
-    Modal.confirm({
+    modal.confirm({
       title: labels.removeModalTitle,
       content: labels.removeModalBody,
       okText: labels.removeModalOk,

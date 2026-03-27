@@ -95,7 +95,12 @@
     },
     "edit": {
       "title": "Edit event",
-      "submit": "Save changes"
+      "submit": "Save changes",
+      "leaveUnsavedTitle": "Leave without saving?",
+      "leaveUnsavedBody": "You have unsaved changes. If you leave now, they may be lost.",
+      "leaveUnsavedLeave": "Leave",
+      "leaveUnsavedStay": "Stay",
+      "viewEventPage": "View event page"
     },
     "detail": {
       "title": "Event",
@@ -148,6 +153,7 @@
       "removeImageOk": "Remove",
       "imageNotImageFile": "Please select an image file.",
       "imageUploadError": "Could not upload image. Please try again.",
+      "imageUpdated": "Cover image updated.",
       "imageRemoved": "Image removed.",
       "tagIdsRequired": "Select at least one tag.",
       "urlInvalid": "Please enter a valid URL starting with http:// or https://.",
@@ -330,13 +336,10 @@
     "emptyDescription": "You haven't created any events yet.",
     "badgeActive": "Active",
     "badgeInactive": "Inactive",
-    "deleteAria": "Delete {{name}}",
-    "deleteModalTitle": "Delete event?",
-    "deleteModalContent": "This will remove \"{{name}}\" from your account. You can recreate it later.",
-    "deleteOk": "Delete",
-    "cancel": "Cancel",
-    "deleteSuccess": "Event deleted.",
-    "deleteError": "Could not delete the event."
+    "viewEventAria": "View event page for {{name}}",
+    "viewTooltip": "View event page",
+    "editTooltip": "Edit event",
+    "editAria": "Edit {{name}}"
   },
   "shell": {
     "brand": "Partiiu.com",

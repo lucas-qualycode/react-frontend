@@ -1,10 +1,9 @@
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
-import { Card, Col, Empty, Flex, Grid, Modal, Row, Space, Spin, Tag, Typography, Button, message } from 'antd'
+import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
+import { Card, Col, Empty, Flex, Grid, Row, Space, Spin, Tag, Tooltip, Typography, Button } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/app/auth/AuthContext'
-import type { Event } from '@/shared/types/api'
-import { useDeleteEvent, useUserEvents } from './hooks'
+import { useUserEvents } from './hooks'
 
 const { Title, Text } = Typography
 
@@ -21,26 +20,6 @@ export function UserEventsListPage() {
   const { user } = useAuth()
   const { xs } = Grid.useBreakpoint()
   const { data: events, isLoading, isError, refetch } = useUserEvents(user?.uid)
-  const deleteMutation = useDeleteEvent()
-
-  function requestDelete(event: Event) {
-    if (deleteMutation.isPending) return
-    Modal.confirm({
-      title: t('userEvents.deleteModalTitle'),
-      content: t('userEvents.deleteModalContent', { name: event.name }),
-      okText: t('userEvents.deleteOk'),
-      okType: 'danger',
-      cancelText: t('userEvents.cancel'),
-      onOk: async () => {
-        try {
-          await deleteMutation.mutateAsync(event.id)
-          message.success(t('userEvents.deleteSuccess'))
-        } catch {
-          message.error(t('userEvents.deleteError'))
-        }
-      },
-    })
-  }
 
   const locale = i18n.language === 'pt-BR' ? 'pt-BR' : 'en-US'
 
@@ -82,47 +61,73 @@ export function UserEventsListPage() {
                 <Col key={event.id} xs={24} sm={12}>
                   <Card
                     hoverable
-                    title={
-                      <Flex vertical gap={8}>
-                        <Text strong>{event.name}</Text>
-                        <Flex gap={8} wrap="wrap" align="center">
+                    styles={{ body: { padding: 0 } }}
+                    onClick={() => navigate(`/events/${event.id}/edit`)}
+                  >
+                    <Flex vertical>
+                      <Flex
+                        justify="space-between"
+                        align="center"
+                        gap={12}
+                        style={{ padding: '12px 24px' }}
+                      >
+                        <Text strong ellipsis style={{ flex: 1, minWidth: 0 }}>
+                          {event.name}
+                        </Text>
+                        <Flex align="center" gap={8} wrap="wrap" justify="flex-end" style={{ flexShrink: 0 }}>
                           {typeof event.active === 'boolean' ? (
                             <Tag color={event.active ? 'green' : 'default'}>
                               {event.active ? t('userEvents.badgeActive') : t('userEvents.badgeInactive')}
                             </Tag>
                           ) : null}
-                          {createdAtLabel ? <Text type="secondary">{createdAtLabel}</Text> : null}
+                          <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                            <Space size={0}>
+                              <Tooltip title={t('userEvents.viewTooltip')} placement="bottom">
+                                <Button
+                                  type="text"
+                                  icon={<EyeOutlined />}
+                                  aria-label={t('userEvents.viewEventAria', { name: event.name })}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    navigate(`/events/${event.id}`)
+                                  }}
+                                />
+                              </Tooltip>
+                              <Tooltip title={t('userEvents.editTooltip')} placement="bottom">
+                                <Button
+                                  type="text"
+                                  icon={<EditOutlined />}
+                                  aria-label={t('userEvents.editAria', { name: event.name })}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    navigate(`/events/${event.id}/edit`)
+                                  }}
+                                />
+                              </Tooltip>
+                            </Space>
+                          </span>
                         </Flex>
                       </Flex>
-                    }
-                    cover={
-                      event.imageURL ? (
+                      {event.imageURL ? (
                         <img
                           src={event.imageURL}
                           alt={event.name}
-                          style={{ height: xs ? 180 : 200, objectFit: 'cover' }}
-                        />
-                      ) : undefined
-                    }
-                    onClick={() => navigate(`/events/${event.id}`)}
-                    extra={
-                      <Space size={0}>
-                        <Button
-                          type="text"
-                          danger
-                          icon={<DeleteOutlined />}
-                          aria-label={t('userEvents.deleteAria', { name: event.name })}
-                          disabled={deleteMutation.isPending}
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            requestDelete(event)
+                          style={{
+                            width: '100%',
+                            height: xs ? 180 : 200,
+                            objectFit: 'cover',
+                            display: 'block',
                           }}
                         />
-                      </Space>
-                    }
-                  >
-                    {event.location ? <Text type="secondary">{event.location}</Text> : null}
+                      ) : null}
+                      {createdAtLabel ? (
+                        <Flex vertical gap={8} style={{ padding: '12px 24px 24px' }}>
+                          <Text type="secondary">{createdAtLabel}</Text>
+                        </Flex>
+                      ) : null}
+                    </Flex>
                   </Card>
                 </Col>
               )

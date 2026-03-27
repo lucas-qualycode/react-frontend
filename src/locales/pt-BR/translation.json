@@ -95,7 +95,12 @@
     },
     "edit": {
       "title": "Editar evento",
-      "submit": "Salvar alterações"
+      "submit": "Salvar alterações",
+      "leaveUnsavedTitle": "Sair sem salvar?",
+      "leaveUnsavedBody": "Há alterações não salvas. Se sair agora, elas podem ser perdidas.",
+      "leaveUnsavedLeave": "Sair",
+      "leaveUnsavedStay": "Ficar",
+      "viewEventPage": "Ver página do evento"
     },
     "detail": {
       "title": "Evento",
@@ -148,6 +153,7 @@
       "removeImageOk": "Remover",
       "imageNotImageFile": "Selecione um arquivo de imagem.",
       "imageUploadError": "Não foi possível enviar a imagem. Tente novamente.",
+      "imageUpdated": "Imagem de capa atualizada.",
       "imageRemoved": "Imagem removida.",
       "tagIdsRequired": "Selecione pelo menos uma tag.",
       "urlInvalid": "Informe uma URL válida começando com http:// ou https://.",
@@ -330,13 +336,10 @@
     "emptyDescription": "Você ainda não criou nenhum evento.",
     "badgeActive": "Ativo",
     "badgeInactive": "Inativo",
-    "deleteAria": "Excluir {{name}}",
-    "deleteModalTitle": "Excluir evento?",
-    "deleteModalContent": "Isso remove \"{{name}}\" da sua conta. Você pode recriar depois.",
-    "deleteOk": "Excluir",
-    "cancel": "Cancelar",
-    "deleteSuccess": "Evento excluído.",
-    "deleteError": "Não foi possível excluir o evento."
+    "viewEventAria": "Ver página do evento {{name}}",
+    "viewTooltip": "Ver página do evento",
+    "editTooltip": "Editar evento",
+    "editAria": "Editar {{name}}"
   },
   "shell": {
     "brand": "Partiiu.com",

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
   Card,
@@ -25,7 +26,7 @@ import { useTranslation } from 'react-i18next'
 import { useEventTags, useCreateTag } from '../hooks'
 
 import type { Tag as EventTag } from '@/shared/types/api'
-import type { CreateEventPayload, UpdateEventPayload } from '../api'
+import { updateEvent, type CreateEventPayload, type UpdateEventPayload } from '../api'
 
 type EventFormValues = {
   name: string
@@ -39,22 +40,43 @@ type EventFormValues = {
   is_online: boolean
 }
 
-export type EventFormSubmitMeta = {
-  pendingEventImage?: File | null
-}
-
 type EventFormProps = {
   mode: 'create' | 'edit'
   eventId?: string
   initialValues: Partial<EventFormValues> & { active?: boolean }
   submitLoading: boolean
-  onSubmit: (
-    payload: CreateEventPayload | UpdateEventPayload,
-    meta?: EventFormSubmitMeta
-  ) => Promise<void>
+  onSubmit: (payload: CreateEventPayload | UpdateEventPayload) => Promise<void>
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
+
+function snapshotEventFormValuesForDirty(v: EventFormValues): string {
+  return JSON.stringify({
+    name: (v.name ?? '').trim(),
+    description: (v.description ?? '').trim(),
+    location: (v.location ?? '').trim(),
+    location_address: (v.location_address ?? '').trim(),
+    location_link: (v.location_link ?? '').trim(),
+    tag_ids: [...(v.tag_ids ?? [])].sort(),
+    is_paid: Boolean(v.is_paid),
+    is_online: Boolean(v.is_online),
+  })
+}
+
+function snapshotFromInitialForDirty(iv: Partial<EventFormValues> & { active?: boolean }): string {
+  return snapshotEventFormValuesForDirty({
+    name: iv.name ?? '',
+    description: iv.description ?? '',
+    location: iv.location ?? '',
+    location_address: iv.location_address ?? '',
+    location_link: iv.location_link ?? '',
+    imageURL: '',
+    tag_ids: iv.tag_ids ?? [],
+    is_paid: iv.is_paid ?? false,
+    is_online: iv.is_online ?? false,
+  })
+}
 
 function tagPathLabel(id: string, byId: Map<string, EventTag>): string {
   const parts: string[] = []
@@ -106,7 +128,6 @@ function normalizePayload(
     location: base.location,
     location_address: base.location_address,
     location_link: base.location_link,
-    imageURL: base.imageURL,
     tag_ids: base.tag_ids,
     active: base.active,
     is_paid: base.is_paid,
@@ -115,30 +136,41 @@ function normalizePayload(
   return update
 }
 
-export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmit }: EventFormProps) {
+export function EventForm({
+  mode,
+  eventId,
+  initialValues,
+  submitLoading,
+  onSubmit,
+  onDirtyChange,
+}: EventFormProps) {
   const { t } = useTranslation()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const { token } = theme.useToken()
   const [form] = Form.useForm<EventFormValues>()
+  const allFormValues = Form.useWatch([], form) as EventFormValues | undefined
+  const editBaselineRef = useRef<string>('')
+  const [isDirty, setIsDirty] = useState(false)
   const [imageEditOpen, setImageEditOpen] = useState(false)
   const [editImageHover, setEditImageHover] = useState(false)
-  const [pendingEventImage, setPendingEventImage] = useState<File | null>(null)
-  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null)
   const watchedImageUrl = Form.useWatch('imageURL', form) as string | undefined
   const { data: tags, isLoading: tagsLoading, refetch: refetchTags } = useEventTags()
   const createTagMutation = useCreateTag()
   const [tagModalOpen, setTagModalOpen] = useState(false)
   const [tagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
-  const [venuePanelKey, setVenuePanelKey] = useState<string | undefined>('venue')
+  const [collapsePanelKey, setCollapsePanelKey] = useState<string | undefined>(undefined)
 
   const fieldItemStyle = { marginBottom: 10 } as const
   const panelKeyByField: Record<string, string> = {
+    imageURL: 'media',
     location: 'venue',
     location_address: 'venue',
     location_link: 'venue',
   }
 
   useEffect(() => {
+    if (mode !== 'create') return
     form.setFieldsValue({
       name: initialValues.name ?? '',
       description: initialValues.description ?? '',
@@ -150,7 +182,22 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
       is_paid: initialValues.is_paid ?? false,
       is_online: initialValues.is_online ?? false,
     })
-  }, [form, initialValues])
+  }, [form, mode, initialValues])
+
+  useEffect(() => {
+    if (mode !== 'edit' || !eventId) return
+    form.setFieldsValue({
+      name: initialValues.name ?? '',
+      description: initialValues.description ?? '',
+      location: initialValues.location ?? '',
+      location_address: initialValues.location_address ?? '',
+      location_link: initialValues.location_link ?? '',
+      imageURL: initialValues.imageURL ?? '',
+      tag_ids: initialValues.tag_ids ?? [],
+      is_paid: initialValues.is_paid ?? false,
+      is_online: initialValues.is_online ?? false,
+    })
+  }, [form, mode, eventId])
 
   useEffect(() => {
     if (!tagModalOpen) {
@@ -159,10 +206,22 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
   }, [tagModalOpen, tagForm])
 
   useEffect(() => {
-    return () => {
-      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl)
+    if (mode !== 'edit') return
+    editBaselineRef.current = snapshotFromInitialForDirty(initialValues)
+  }, [mode, eventId, initialValues])
+
+  useEffect(() => {
+    if (mode !== 'edit') {
+      setIsDirty(false)
+      onDirtyChange?.(false)
+      return
     }
-  }, [pendingPreviewUrl])
+    if (!onDirtyChange) return
+    const cur = snapshotEventFormValuesForDirty(form.getFieldsValue(true) as EventFormValues)
+    const next = cur !== editBaselineRef.current
+    setIsDirty(next)
+    onDirtyChange(next)
+  }, [mode, onDirtyChange, allFormValues, eventId, initialValues, form])
 
   const tagTreeData: TreeSelectProps['treeData'] = useMemo(() => {
     if (!tags?.length) return []
@@ -246,30 +305,22 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
   async function onFinish(values: EventFormValues) {
     const active = mode === 'create' ? true : (initialValues.active ?? true)
     const payload = normalizePayload(values, mode, active)
-    await onSubmit(
-      payload,
-      mode === 'create' ? { pendingEventImage } : undefined
-    )
+    await onSubmit(payload)
   }
 
   async function performEventImageUpload(file: File) {
     if (!user) return
-    if (mode === 'create') {
-      setPendingEventImage(file)
-      setPendingPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev)
-        return URL.createObjectURL(file)
-      })
-      form.setFieldsValue({ imageURL: '' })
-      return
-    }
     if (!eventId) return
     const path = `event-images/${user.uid}/${eventId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
     try {
       const storageRef = ref(settingsStorage, path)
       await uploadBytes(storageRef, file)
       const url = await getDownloadURL(storageRef)
-      form.setFieldsValue({ imageURL: url })
+      const updated = await updateEvent(eventId, { imageURL: url })
+      queryClient.setQueryData(['event', eventId], updated)
+      queryClient.invalidateQueries({ queryKey: ['userEvents'] })
+      form.setFieldsValue({ imageURL: updated.imageURL ?? '' })
+      message.success(t('events.form.imageUpdated'))
     } catch (err) {
       let text = t('events.form.imageUploadError')
       if (err instanceof Error) {
@@ -281,18 +332,20 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
   }
 
   async function handleRemoveEventImage() {
-    if (mode === 'create') {
-      setPendingEventImage(null)
-      setPendingPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev)
-        return null
-      })
-      form.setFieldsValue({ imageURL: '' })
+    if (!eventId) return
+    try {
+      const updated = await updateEvent(eventId, { imageURL: null })
+      queryClient.setQueryData(['event', eventId], updated)
+      queryClient.invalidateQueries({ queryKey: ['userEvents'] })
+      form.setFieldsValue({ imageURL: updated.imageURL ?? '' })
       message.success(t('events.form.imageRemoved'))
-      return
+    } catch (err) {
+      let text = t('events.form.imageUploadError')
+      if (err instanceof Error) {
+        text = err.message
+      }
+      message.error(text)
     }
-    form.setFieldsValue({ imageURL: '' })
-    message.success(t('events.form.imageRemoved'))
   }
 
   const urlRule = useMemo(
@@ -308,9 +361,7 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
 
   const { active: _omitActiveFromForm, ...formInitialRest } = initialValues
 
-  const coverPreviewSrc =
-    pendingPreviewUrl?.trim() ||
-    (watchedImageUrl?.trim() ? watchedImageUrl.trim() : '')
+  const coverPreviewSrc = watchedImageUrl?.trim() ? watchedImageUrl.trim() : ''
 
   return (
     <Card>
@@ -326,7 +377,7 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
               : typeof raw === 'string'
                 ? raw
                 : null
-          if (typeof first === 'string' && panelKeyByField[first]) setVenuePanelKey(panelKeyByField[first])
+          if (typeof first === 'string' && panelKeyByField[first]) setCollapsePanelKey(panelKeyByField[first])
         }}
         initialValues={{
           is_paid: false,
@@ -337,77 +388,6 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
         <Row gutter={[24, 24]} align="top">
           <Col xs={24} lg={16}>
             <Flex vertical gap={16} style={{ width: '100%' }}>
-              <div style={{ width: '100%' }}>
-                {coverPreviewSrc ? (
-                  <img
-                    src={coverPreviewSrc}
-                    alt={t('events.form.eventImageAlt')}
-                    style={{
-                      width: '100%',
-                      height: 200,
-                      objectFit: 'cover',
-                      borderRadius: 12,
-                      border: '1px solid var(--ant-color-border)',
-                      background: 'var(--ant-color-bg-elevated)',
-                      display: 'block',
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: 200,
-                      borderRadius: 12,
-                      border: '1px dashed var(--ant-color-border)',
-                      background: 'var(--ant-color-bg-elevated)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 16,
-                    }}
-                  >
-                    <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
-                  </div>
-                )}
-                <Button
-                  type="text"
-                  onClick={() => setImageEditOpen(true)}
-                  onMouseEnter={() => setEditImageHover(true)}
-                  onMouseLeave={() => setEditImageHover(false)}
-                  style={{
-                    padding: 0,
-                    height: 'auto',
-                    marginTop: 8,
-                    color: editImageHover ? token.colorPrimary : token.colorTextSecondary,
-                  }}
-                >
-                  {coverPreviewSrc ? t('events.form.imageEdit') : t('events.form.imageAdd')}
-                </Button>
-                <ImageEditModal
-                  open={imageEditOpen}
-                  onClose={() => setImageEditOpen(false)}
-                  imageUrl={coverPreviewSrc || undefined}
-                  imageAlt={t('events.form.eventImageAlt')}
-                  variant="roundedRect"
-                  previewFallback={
-                    <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
-                  }
-                  labels={{
-                    modalTitle: t('events.form.imageModalTitle'),
-                    changePhoto: t('events.form.changeImage'),
-                    uploadPhoto: t('events.form.uploadImage'),
-                    removePhoto: t('events.form.removeImage'),
-                    notImageFile: t('events.form.imageNotImageFile'),
-                    removeModalTitle: t('events.form.removeImageModalTitle'),
-                    removeModalBody: t('events.form.removeImageModalBody'),
-                    removeModalOk: t('events.form.removeImageOk'),
-                    cancel: t('events.tags.cancel'),
-                  }}
-                  performUpload={performEventImageUpload}
-                  onRemove={handleRemoveEventImage}
-                />
-              </div>
-
               <Form.Item name="imageURL" hidden rules={[urlRule]}>
                 <Input />
               </Form.Item>
@@ -433,14 +413,14 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
 
             <Collapse
               accordion
-              activeKey={venuePanelKey}
+              activeKey={collapsePanelKey}
               onChange={(key) => {
                 if (key === undefined || key === null) {
-                  setVenuePanelKey(undefined)
+                  setCollapsePanelKey(undefined)
                   return
                 }
                 const k = Array.isArray(key) ? key[0] : key
-                setVenuePanelKey(k ? String(k) : undefined)
+                setCollapsePanelKey(k ? String(k) : undefined)
               }}
               bordered={false}
               style={{ background: 'transparent', marginTop: 8 }}
@@ -473,6 +453,86 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
                     </Space>
                   ),
                 },
+                ...(mode === 'edit'
+                  ? [
+                      {
+                        key: 'media',
+                        label: t('events.form.sectionMedia'),
+                        children: (
+                          <div style={{ width: '100%' }}>
+                            {coverPreviewSrc ? (
+                              <img
+                                src={coverPreviewSrc}
+                                alt={t('events.form.eventImageAlt')}
+                                style={{
+                                  width: '100%',
+                                  height: 200,
+                                  objectFit: 'cover',
+                                  borderRadius: 12,
+                                  border: '1px solid var(--ant-color-border)',
+                                  background: 'var(--ant-color-bg-elevated)',
+                                  display: 'block',
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: '100%',
+                                  height: 200,
+                                  borderRadius: 12,
+                                  border: '1px dashed var(--ant-color-border)',
+                                  background: 'var(--ant-color-bg-elevated)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: 16,
+                                }}
+                              >
+                                <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
+                              </div>
+                            )}
+                            <Button
+                              type="text"
+                              onClick={() => setImageEditOpen(true)}
+                              onMouseEnter={() => setEditImageHover(true)}
+                              onMouseLeave={() => setEditImageHover(false)}
+                              style={{
+                                padding: 0,
+                                height: 'auto',
+                                marginTop: 8,
+                                color: editImageHover ? token.colorPrimary : token.colorTextSecondary,
+                              }}
+                            >
+                              {coverPreviewSrc ? t('events.form.imageEdit') : t('events.form.imageAdd')}
+                            </Button>
+                            <ImageEditModal
+                              open={imageEditOpen}
+                              onClose={() => setImageEditOpen(false)}
+                              imageUrl={coverPreviewSrc || undefined}
+                              imageAlt={t('events.form.eventImageAlt')}
+                              variant="roundedRect"
+                              previewFallback={
+                                <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
+                              }
+                              labels={{
+                                modalTitle: t('events.form.imageModalTitle'),
+                                changePhoto: t('events.form.changeImage'),
+                                uploadPhoto: t('events.form.uploadImage'),
+                                removePhoto: t('events.form.removeImage'),
+                                notImageFile: t('events.form.imageNotImageFile'),
+                                removeModalTitle: t('events.form.removeImageModalTitle'),
+                                removeModalBody: t('events.form.removeImageModalBody'),
+                                removeModalOk: t('events.form.removeImageOk'),
+                                cancel: t('events.tags.cancel'),
+                              }}
+                              performUpload={performEventImageUpload}
+                              onRemove={handleRemoveEventImage}
+                            />
+                          </div>
+                        ),
+                      },
+                    ]
+                  : []),
               ]}
             />
           </Col>
@@ -559,7 +619,12 @@ export function EventForm({ mode, eventId, initialValues, submitLoading, onSubmi
         </Row>
 
         <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button type="primary" htmlType="submit" loading={submitLoading}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={submitLoading}
+            disabled={mode === 'edit' && !isDirty}
+          >
             {mode === 'create' ? t('events.create.submit') : t('events.edit.submit')}
           </Button>
         </Form.Item>

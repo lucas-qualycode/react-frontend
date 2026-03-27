@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ConfigProvider } from 'antd'
+import { App, ConfigProvider } from 'antd'
 import enUS from 'antd/locale/en_US'
 import ptBR from 'antd/locale/pt_BR'
 import { useTranslation } from 'react-i18next'
@@ -141,7 +141,7 @@ export function AppearanceThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <ConfigProvider theme={themeConfig} componentSize={componentSize} locale={antdLocale}>
-      {children}
+      <App>{children}</App>
     </ConfigProvider>
   )
 }

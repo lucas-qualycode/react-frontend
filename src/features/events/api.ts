@@ -21,7 +21,7 @@ export type UpdateEventPayload = {
   location_address?: string
   location_link?: string
   tag_ids?: string[]
-  imageURL?: string
+  imageURL?: string | null
   active?: boolean
   is_paid?: boolean
   is_online?: boolean

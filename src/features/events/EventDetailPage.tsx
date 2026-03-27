@@ -118,14 +118,23 @@ export function EventDetailPage() {
                 ) : null}
               </Flex>
 
-              {event.location ? <Text type="secondary">{event.location}</Text> : null}
-              {event.location_address ? <Text type="secondary">{event.location_address}</Text> : null}
-              {event.location_link ? (
-                <Text>
-                  <a href={event.location_link} target="_blank" rel="noreferrer">
-                    {t('events.detail.locationLink')}
-                  </a>
-                </Text>
+              {!event.is_online && event.location ? (
+                <Flex vertical gap={4}>
+                  <Text strong>{t('events.detail.venueHeading')}</Text>
+                  {event.location.venue_name ? (
+                    <Text type="secondary">{event.location.venue_name}</Text>
+                  ) : null}
+                  {event.location.formatted_address ? (
+                    <Text type="secondary">{event.location.formatted_address}</Text>
+                  ) : null}
+                  {event.location.maps_url ? (
+                    <Text>
+                      <a href={event.location.maps_url} target="_blank" rel="noreferrer">
+                        {t('events.detail.mapsLink')}
+                      </a>
+                    </Text>
+                  ) : null}
+                </Flex>
               ) : null}
 
               <Flex vertical gap={8} style={{ marginTop: 8 }}>

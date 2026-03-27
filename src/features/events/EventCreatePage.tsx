@@ -18,9 +18,7 @@ export function EventCreatePage() {
   const initialValues = {
     name: '',
     description: '',
-    location: '',
-    location_address: '',
-    location_link: '',
+    location_id: '',
     imageURL: '',
     tag_ids: [],
     is_paid: false,

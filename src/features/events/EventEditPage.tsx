@@ -28,9 +28,7 @@ export function EventEditPage() {
         ? {
             name: event.name,
             description: event.description ?? '',
-            location: event.location ?? '',
-            location_address: event.location_address ?? '',
-            location_link: event.location_link ?? '',
+            location_id: event.location_id ?? '',
             imageURL: event.imageURL ?? '',
             tag_ids: event.tags?.map((x) => x.id) ?? [],
             active: event.active,

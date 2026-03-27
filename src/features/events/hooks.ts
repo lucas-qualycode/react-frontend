@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createEvent,
+  createLocation,
   createTag,
   deleteEvent,
   getEvent,
+  listLocations,
   listTags,
   listUserEvents,
   updateEvent,
   type CreateEventPayload,
+  type CreateLocationPayload,
   type CreateTagPayload,
   type UpdateEventPayload,
 } from './api'
@@ -56,6 +59,24 @@ export function useEventTags() {
   })
 }
 
+export function useLocations() {
+  return useQuery({
+    queryKey: ['locations'],
+    queryFn: listLocations,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateLocation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateLocationPayload) => createLocation(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['locations'] })
+    },
+  })
+}
+
 export function useCreateEvent() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -63,6 +84,7 @@ export function useCreateEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userEvents'] })
       queryClient.invalidateQueries({ queryKey: ['event'] })
+      queryClient.invalidateQueries({ queryKey: ['locations'] })
     },
   })
 }
@@ -75,6 +97,7 @@ export function useUpdateEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userEvents'] })
       queryClient.invalidateQueries({ queryKey: ['event'] })
+      queryClient.invalidateQueries({ queryKey: ['locations'] })
     },
   })
 }

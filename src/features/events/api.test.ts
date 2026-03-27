@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { listTags, listUserEvents, createTag } from './api'
+import { listTags, listUserEvents, createTag, listLocations, createLocation } from './api'
 import { fetchApi } from '@/shared/api/client'
 
 vi.mock('@/shared/api/client', () => ({
@@ -33,6 +33,32 @@ describe('features/events/api', () => {
     await listTags({ active: true, deleted: false, applies_to: 'EVENT' })
 
     expect(fetchApiMock).toHaveBeenCalledWith('tags?active=true&deleted=false&applies_to=EVENT')
+  })
+
+  it('builds listLocations query string', async () => {
+    fetchApiMock.mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as unknown as Response)
+
+    await listLocations()
+
+    expect(fetchApiMock).toHaveBeenCalledWith('locations?deleted=false')
+  })
+
+  it('posts createLocation with trimmed fields only', async () => {
+    fetchApiMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'loc-1', venue_name: 'Hall', deleted: false }),
+    } as unknown as Response)
+
+    await createLocation({ venue_name: 'Hall', formatted_address: ' 123 St ', maps_url: 'https://maps.example/x' })
+
+    expect(fetchApiMock).toHaveBeenCalledWith('locations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{"venue_name":"Hall","formatted_address":"123 St","maps_url":"https://maps.example/x"}',
+    })
   })
 
   it('posts createTag payload', async () => {

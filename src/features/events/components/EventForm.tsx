@@ -11,6 +11,7 @@ import {
   Modal,
   Radio,
   Row,
+  Select,
   Space,
   TreeSelect,
   Typography,
@@ -23,17 +24,15 @@ import { settingsStorage } from '@/features/settings/storage'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { useEventTags, useCreateTag } from '../hooks'
+import { useEventTags, useCreateTag, useLocations, useCreateLocation } from '../hooks'
 
-import type { Tag as EventTag } from '@/shared/types/api'
+import type { Location, Tag as EventTag } from '@/shared/types/api'
 import { updateEvent, type CreateEventPayload, type UpdateEventPayload } from '../api'
 
 type EventFormValues = {
   name: string
   description: string
-  location: string
-  location_address: string
-  location_link: string
+  location_id: string
   imageURL: string
   tag_ids: string[]
   is_paid: boolean
@@ -55,9 +54,7 @@ function snapshotEventFormValuesForDirty(v: EventFormValues): string {
   return JSON.stringify({
     name: (v.name ?? '').trim(),
     description: (v.description ?? '').trim(),
-    location: (v.location ?? '').trim(),
-    location_address: (v.location_address ?? '').trim(),
-    location_link: (v.location_link ?? '').trim(),
+    location_id: (v.location_id ?? '').trim(),
     tag_ids: [...(v.tag_ids ?? [])].sort(),
     is_paid: Boolean(v.is_paid),
     is_online: Boolean(v.is_online),
@@ -68,14 +65,18 @@ function snapshotFromInitialForDirty(iv: Partial<EventFormValues> & { active?: b
   return snapshotEventFormValuesForDirty({
     name: iv.name ?? '',
     description: iv.description ?? '',
-    location: iv.location ?? '',
-    location_address: iv.location_address ?? '',
-    location_link: iv.location_link ?? '',
+    location_id: iv.location_id ?? '',
     imageURL: '',
     tag_ids: iv.tag_ids ?? [],
     is_paid: iv.is_paid ?? false,
     is_online: iv.is_online ?? false,
   })
+}
+
+function selectLabelForLocation(loc: Location): string {
+  const name = loc.venue_name?.trim() || loc.id
+  const addr = loc.formatted_address?.trim()
+  return addr ? `${name} — ${addr}` : name
 }
 
 function tagPathLabel(id: string, byId: Map<string, EventTag>): string {
@@ -100,19 +101,18 @@ function normalizePayload(
   mode: 'create' | 'edit',
   active: boolean
 ): CreateEventPayload | UpdateEventPayload {
+  const location_id = values.is_online ? null : values.location_id?.trim() || null
   const common = {
     tag_ids: values.tag_ids,
     active,
     is_paid: values.is_paid,
     is_online: values.is_online,
+    location_id,
   }
 
   const base = {
     name: values.name,
     description: toOptionalString(values.description),
-    location: toOptionalString(values.location),
-    location_address: toOptionalString(values.location_address),
-    location_link: toOptionalString(values.location_link),
     imageURL: toOptionalString(values.imageURL),
     ...common,
   }
@@ -125,13 +125,11 @@ function normalizePayload(
   const update: UpdateEventPayload = {
     name: base.name,
     description: base.description,
-    location: base.location,
-    location_address: base.location_address,
-    location_link: base.location_link,
     tag_ids: base.tag_ids,
     active: base.active,
     is_paid: base.is_paid,
     is_online: base.is_online,
+    location_id: base.location_id,
   }
   return update
 }
@@ -157,16 +155,19 @@ export function EventForm({
   const watchedImageUrl = Form.useWatch('imageURL', form) as string | undefined
   const { data: tags, isLoading: tagsLoading, refetch: refetchTags } = useEventTags()
   const createTagMutation = useCreateTag()
+  const { data: locations = [], isLoading: locationsLoading, refetch: refetchLocations } = useLocations()
+  const createLocationMutation = useCreateLocation()
   const [tagModalOpen, setTagModalOpen] = useState(false)
+  const [venueModalOpen, setVenueModalOpen] = useState(false)
   const [tagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
+  const [venueForm] = Form.useForm<{ venue_name: string; formatted_address?: string; maps_url?: string }>()
   const [collapsePanelKey, setCollapsePanelKey] = useState<string | undefined>(undefined)
+  const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
 
   const fieldItemStyle = { marginBottom: 10 } as const
   const panelKeyByField: Record<string, string> = {
     imageURL: 'media',
-    location: 'venue',
-    location_address: 'venue',
-    location_link: 'venue',
+    location_id: 'venue',
   }
 
   useEffect(() => {
@@ -174,9 +175,7 @@ export function EventForm({
     form.setFieldsValue({
       name: initialValues.name ?? '',
       description: initialValues.description ?? '',
-      location: initialValues.location ?? '',
-      location_address: initialValues.location_address ?? '',
-      location_link: initialValues.location_link ?? '',
+      location_id: initialValues.location_id ?? '',
       imageURL: initialValues.imageURL ?? '',
       tag_ids: initialValues.tag_ids ?? [],
       is_paid: initialValues.is_paid ?? false,
@@ -189,9 +188,7 @@ export function EventForm({
     form.setFieldsValue({
       name: initialValues.name ?? '',
       description: initialValues.description ?? '',
-      location: initialValues.location ?? '',
-      location_address: initialValues.location_address ?? '',
-      location_link: initialValues.location_link ?? '',
+      location_id: initialValues.location_id ?? '',
       imageURL: initialValues.imageURL ?? '',
       tag_ids: initialValues.tag_ids ?? [],
       is_paid: initialValues.is_paid ?? false,
@@ -200,10 +197,22 @@ export function EventForm({
   }, [form, mode, eventId])
 
   useEffect(() => {
+    if (isOnlineWatched) {
+      form.setFieldsValue({ location_id: '' })
+    }
+  }, [isOnlineWatched, form])
+
+  useEffect(() => {
     if (!tagModalOpen) {
       tagForm.resetFields()
     }
   }, [tagModalOpen, tagForm])
+
+  useEffect(() => {
+    if (!venueModalOpen) {
+      venueForm.resetFields()
+    }
+  }, [venueModalOpen, venueForm])
 
   useEffect(() => {
     if (mode !== 'edit') return
@@ -275,6 +284,22 @@ export function EventForm({
         ? (item as { value: string }).value
         : String(item)
     )
+  }
+
+  async function handleCreateVenue(values: { venue_name: string; formatted_address?: string; maps_url?: string }) {
+    try {
+      const created = await createLocationMutation.mutateAsync({
+        venue_name: values.venue_name,
+        formatted_address: values.formatted_address?.trim() ? values.formatted_address : undefined,
+        maps_url: values.maps_url?.trim() ? values.maps_url : undefined,
+      })
+      form.setFieldsValue({ location_id: created.id })
+      setVenueModalOpen(false)
+      message.success(t('events.form.venueCreateSuccess'))
+      await refetchLocations()
+    } catch {
+      message.error(t('events.form.venueCreateError'))
+    }
   }
 
   async function handleCreateTag(values: {
@@ -427,29 +452,53 @@ export function EventForm({
               items={[
                 {
                   key: 'venue',
+                  forceRender: true,
                   label: t('events.form.sectionVenue'),
-                  children: (
+                  children: isOnlineWatched === true ? (
+                    <Typography.Text type="secondary">{t('events.form.venueOnlineHint')}</Typography.Text>
+                  ) : (
                     <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                      <Form.Item style={fieldItemStyle} name="location" label={t('events.form.locationLabel')}>
-                        <Input placeholder={t('events.form.locationPlaceholder')} />
-                      </Form.Item>
-
                       <Form.Item
                         style={fieldItemStyle}
-                        name="location_address"
-                        label={t('events.form.locationAddressLabel')}
+                        name="location_id"
+                        label={t('events.form.savedVenueLabel')}
+                        rules={[
+                          {
+                            validator: async (_: unknown, value: string | undefined) => {
+                              if (form.getFieldValue('is_online')) return
+                              const v = typeof value === 'string' ? value.trim() : ''
+                              if (!v) throw new Error(t('events.form.savedVenueRequired'))
+                            },
+                          },
+                        ]}
                       >
-                        <Input placeholder={t('events.form.locationAddressPlaceholder')} />
+                        <Select
+                          showSearch
+                          allowClear
+                          loading={locationsLoading}
+                          placeholder={t('events.form.savedVenuePlaceholder')}
+                          options={locations.map((loc) => ({
+                            value: loc.id,
+                            label: selectLabelForLocation(loc),
+                          }))}
+                          filterOption={(input, option) =>
+                            String(option?.label ?? '')
+                              .toLowerCase()
+                              .includes(input.trim().toLowerCase())
+                          }
+                          onDropdownVisibleChange={(open) => {
+                            if (open) void refetchLocations()
+                          }}
+                        />
                       </Form.Item>
-
-                      <Form.Item
-                        style={fieldItemStyle}
-                        name="location_link"
-                        label={t('events.form.locationLinkLabel')}
-                        rules={[urlRule]}
+                      <Button
+                        type="default"
+                        onClick={() => setVenueModalOpen(true)}
+                        disabled={createLocationMutation.isPending}
+                        style={{ marginBottom: 10 }}
                       >
-                        <Input placeholder={t('events.form.locationLinkPlaceholder')} />
-                      </Form.Item>
+                        {t('events.form.addVenueButton')}
+                      </Button>
                     </Space>
                   ),
                 },
@@ -629,6 +678,40 @@ export function EventForm({
           </Button>
         </Form.Item>
       </Form>
+
+      <Modal
+        title={t('events.form.venueModalTitle')}
+        open={venueModalOpen}
+        onCancel={() => setVenueModalOpen(false)}
+        onOk={async () => {
+          try {
+            const values = await venueForm.validateFields()
+            await handleCreateVenue(values)
+          } catch {
+            return
+          }
+        }}
+        okText={t('events.form.venueModalOk')}
+        cancelText={t('events.tags.cancel')}
+        confirmLoading={createLocationMutation.isPending}
+        destroyOnClose
+      >
+        <Form form={venueForm} layout="vertical">
+          <Form.Item
+            name="venue_name"
+            label={t('events.form.venueNameLabel')}
+            rules={[{ required: true, message: t('events.form.venueNameRequired') }]}
+          >
+            <Input placeholder={t('events.form.venueNamePlaceholder')} />
+          </Form.Item>
+          <Form.Item name="formatted_address" label={t('events.form.formattedAddressLabel')}>
+            <Input placeholder={t('events.form.formattedAddressPlaceholder')} />
+          </Form.Item>
+          <Form.Item name="maps_url" label={t('events.form.mapsUrlLabel')} rules={[urlRule]}>
+            <Input placeholder={t('events.form.mapsUrlPlaceholder')} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         title={t('events.tags.createModalTitle')}

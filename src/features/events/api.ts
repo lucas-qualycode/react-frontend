@@ -1,12 +1,16 @@
 import { fetchApi } from '@/shared/api/client'
-import type { Event, Tag } from '@/shared/types/api'
+import type { Event, Location, Tag } from '@/shared/types/api'
+
+export type CreateLocationPayload = {
+  venue_name: string
+  formatted_address?: string
+  maps_url?: string
+}
 
 export type CreateEventPayload = {
   name: string
   description?: string
-  location?: string
-  location_address?: string
-  location_link?: string
+  location_id?: string | null
   tag_ids: string[]
   imageURL?: string
   active?: boolean
@@ -17,9 +21,7 @@ export type CreateEventPayload = {
 export type UpdateEventPayload = {
   name?: string
   description?: string
-  location?: string
-  location_address?: string
-  location_link?: string
+  location_id?: string | null
   tag_ids?: string[]
   imageURL?: string | null
   active?: boolean
@@ -67,6 +69,30 @@ export async function deleteEvent(eventId: string): Promise<Event> {
   const res = await fetchApi(`events/${eventId}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to delete event')
   return res.json() as Promise<Event>
+}
+
+export async function listLocations(): Promise<Location[]> {
+  const params = new URLSearchParams({ deleted: 'false' })
+  const res = await fetchApi(`locations?${params.toString()}`)
+  if (!res.ok) throw new Error('Failed to load locations')
+  return res.json() as Promise<Location[]>
+}
+
+export async function createLocation(payload: CreateLocationPayload): Promise<Location> {
+  const body: Record<string, string> = {
+    venue_name: payload.venue_name.trim(),
+  }
+  const fa = payload.formatted_address?.trim()
+  const mu = payload.maps_url?.trim()
+  if (fa) body.formatted_address = fa
+  if (mu) body.maps_url = mu
+  const res = await fetchApi('locations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error('Failed to create location')
+  return res.json() as Promise<Location>
 }
 
 export async function listTags(params?: {

@@ -27,6 +27,31 @@ export interface Location {
   last_updated_by?: string
 }
 
+export interface ScheduleExclusion {
+  id: string
+  type: string
+  value: string | string[]
+  description?: string | null
+}
+
+export interface Schedule {
+  id: string
+  event_id: string
+  parent_id?: string | null
+  stand_id?: string | null
+  start_date: string
+  end_date: string
+  start_time: string
+  end_time: string
+  timezone: string
+  exclusions: ScheduleExclusion[]
+  status: 'active' | 'cancelled' | 'completed'
+  notes?: string | null
+  created_at: string
+  updated_at: string
+  last_updated_by: string
+}
+
 export interface Event {
   id: string
   name: string

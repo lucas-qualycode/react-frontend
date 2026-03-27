@@ -1,5 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { EnvironmentOutlined, FileTextOutlined, MenuOutlined, TagsOutlined } from '@ant-design/icons'
+import {
+  CalendarOutlined,
+  EnvironmentOutlined,
+  FileTextOutlined,
+  MenuOutlined,
+  TagsOutlined,
+} from '@ant-design/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
@@ -27,6 +33,7 @@ import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { useEventTags, useCreateTag, useLocations, useCreateLocation } from '../hooks'
+import { EventScheduleSection } from './EventScheduleSection'
 
 import type { Location, Tag as EventTag } from '@/shared/types/api'
 import { updateEvent, type CreateEventPayload, type UpdateEventPayload } from '../api'
@@ -52,7 +59,7 @@ type EventFormProps = {
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
 
-type EventFormSectionKey = 'identity' | 'venue' | 'tags'
+type EventFormSectionKey = 'identity' | 'venue' | 'tags' | 'schedules'
 
 const SECTION_QUERY_PARAM = 'section'
 
@@ -60,12 +67,14 @@ const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
   details: 'identity',
   tags: 'tags',
   venue: 'venue',
+  schedule: 'schedules',
 }
 
 const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
   identity: 'details',
   tags: 'tags',
   venue: 'venue',
+  schedules: 'schedule',
 }
 
 function slugToSection(slug: string | null): EventFormSectionKey | null {
@@ -457,12 +466,17 @@ export function EventForm({
         icon: <EnvironmentOutlined />,
         label: t('events.form.menuVenue'),
       },
+      {
+        key: 'schedules' as const,
+        icon: <CalendarOutlined />,
+        label: t('events.form.menuSchedules'),
+      },
     ],
     [t]
   )
 
   const onSectionMenuSelect = (key: string) => {
-    if (key !== 'identity' && key !== 'venue' && key !== 'tags') return
+    if (key !== 'identity' && key !== 'venue' && key !== 'tags' && key !== 'schedules') return
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -780,6 +794,23 @@ export function EventForm({
                 </Button>
               ) : null}
             </div>
+              ) : null}
+
+              {activeSection === 'schedules' ? (
+                <div style={{ width: '100%' }}>
+                  {mode === 'edit' && eventId ? (
+                    <EventScheduleSection eventId={eventId} />
+                  ) : (
+                    <>
+                      <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                        {t('events.schedule.sectionTitle')}
+                      </Typography.Title>
+                      <Typography.Text type="secondary" style={{ display: 'block' }}>
+                        {t('events.form.scheduleAfterCreateHint')}
+                      </Typography.Text>
+                    </>
+                  )}
+                </div>
               ) : null}
 
               <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>

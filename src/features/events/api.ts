@@ -1,5 +1,16 @@
 import { fetchApi } from '@/shared/api/client'
-import type { Event, Location, Tag } from '@/shared/types/api'
+import type { Event, Location, Schedule, Tag } from '@/shared/types/api'
+
+async function apiErrorMessage(res: Response): Promise<string> {
+  try {
+    const j = (await res.json()) as { error?: unknown; detail?: unknown }
+    if (typeof j.detail === 'string') return j.detail
+    if (typeof j.error === 'string') return j.error
+  } catch {
+    /* ignore */
+  }
+  return `Request failed (${res.status})`
+}
 
 export type CreateLocationPayload = {
   venue_name: string
@@ -127,4 +138,60 @@ export async function createTag(payload: CreateTagPayload): Promise<Tag> {
   })
   if (!res.ok) throw new Error('Failed to create tag')
   return res.json() as Promise<Tag>
+}
+
+export type CreateSchedulePayload = {
+  event_id: string
+  start_date: string
+  end_date: string
+  start_time: string
+  end_time: string
+  timezone: string
+  status: Schedule['status']
+  exclusions?: Schedule['exclusions']
+  notes?: string | null
+}
+
+export type UpdateSchedulePayload = {
+  start_date?: string
+  end_date?: string
+  start_time?: string
+  end_time?: string
+  timezone?: string
+  status?: Schedule['status']
+  exclusions?: Schedule['exclusions']
+  notes?: string | null
+}
+
+export async function listSchedules(eventId: string): Promise<Schedule[]> {
+  const params = new URLSearchParams({ event_id: eventId })
+  const res = await fetchApi(`schedules?${params.toString()}`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Schedule[]>
+}
+
+export async function createSchedule(payload: CreateSchedulePayload): Promise<Schedule> {
+  const res = await fetchApi('schedules', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...payload,
+      exclusions: payload.exclusions ?? [],
+    }),
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Schedule>
+}
+
+export async function updateSchedule(
+  scheduleId: string,
+  payload: UpdateSchedulePayload
+): Promise<Schedule> {
+  const res = await fetchApi(`schedules/${scheduleId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Schedule>
 }

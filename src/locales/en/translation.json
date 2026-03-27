@@ -88,6 +88,9 @@
     }
   },
   "events": {
+    "breadcrumb": {
+      "home": "Home"
+    },
     "create": {
       "title": "Create event",
       "subtitle": "Set the core details for your event.",
@@ -96,6 +99,7 @@
     "edit": {
       "title": "Edit event",
       "submit": "Save changes",
+      "saveSuccess": "Changes saved.",
       "leaveUnsavedTitle": "Leave without saving?",
       "leaveUnsavedBody": "You have unsaved changes. If you leave now, they may be lost.",
       "leaveUnsavedLeave": "Leave",
@@ -152,6 +156,8 @@
       "venueOnlineHint": "Online events do not use a saved venue.",
       "venueCreateSuccess": "Venue saved.",
       "venueCreateError": "Could not save venue. Please try again.",
+      "coverAfterCreateHint": "You can add a cover image after the event is created.",
+      "sectionNavAria": "Jump to section",
       "imageAdd": "Add image",
       "imageEdit": "Edit image",
       "imageModalTitle": "Event image",
@@ -176,8 +182,12 @@
       "onlineLabel": "Is this a virtual event (livestream, video call, etc.)?",
       "onlineOptionOnline": "Online",
       "onlineOptionInPerson": "In person",
+      "menuIdentity": "Details",
+      "menuVenue": "Venue",
+      "menuTagsVisibility": "Tags & visibility",
       "sectionIdentity": "Event identity",
       "sectionVenue": "Venue & location",
+      "sectionTagsAndVisibility": "Tags & visibility",
       "sectionMedia": "Media",
       "sectionTags": "Tags",
       "sectionVisibility": "Visibility & payment",

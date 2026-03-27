@@ -1,16 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { EnvironmentOutlined, FileTextOutlined, MenuOutlined, TagsOutlined } from '@ant-design/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
   Card,
-  Col,
-  Collapse,
+  Dropdown,
   Flex,
   Form,
+  Grid,
   Input,
+  Menu,
   Modal,
   Radio,
-  Row,
   Select,
   Space,
   TreeSelect,
@@ -49,6 +50,8 @@ type EventFormProps = {
 }
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
+
+type EventFormSectionKey = 'identity' | 'venue' | 'tags'
 
 function snapshotEventFormValuesForDirty(v: EventFormValues): string {
   return JSON.stringify({
@@ -129,7 +132,12 @@ function normalizePayload(
     active: base.active,
     is_paid: base.is_paid,
     is_online: base.is_online,
-    location_id: base.location_id,
+  }
+  if (!values.is_online) {
+    const trimmed = values.location_id?.trim()
+    if (trimmed) {
+      update.location_id = trimmed
+    }
   }
   return update
 }
@@ -161,13 +169,20 @@ export function EventForm({
   const [venueModalOpen, setVenueModalOpen] = useState(false)
   const [tagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
   const [venueForm] = Form.useForm<{ venue_name: string; formatted_address?: string; maps_url?: string }>()
-  const [collapsePanelKey, setCollapsePanelKey] = useState<string | undefined>(undefined)
+  const [activeSection, setActiveSection] = useState<EventFormSectionKey>('identity')
   const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
+  const screens = Grid.useBreakpoint()
+  const compactSectionNav = screens.md === false
 
   const fieldItemStyle = { marginBottom: 10 } as const
-  const panelKeyByField: Record<string, string> = {
-    imageURL: 'media',
+  const sectionKeyByField: Record<string, EventFormSectionKey> = {
+    name: 'identity',
+    description: 'identity',
+    imageURL: 'identity',
     location_id: 'venue',
+    tag_ids: 'tags',
+    is_paid: 'tags',
+    is_online: 'tags',
   }
 
   useEffect(() => {
@@ -388,11 +403,39 @@ export function EventForm({
 
   const coverPreviewSrc = watchedImageUrl?.trim() ? watchedImageUrl.trim() : ''
 
+  const eventFormMenuItems = useMemo(
+    () => [
+      {
+        key: 'identity' as const,
+        icon: <FileTextOutlined />,
+        label: t('events.form.menuIdentity'),
+      },
+      {
+        key: 'venue' as const,
+        icon: <EnvironmentOutlined />,
+        label: t('events.form.menuVenue'),
+      },
+      {
+        key: 'tags' as const,
+        icon: <TagsOutlined />,
+        label: t('events.form.menuTagsVisibility'),
+      },
+    ],
+    [t]
+  )
+
+  const onSectionMenuSelect = (key: string) => {
+    if (key === 'identity' || key === 'venue' || key === 'tags') {
+      setActiveSection(key)
+    }
+  }
+
   return (
-    <Card>
+    <>
       <Form
         form={form}
         layout="vertical"
+        preserve
         onFinish={onFinish}
         onFinishFailed={(errorInfo) => {
           const raw = errorInfo?.errorFields?.[0]?.name
@@ -402,7 +445,9 @@ export function EventForm({
               : typeof raw === 'string'
                 ? raw
                 : null
-          if (typeof first === 'string' && panelKeyByField[first]) setCollapsePanelKey(panelKeyByField[first])
+          if (typeof first === 'string' && sectionKeyByField[first]) {
+            setActiveSection(sectionKeyByField[first])
+          }
         }}
         initialValues={{
           is_paid: false,
@@ -410,188 +455,206 @@ export function EventForm({
           ...formInitialRest,
         }}
       >
-        <Row gutter={[24, 24]} align="top">
-          <Col xs={24} lg={16}>
-            <Flex vertical gap={16} style={{ width: '100%' }}>
+        <Flex vertical gap={compactSectionNav ? 12 : 0} style={{ width: '100%' }}>
+          {compactSectionNav ? (
+            <Flex justify="flex-end">
+              <span style={{ display: 'inline-flex' }}>
+                <Dropdown
+                  menu={{
+                    items: eventFormMenuItems.map(({ key, icon, label }) => ({ key, icon, label })),
+                    selectedKeys: [activeSection],
+                    onClick: ({ key }) => onSectionMenuSelect(key),
+                  }}
+                  trigger={['hover', 'click']}
+                  placement="bottomRight"
+                >
+                  <Button type="text" icon={<MenuOutlined />} aria-label={t('events.form.sectionNavAria')} />
+                </Dropdown>
+              </span>
+            </Flex>
+          ) : null}
+
+          <Flex gap={32} align="flex-start" style={{ width: '100%' }}>
+            <Card style={{ flex: 1, minWidth: 0 }}>
               <Form.Item name="imageURL" hidden rules={[urlRule]}>
                 <Input />
               </Form.Item>
 
-              <div style={{ width: '100%' }}>
-                <Form.Item
-                  style={fieldItemStyle}
-                  name="name"
-                  label={t('events.form.nameLabel')}
-                  rules={[
-                    { required: true, message: t('events.form.nameRequired') },
-                    { max: 256, message: t('events.form.nameTooLong') },
-                  ]}
-                >
-                  <Input placeholder={t('events.form.namePlaceholder')} />
-                </Form.Item>
+              {activeSection === 'identity' ? (
+            <div style={{ width: '100%' }}>
+              <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                {t('events.form.sectionIdentity')}
+              </Typography.Title>
+              <Form.Item
+                style={fieldItemStyle}
+                name="name"
+                label={t('events.form.nameLabel')}
+                rules={[
+                  { required: true, message: t('events.form.nameRequired') },
+                  { max: 256, message: t('events.form.nameTooLong') },
+                ]}
+              >
+                <Input placeholder={t('events.form.namePlaceholder')} />
+              </Form.Item>
 
-                <Form.Item style={fieldItemStyle} name="description" label={t('events.form.descriptionLabel')}>
-                  <Input.TextArea rows={4} placeholder={t('events.form.descriptionPlaceholder')} />
-                </Form.Item>
-              </div>
-            </Flex>
+              <Form.Item style={fieldItemStyle} name="description" label={t('events.form.descriptionLabel')}>
+                <Input.TextArea rows={4} placeholder={t('events.form.descriptionPlaceholder')} />
+              </Form.Item>
 
-            <Collapse
-              accordion
-              activeKey={collapsePanelKey}
-              onChange={(key) => {
-                if (key === undefined || key === null) {
-                  setCollapsePanelKey(undefined)
-                  return
-                }
-                const k = Array.isArray(key) ? key[0] : key
-                setCollapsePanelKey(k ? String(k) : undefined)
-              }}
-              bordered={false}
-              style={{ background: 'transparent', marginTop: 8 }}
-              items={[
-                {
-                  key: 'venue',
-                  forceRender: true,
-                  label: t('events.form.sectionVenue'),
-                  children: isOnlineWatched === true ? (
-                    <Typography.Text type="secondary">{t('events.form.venueOnlineHint')}</Typography.Text>
+              {mode === 'edit' ? (
+                <div style={{ width: '100%' }}>
+                  {coverPreviewSrc ? (
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        aspectRatio: '2 / 1',
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        border: '1px solid var(--ant-color-border)',
+                        background: 'var(--ant-color-bg-elevated)',
+                      }}
+                    >
+                      <img
+                        src={coverPreviewSrc}
+                        alt={t('events.form.eventImageAlt')}
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                      />
+                    </div>
                   ) : (
-                    <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                      <Form.Item
-                        style={fieldItemStyle}
-                        name="location_id"
-                        label={t('events.form.savedVenueLabel')}
-                        rules={[
-                          {
-                            validator: async (_: unknown, value: string | undefined) => {
-                              if (form.getFieldValue('is_online')) return
-                              const v = typeof value === 'string' ? value.trim() : ''
-                              if (!v) throw new Error(t('events.form.savedVenueRequired'))
-                            },
-                          },
-                        ]}
-                      >
-                        <Select
-                          showSearch
-                          allowClear
-                          loading={locationsLoading}
-                          placeholder={t('events.form.savedVenuePlaceholder')}
-                          options={locations.map((loc) => ({
-                            value: loc.id,
-                            label: selectLabelForLocation(loc),
-                          }))}
-                          filterOption={(input, option) =>
-                            String(option?.label ?? '')
-                              .toLowerCase()
-                              .includes(input.trim().toLowerCase())
-                          }
-                          onDropdownVisibleChange={(open) => {
-                            if (open) void refetchLocations()
-                          }}
-                        />
-                      </Form.Item>
-                      <Button
-                        type="default"
-                        onClick={() => setVenueModalOpen(true)}
-                        disabled={createLocationMutation.isPending}
-                        style={{ marginBottom: 10 }}
-                      >
-                        {t('events.form.addVenueButton')}
-                      </Button>
-                    </Space>
-                  ),
-                },
-                ...(mode === 'edit'
-                  ? [
-                      {
-                        key: 'media',
-                        label: t('events.form.sectionMedia'),
-                        children: (
-                          <div style={{ width: '100%' }}>
-                            {coverPreviewSrc ? (
-                              <img
-                                src={coverPreviewSrc}
-                                alt={t('events.form.eventImageAlt')}
-                                style={{
-                                  width: '100%',
-                                  height: 200,
-                                  objectFit: 'cover',
-                                  borderRadius: 12,
-                                  border: '1px solid var(--ant-color-border)',
-                                  background: 'var(--ant-color-bg-elevated)',
-                                  display: 'block',
-                                }}
-                              />
-                            ) : (
-                              <div
-                                style={{
-                                  width: '100%',
-                                  height: 200,
-                                  borderRadius: 12,
-                                  border: '1px dashed var(--ant-color-border)',
-                                  background: 'var(--ant-color-bg-elevated)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  padding: 16,
-                                }}
-                              >
-                                <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
-                              </div>
-                            )}
-                            <Button
-                              type="text"
-                              onClick={() => setImageEditOpen(true)}
-                              onMouseEnter={() => setEditImageHover(true)}
-                              onMouseLeave={() => setEditImageHover(false)}
-                              style={{
-                                padding: 0,
-                                height: 'auto',
-                                marginTop: 8,
-                                color: editImageHover ? token.colorPrimary : token.colorTextSecondary,
-                              }}
-                            >
-                              {coverPreviewSrc ? t('events.form.imageEdit') : t('events.form.imageAdd')}
-                            </Button>
-                            <ImageEditModal
-                              open={imageEditOpen}
-                              onClose={() => setImageEditOpen(false)}
-                              imageUrl={coverPreviewSrc || undefined}
-                              imageAlt={t('events.form.eventImageAlt')}
-                              variant="roundedRect"
-                              previewFallback={
-                                <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
-                              }
-                              labels={{
-                                modalTitle: t('events.form.imageModalTitle'),
-                                changePhoto: t('events.form.changeImage'),
-                                uploadPhoto: t('events.form.uploadImage'),
-                                removePhoto: t('events.form.removeImage'),
-                                notImageFile: t('events.form.imageNotImageFile'),
-                                removeModalTitle: t('events.form.removeImageModalTitle'),
-                                removeModalBody: t('events.form.removeImageModalBody'),
-                                removeModalOk: t('events.form.removeImageOk'),
-                                cancel: t('events.tags.cancel'),
-                              }}
-                              performUpload={performEventImageUpload}
-                              onRemove={handleRemoveEventImage}
-                            />
-                          </div>
-                        ),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          </Col>
+                    <div
+                      style={{
+                        width: '100%',
+                        aspectRatio: '2 / 1',
+                        borderRadius: 12,
+                        border: '1px dashed var(--ant-color-border)',
+                        background: 'var(--ant-color-bg-elevated)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 16,
+                      }}
+                    >
+                      <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
+                    </div>
+                  )}
+                  <Button
+                    type="text"
+                    onClick={() => setImageEditOpen(true)}
+                    onMouseEnter={() => setEditImageHover(true)}
+                    onMouseLeave={() => setEditImageHover(false)}
+                    style={{
+                      padding: 0,
+                      height: 'auto',
+                      marginTop: 8,
+                      color: editImageHover ? token.colorPrimary : token.colorTextSecondary,
+                    }}
+                  >
+                    {coverPreviewSrc ? t('events.form.imageEdit') : t('events.form.imageAdd')}
+                  </Button>
+                  <ImageEditModal
+                    open={imageEditOpen}
+                    onClose={() => setImageEditOpen(false)}
+                    imageUrl={coverPreviewSrc || undefined}
+                    imageAlt={t('events.form.eventImageAlt')}
+                    variant="roundedRect"
+                    previewFallback={
+                      <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
+                    }
+                    labels={{
+                      modalTitle: t('events.form.imageModalTitle'),
+                      changePhoto: t('events.form.changeImage'),
+                      uploadPhoto: t('events.form.uploadImage'),
+                      removePhoto: t('events.form.removeImage'),
+                      notImageFile: t('events.form.imageNotImageFile'),
+                      removeModalTitle: t('events.form.removeImageModalTitle'),
+                      removeModalBody: t('events.form.removeImageModalBody'),
+                      removeModalOk: t('events.form.removeImageOk'),
+                      cancel: t('events.tags.cancel'),
+                    }}
+                    performUpload={performEventImageUpload}
+                    onRemove={handleRemoveEventImage}
+                  />
+                </div>
+              ) : (
+                <Typography.Text type="secondary" style={{ display: 'block' }}>
+                  {t('events.form.coverAfterCreateHint')}
+                </Typography.Text>
+              )}
+            </div>
+              ) : null}
 
-          <Col xs={24} lg={8}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              <div>
-                <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>
-                  {t('events.form.sectionTags')}
-                </Typography.Title>
+              {activeSection === 'venue' ? (
+            <div style={{ width: '100%' }}>
+              <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                {t('events.form.sectionVenue')}
+              </Typography.Title>
+              {isOnlineWatched === true ? (
+                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                  {t('events.form.venueOnlineHint')}
+                </Typography.Text>
+              ) : null}
+              <Form.Item
+                style={fieldItemStyle}
+                name="location_id"
+                hidden={isOnlineWatched === true}
+                label={isOnlineWatched === true ? undefined : t('events.form.savedVenueLabel')}
+                rules={[
+                  {
+                    validator: async (_: unknown, value: string | undefined) => {
+                      if (form.getFieldValue('is_online')) return
+                      const v = typeof value === 'string' ? value.trim() : ''
+                      if (!v) throw new Error(t('events.form.savedVenueRequired'))
+                    },
+                  },
+                ]}
+              >
+                <Select
+                  showSearch
+                  allowClear
+                  loading={locationsLoading}
+                  placeholder={t('events.form.savedVenuePlaceholder')}
+                  options={locations.map((loc) => ({
+                    value: loc.id,
+                    label: selectLabelForLocation(loc),
+                  }))}
+                  filterOption={(input, option) =>
+                    String(option?.label ?? '')
+                      .toLowerCase()
+                      .includes(input.trim().toLowerCase())
+                  }
+                  onDropdownVisibleChange={(open) => {
+                    if (open) void refetchLocations()
+                  }}
+                  disabled={isOnlineWatched === true}
+                />
+              </Form.Item>
+              {isOnlineWatched !== true ? (
+                <Button
+                  type="default"
+                  onClick={() => setVenueModalOpen(true)}
+                  disabled={createLocationMutation.isPending}
+                  style={{ marginBottom: 10 }}
+                >
+                  {t('events.form.addVenueButton')}
+                </Button>
+              ) : null}
+            </div>
+              ) : null}
+
+              {activeSection === 'tags' ? (
+            <div style={{ width: '100%' }}>
+              <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                {t('events.form.sectionTagsAndVisibility')}
+              </Typography.Title>
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <Form.Item style={fieldItemStyle}>
                   <Space direction="vertical" size={8} style={{ width: '100%' }}>
                     <Typography.Text type="secondary" style={{ display: 'block' }}>
@@ -633,12 +696,7 @@ export function EventForm({
                     </Button>
                   </Space>
                 </Form.Item>
-              </div>
 
-              <div>
-                <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>
-                  {t('events.form.sectionVisibility')}
-                </Typography.Title>
                 <Space direction="vertical" size={0} style={{ width: '100%' }}>
                   <Form.Item style={fieldItemStyle} name="is_paid" label={t('events.form.paidLabel')}>
                     <Radio.Group
@@ -662,21 +720,33 @@ export function EventForm({
                     />
                   </Form.Item>
                 </Space>
-              </div>
-            </Space>
-          </Col>
-        </Row>
+              </Space>
+            </div>
+              ) : null}
 
-        <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={submitLoading}
-            disabled={mode === 'edit' && !isDirty}
-          >
-            {mode === 'create' ? t('events.create.submit') : t('events.edit.submit')}
-          </Button>
-        </Form.Item>
+              <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={submitLoading}
+                  disabled={mode === 'edit' && !isDirty}
+                >
+                  {mode === 'create' ? t('events.create.submit') : t('events.edit.submit')}
+                </Button>
+              </Form.Item>
+            </Card>
+
+            {!compactSectionNav ? (
+              <Menu
+                mode="vertical"
+                selectedKeys={[activeSection]}
+                onSelect={({ key }) => onSectionMenuSelect(key)}
+                style={{ width: 220, flexShrink: 0 }}
+                items={eventFormMenuItems}
+              />
+            ) : null}
+          </Flex>
+        </Flex>
       </Form>
 
       <Modal
@@ -751,7 +821,7 @@ export function EventForm({
           </Form.Item>
         </Form>
       </Modal>
-    </Card>
+    </>
   )
 }
 

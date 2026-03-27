@@ -88,6 +88,9 @@
     }
   },
   "events": {
+    "breadcrumb": {
+      "home": "Início"
+    },
     "create": {
       "title": "Criar evento",
       "subtitle": "Defina os detalhes principais do seu evento.",
@@ -96,6 +99,7 @@
     "edit": {
       "title": "Editar evento",
       "submit": "Salvar alterações",
+      "saveSuccess": "Alterações salvas.",
       "leaveUnsavedTitle": "Sair sem salvar?",
       "leaveUnsavedBody": "Há alterações não salvas. Se sair agora, elas podem ser perdidas.",
       "leaveUnsavedLeave": "Sair",
@@ -152,6 +156,8 @@
       "venueOnlineHint": "Eventos online não usam local salvo.",
       "venueCreateSuccess": "Local salvo.",
       "venueCreateError": "Não foi possível salvar o local. Tente novamente.",
+      "coverAfterCreateHint": "Você pode adicionar uma imagem de capa depois que o evento for criado.",
+      "sectionNavAria": "Ir para a seção",
       "imageAdd": "Adicionar imagem",
       "imageEdit": "Editar imagem",
       "imageModalTitle": "Imagem do evento",
@@ -176,8 +182,12 @@
       "onlineLabel": "Este é um evento virtual (transmissão ao vivo, videoconferência etc.)?",
       "onlineOptionOnline": "Online",
       "onlineOptionInPerson": "Presencial",
+      "menuIdentity": "Detalhes",
+      "menuVenue": "Local",
+      "menuTagsVisibility": "Tags e visibilidade",
       "sectionIdentity": "Identidade do evento",
       "sectionVenue": "Local e endereço",
+      "sectionTagsAndVisibility": "Tags e visibilidade",
       "sectionMedia": "Mídia",
       "sectionTags": "Tags",
       "sectionVisibility": "Visibilidade e pagamento",

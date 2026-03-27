@@ -1,9 +1,9 @@
 import { ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons'
-import { App, Button, Flex, Grid, Spin, Tooltip, Typography } from 'antd'
+import { App, Breadcrumb, Button, Flex, Grid, Spin, Tooltip, Typography } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { Link, useBlocker, useParams } from 'react-router-dom'
 import { EventForm } from './components/EventForm'
 import { useEvent, useUpdateEvent } from './hooks'
 import type { UpdateEventPayload } from './api'
@@ -13,7 +13,6 @@ const { Title, Text } = Typography
 export function EventEditPage() {
   const { t } = useTranslation()
   const { modal, message } = App.useApp()
-  const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const updateMutation = useUpdateEvent()
   const { data: event, isLoading, isError, refetch } = useEvent(id)
@@ -82,30 +81,53 @@ export function EventEditPage() {
         flushSync(() => {
           setFormDirty(false)
         })
-        navigate('/user-events')
+        message.success(t('events.edit.saveSuccess'))
       } catch {
         message.error(t('events.form.submitError'))
       }
     },
-    [id, navigate, t, updateMutation]
+    [id, message, t, updateMutation]
   )
 
   return (
     <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
+      {!isLoading && !isError && event && id ? (
+        <Breadcrumb
+          style={{ marginBottom: 24 }}
+          items={[
+            { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
+            { title: <Link to={`/events/${id}`}>{event.name}</Link> },
+            { title: t('events.detail.edit') },
+          ]}
+        />
+      ) : null}
       <Flex align="flex-start" justify="space-between" gap={16} style={{ marginBottom: 24, flexWrap: 'wrap' }}>
         <div>
           <Title level={2} style={{ marginBottom: 0 }}>
-            {t('events.edit.title')}
+            {event?.name ?? ''}
           </Title>
-          <Text type="secondary">{event?.name ?? ''}</Text>
         </div>
         <Flex align="center" gap={8} wrap="wrap" style={{ flexShrink: 0 }}>
           {id ? (
-            <Link to={`/events/${id}`}>
-              <Button type="default" icon={<EyeOutlined />}>
-                {t('events.edit.viewEventPage')}
-              </Button>
-            </Link>
+            backButtonIconOnly ? (
+              <Tooltip title={t('events.edit.viewEventPage')} placement="bottom">
+                <span style={{ display: 'inline-flex' }}>
+                  <Link to={`/events/${id}`}>
+                    <Button
+                      type="default"
+                      icon={<EyeOutlined />}
+                      aria-label={t('events.edit.viewEventPage')}
+                    />
+                  </Link>
+                </span>
+              </Tooltip>
+            ) : (
+              <Link to={`/events/${id}`}>
+                <Button type="default" icon={<EyeOutlined />}>
+                  {t('events.edit.viewEventPage')}
+                </Button>
+              </Link>
+            )
           ) : null}
           {backButtonIconOnly ? (
             <Tooltip title={t('events.detail.backToMyEvents')} placement="bottom">

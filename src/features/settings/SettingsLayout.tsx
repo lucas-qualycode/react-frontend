@@ -10,7 +10,6 @@ import {
   Menu,
   Modal,
   Spin,
-  Tooltip,
   Typography,
 } from 'antd'
 import type { MenuProps } from 'antd'
@@ -170,26 +169,24 @@ export function SettingsLayout() {
                   { title: sectionLabel },
                 ]}
               />
-              <Tooltip title={t('settings.menuDropdownAria')} placement="bottom">
-                <span style={{ display: 'inline-flex' }}>
-                  <Dropdown
-                    menu={{
-                      items: settingsDropdownItems,
-                      selectedKeys: [activeKey],
-                      onClick: ({ key }) => navigate(`/settings/${key}`),
-                    }}
-                    trigger={['hover', 'click']}
-                    placement="bottomRight"
-                  >
-                    <Button
-                      type="text"
-                      icon={<MenuOutlined />}
-                      aria-label={t('settings.menuDropdownAria')}
-                      style={{ flexShrink: 0 }}
-                    />
-                  </Dropdown>
-                </span>
-              </Tooltip>
+              <span style={{ display: 'inline-flex' }}>
+                <Dropdown
+                  menu={{
+                    items: settingsDropdownItems,
+                    selectedKeys: [activeKey],
+                    onClick: ({ key }) => navigate(`/settings/${key}`),
+                  }}
+                  trigger={['hover', 'click']}
+                  placement="bottomRight"
+                >
+                  <Button
+                    type="text"
+                    icon={<MenuOutlined />}
+                    aria-label={t('settings.menuDropdownAria')}
+                    style={{ flexShrink: 0 }}
+                  />
+                </Dropdown>
+              </span>
             </Flex>
           ) : (
             <Breadcrumb

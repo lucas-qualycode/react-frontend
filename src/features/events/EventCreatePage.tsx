@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined } from '@ant-design/icons'
-import { Button, Flex, Grid, Tooltip, Typography, message } from 'antd'
+import { Breadcrumb, Button, Flex, Grid, Tooltip, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { EventForm } from './components/EventForm'
@@ -36,6 +36,13 @@ export function EventCreatePage() {
 
   return (
     <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
+      <Breadcrumb
+        style={{ marginBottom: 24 }}
+        items={[
+          { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
+          { title: t('events.create.title') },
+        ]}
+      />
       <Flex align="flex-start" justify="space-between" gap={16} style={{ marginBottom: 24, flexWrap: 'wrap' }}>
         <div>
           <Title level={2} style={{ marginBottom: 0 }}>

@@ -1,5 +1,5 @@
 import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
-import { Card, Col, Empty, Flex, Grid, Row, Space, Spin, Tag, Tooltip, Typography, Button } from 'antd'
+import { Breadcrumb, Card, Col, Empty, Flex, Grid, Row, Space, Spin, Tag, Tooltip, Typography, Button } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/app/auth/AuthContext'
@@ -25,6 +25,13 @@ export function UserEventsListPage() {
 
   return (
     <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
+      <Breadcrumb
+        style={{ marginBottom: 24 }}
+        items={[
+          { title: <Link to="/">{t('events.breadcrumb.home')}</Link> },
+          { title: t('userEvents.title') },
+        ]}
+      />
       <Flex align="center" justify="space-between" gap={16} style={{ marginBottom: 24, flexWrap: 'wrap' }}>
         <div>
           <Title level={2} style={{ marginBottom: 0 }}>

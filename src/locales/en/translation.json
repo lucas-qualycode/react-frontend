@@ -94,6 +94,8 @@
     "create": {
       "title": "Create event",
       "subtitle": "Set the core details for your event.",
+      "next": "Next",
+      "back": "Back",
       "submit": "Create"
     },
     "edit": {
@@ -195,16 +197,15 @@
     },
     "schedule": {
       "sectionTitle": "Schedule",
-      "dateRangeLabel": "Event dates",
-      "dateRangeRequired": "Select the start and end dates.",
+      "dateLabel": "Event date",
+      "dateRequired": "Select the event date.",
       "startTimeLabel": "Daily start time",
       "endTimeLabel": "Daily end time",
+      "endTimeBeforeStart": "The end time must be the same as or after the start time.",
       "timeRequired": "Select a time.",
       "timezoneLabel": "Time zone",
       "timezonePlaceholder": "Select a time zone",
       "timezoneRequired": "Select a time zone.",
-      "save": "Save schedule",
-      "saveSuccess": "Schedule saved.",
       "saveError": "Could not save schedule. Please try again.",
       "multipleHint": "This event has more than one schedule in the system. You are editing the earliest one. Contact support if you need to manage additional schedules."
     },

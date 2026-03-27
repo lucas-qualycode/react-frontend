@@ -114,10 +114,12 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 ### Create event (`EventCreatePage` + `EventForm` `mode="create"`)
 
 - **No** cover image block (image is added on **edit** only). **No** full-page **`Spin`** while submitting—only the submit button **`loading`** state.
+- **Section menu** uses **local state only** — no **`?section=`** in the URL (any `section` query is removed on this flow).
+- **Wizard footer:** **Next** validates the current step and advances (**Details** → **Tags & visibility** → **Venue** → **Schedules**). **Back** moves to the previous step without validating. **Create** (`events.create.submit`) appears only on **Schedules** and runs full-form submit (same as before).
 
 ### Edit event (`EventEditPage` + `EventForm` `mode="edit"`)
 
-- **Section menu (URL `?section=`)**: `details` (identity), `tags`, `venue`, `schedule` (schedules: dates, daily times, IANA time zone via `EventScheduleSection`; saved with **Save schedule**, not the main event submit). Create flow shows a hint on **Schedules** until the event exists.
+- **Section menu (URL `?section=`)**: `details` (identity), `tags`, `venue`, `schedule` (single-day schedule: one date, start/end time, IANA time zone on the same `Form` as the event; API stores the same `start_date` and `end_date`). **Save changes** persists event fields and/or schedule when either side is dirty. Create flow shows a hint on **Schedules** until the event exists.
 - **Collapse** (`Venue & location`, **`Media`** for cover): both start **collapsed** on open (`activeKey` initially `undefined`). Validation can open the right panel via `panelKeyByField` (e.g. location fields → `venue`, `imageURL` → `media`).
 - **Unsaved-changes / dirty pattern** (reusable for other edit pages): **`.cursor/rules/react-edit-page-dirty.mdc`**.
 - **“Save changes”** is **disabled** until the form is dirty. Dirty state uses **`Form.useWatch([], form)`** and compares to a baseline; **cover `imageURL` is excluded** from dirty snapshots (`snapshotEventFormValuesForDirty` / `snapshotFromInitialForDirty`) because the image is persisted separately.
@@ -136,7 +138,7 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **Lazy loading**: Heavy pages use `React.lazy` + `SuspensePage` wrapper with a small fallback (`PageFallback` with `Spin`).
 - **Protected areas**: Wrap segments with `ProtectedRoute` where only signed-in users should enter (e.g. organizer flows, settings).
 - **Settings**: `/settings` with `?section=` query (`profile`, `notifications`, `appearance`, `language`, `security`). Legacy paths like `/settings/profile` redirect to `/settings?section=profile`. `/settings/privacy` redirects to `?section=profile` (privacy UI deferred; see repo root `docs/privacy-settings-deferred.md`).
-- **Section menus (mandatory)**: Any in-page section menu or dropdown that switches content on the **same** route must sync the active section to the URL with **query params** (see **`EventForm`** — `section` slugs include `details`, `tags`, `venue`, `schedule` — and **`SettingsLayout`**). Prefer key **`section`** and `replace: true` on updates; normalize invalid params. Add redirects if old path-based URLs existed.
+- **Section menus (mandatory)**: Any in-page section menu or dropdown that switches content on the **same** route must sync the active section to the URL with **query params** (**`SettingsLayout`**, **`EventForm` `mode="edit"`** — slugs `details`, `tags`, `venue`, `schedule`; **create** event form omits URL params). Prefer key **`section`** and `replace: true` on updates; normalize invalid params. Add redirects if old path-based URLs existed.
 - **Breadcrumbs (mandatory)**: Use **`PageBreadcrumbBar`** (`shared/components/PageBreadcrumbBar.tsx`) whenever showing a breadcrumb so the **link icon** (copy full page URL) always appears next to the trail. Do not use raw `Breadcrumb` alone on feature pages.
 
 Cursor rule: **`.cursor/rules/react-nav-menus-and-breadcrumbs.mdc`**.

@@ -94,6 +94,8 @@
     "create": {
       "title": "Criar evento",
       "subtitle": "Defina os detalhes principais do seu evento.",
+      "next": "Avançar",
+      "back": "Voltar",
       "submit": "Criar"
     },
     "edit": {
@@ -195,16 +197,15 @@
     },
     "schedule": {
       "sectionTitle": "Cronograma",
-      "dateRangeLabel": "Datas do evento",
-      "dateRangeRequired": "Selecione as datas de início e fim.",
+      "dateLabel": "Data do evento",
+      "dateRequired": "Selecione a data do evento.",
       "startTimeLabel": "Horário diário de início",
       "endTimeLabel": "Horário diário de fim",
+      "endTimeBeforeStart": "O horário de fim deve ser igual ou posterior ao de início.",
       "timeRequired": "Selecione um horário.",
       "timezoneLabel": "Fuso horário",
       "timezonePlaceholder": "Selecione um fuso horário",
       "timezoneRequired": "Selecione um fuso horário.",
-      "save": "Salvar cronograma",
-      "saveSuccess": "Cronograma salvo.",
       "saveError": "Não foi possível salvar o cronograma. Tente novamente.",
       "multipleHint": "Este evento tem mais de um cronograma no sistema. Você está editando o mais antigo. Entre em contato com o suporte se precisar gerenciar cronogramas adicionais."
     },

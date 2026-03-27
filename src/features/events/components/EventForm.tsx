@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
   Card,
+  DatePicker,
   Dropdown,
   Flex,
   Form,
@@ -20,6 +21,8 @@ import {
   Radio,
   Select,
   Space,
+  Spin,
+  TimePicker,
   TreeSelect,
   Typography,
   message,
@@ -32,10 +35,19 @@ import { ImageEditModal } from '@/shared/components/ImageEditModal'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
-import { useEventTags, useCreateTag, useLocations, useCreateLocation } from '../hooks'
-import { EventScheduleSection } from './EventScheduleSection'
+import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
+import {
+  useCreateSchedule,
+  useCreateTag,
+  useEventSchedules,
+  useEventTags,
+  useLocations,
+  useCreateLocation,
+  useUpdateSchedule,
+} from '../hooks'
 
-import type { Location, Tag as EventTag } from '@/shared/types/api'
+import type { Location, Schedule, Tag as EventTag } from '@/shared/types/api'
 import { updateEvent, type CreateEventPayload, type UpdateEventPayload } from '../api'
 
 type EventFormValues = {
@@ -46,6 +58,10 @@ type EventFormValues = {
   tag_ids: string[]
   is_paid: boolean
   is_online: boolean
+  schedule_date?: Dayjs
+  schedule_start_time?: Dayjs
+  schedule_end_time?: Dayjs
+  schedule_timezone?: string
 }
 
 type EventFormProps = {
@@ -77,9 +93,28 @@ const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
   schedules: 'schedule',
 }
 
+const CREATE_SECTION_ORDER: EventFormSectionKey[] = ['identity', 'tags', 'venue', 'schedules']
+
 function slugToSection(slug: string | null): EventFormSectionKey | null {
   if (!slug) return null
   return SLUG_TO_SECTION[slug] ?? null
+}
+
+function sectionFormPanelMounted(
+  mode: 'create' | 'edit',
+  activeSection: EventFormSectionKey,
+  panel: EventFormSectionKey,
+): boolean {
+  if (mode === 'create') return true
+  return activeSection === panel
+}
+
+function sectionFormPanelHidden(
+  mode: 'create' | 'edit',
+  activeSection: EventFormSectionKey,
+  panel: EventFormSectionKey,
+): boolean {
+  return mode === 'create' && activeSection !== panel
 }
 
 function snapshotEventFormValuesForDirty(v: EventFormValues): string {
@@ -103,6 +138,61 @@ function snapshotFromInitialForDirty(iv: Partial<EventFormValues> & { active?: b
     is_paid: iv.is_paid ?? false,
     is_online: iv.is_online ?? false,
   })
+}
+
+function snapshotScheduleForDirty(v: EventFormValues): string {
+  const d = v.schedule_date
+  const st = v.schedule_start_time
+  const et = v.schedule_end_time
+  const tz = v.schedule_timezone?.trim() ?? ''
+  if (!d || !st || !et || !tz) return ''
+  if (!d.isValid() || !st.isValid() || !et.isValid()) return ''
+  const ymd = d.format('YYYY-MM-DD')
+  return JSON.stringify({
+    start_date: ymd,
+    end_date: ymd,
+    start_time: st.format('HH:mm'),
+    end_time: et.format('HH:mm'),
+    timezone: tz,
+  })
+}
+
+function snapshotScheduleFromLoaded(primary: Schedule | undefined): string {
+  if (!primary) {
+    let browserTz = 'UTC'
+    try {
+      browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    } catch {
+      /* ignore */
+    }
+    return JSON.stringify({
+      start_date: dayjs().format('YYYY-MM-DD'),
+      end_date: dayjs().format('YYYY-MM-DD'),
+      start_time: '09:00',
+      end_time: '17:00',
+      timezone: browserTz,
+    })
+  }
+  const day = primary.start_date
+  return JSON.stringify({
+    start_date: day,
+    end_date: day,
+    start_time: primary.start_time,
+    end_time: primary.end_time,
+    timezone: primary.timezone,
+  })
+}
+
+function listTimeZones(): string[] {
+  try {
+    const iv = Intl as typeof Intl & { supportedValuesOf?: (key: string) => string[] }
+    if (typeof iv.supportedValuesOf === 'function') {
+      return iv.supportedValuesOf('timeZone').slice()
+    }
+  } catch {
+    /* ignore */
+  }
+  return ['UTC', 'America/New_York', 'America/Sao_Paulo', 'Europe/London']
 }
 
 function selectLabelForLocation(loc: Location): string {
@@ -198,10 +288,24 @@ export function EventForm({
   const [venueModalOpen, setVenueModalOpen] = useState(false)
   const [tagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
   const [venueForm] = Form.useForm<{ venue_name: string; formatted_address?: string; maps_url?: string }>()
+  const scheduleBaselineRef = useRef('')
+  const scheduleHydratedKeyRef = useRef('')
+  const createScheduleMutation = useCreateSchedule()
+  const updateScheduleMutation = useUpdateSchedule()
+  const { data: schedules = [], isLoading: schedulesLoading } = useEventSchedules(
+    mode === 'edit' ? eventId : undefined,
+  )
+  const primarySchedule: Schedule | undefined = schedules[0]
+  const tzOptions = useMemo(
+    () => listTimeZones().map((z) => ({ value: z, label: z })),
+    [],
+  )
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeSection = useMemo((): EventFormSectionKey => {
-    return slugToSection(searchParams.get(SECTION_QUERY_PARAM)) ?? 'identity'
-  }, [searchParams])
+  const [createSection, setCreateSection] = useState<EventFormSectionKey>('identity')
+  const activeSection: EventFormSectionKey =
+    mode === 'create'
+      ? createSection
+      : slugToSection(searchParams.get(SECTION_QUERY_PARAM)) ?? 'identity'
   const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
   const screens = Grid.useBreakpoint()
   const compactSectionNav = screens.md === false
@@ -209,6 +313,7 @@ export function EventForm({
   const fieldItemStyle = { marginBottom: 10 } as const
 
   useEffect(() => {
+    if (mode !== 'edit') return
     const slug = searchParams.get(SECTION_QUERY_PARAM)
     if (slugToSection(slug) !== null) return
     setSearchParams(
@@ -219,7 +324,20 @@ export function EventForm({
       },
       { replace: true },
     )
-  }, [searchParams, setSearchParams])
+  }, [mode, searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (mode !== 'create') return
+    if (!searchParams.has(SECTION_QUERY_PARAM)) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete(SECTION_QUERY_PARAM)
+        return next
+      },
+      { replace: true },
+    )
+  }, [mode, searchParams, setSearchParams])
 
   const sectionKeyByField: Record<string, EventFormSectionKey> = {
     name: 'identity',
@@ -229,6 +347,10 @@ export function EventForm({
     tag_ids: 'tags',
     is_paid: 'tags',
     is_online: 'tags',
+    schedule_date: 'schedules',
+    schedule_start_time: 'schedules',
+    schedule_end_time: 'schedules',
+    schedule_timezone: 'schedules',
   }
 
   useEffect(() => {
@@ -281,17 +403,62 @@ export function EventForm({
   }, [mode, eventId, initialValues])
 
   useEffect(() => {
+    scheduleHydratedKeyRef.current = ''
+    scheduleBaselineRef.current = ''
+    if (mode === 'edit') {
+      form.setFieldsValue({
+        schedule_date: undefined,
+        schedule_start_time: undefined,
+        schedule_end_time: undefined,
+        schedule_timezone: undefined,
+      })
+    }
+  }, [eventId, mode, form])
+
+  useEffect(() => {
+    if (mode !== 'edit' || !eventId || schedulesLoading) return
+    const key = `${eventId}:${primarySchedule?.id ?? 'new'}`
+    if (scheduleHydratedKeyRef.current === key) return
+    scheduleHydratedKeyRef.current = key
+    scheduleBaselineRef.current = snapshotScheduleFromLoaded(primarySchedule)
+    if (primarySchedule) {
+      form.setFieldsValue({
+        schedule_date: dayjs(primarySchedule.start_date),
+        schedule_start_time: dayjs(primarySchedule.start_time, 'HH:mm'),
+        schedule_end_time: dayjs(primarySchedule.end_time, 'HH:mm'),
+        schedule_timezone: primarySchedule.timezone,
+      })
+      return
+    }
+    let browserTz = 'UTC'
+    try {
+      browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    } catch {
+      /* ignore */
+    }
+    form.setFieldsValue({
+      schedule_date: dayjs(),
+      schedule_start_time: dayjs('09:00', 'HH:mm'),
+      schedule_end_time: dayjs('17:00', 'HH:mm'),
+      schedule_timezone: browserTz,
+    })
+  }, [mode, eventId, schedulesLoading, primarySchedule?.id, form])
+
+  useEffect(() => {
     if (mode !== 'edit') {
       setIsDirty(false)
       onDirtyChange?.(false)
       return
     }
     if (!onDirtyChange) return
-    const cur = snapshotEventFormValuesForDirty(form.getFieldsValue(true) as EventFormValues)
-    const next = cur !== editBaselineRef.current
+    const raw = form.getFieldsValue(true) as EventFormValues
+    const eventDirty = snapshotEventFormValuesForDirty(raw) !== editBaselineRef.current
+    const scheduleDirty =
+      snapshotScheduleForDirty(raw) !== scheduleBaselineRef.current && scheduleBaselineRef.current !== ''
+    const next = eventDirty || scheduleDirty
     setIsDirty(next)
     onDirtyChange(next)
-  }, [mode, onDirtyChange, allFormValues, eventId, initialValues, form])
+  }, [mode, onDirtyChange, allFormValues, eventId, initialValues, form, schedulesLoading])
 
   const tagTreeData: TreeSelectProps['treeData'] = useMemo(() => {
     if (!tags?.length) return []
@@ -390,8 +557,80 @@ export function EventForm({
 
   async function onFinish(values: EventFormValues) {
     const active = mode === 'create' ? true : (initialValues.active ?? true)
-    const payload = normalizePayload(values, mode, active)
-    await onSubmit(payload)
+    if (mode === 'create') {
+      const payload = normalizePayload(values, mode, active)
+      await onSubmit(payload)
+      return
+    }
+    if (!eventId) return
+
+    const eventPayload = normalizePayload(values, mode, active)
+    const eventDirty = snapshotEventFormValuesForDirty(values) !== editBaselineRef.current
+    const schedSnap = snapshotScheduleForDirty(values)
+    const scheduleDirty =
+      schedSnap !== scheduleBaselineRef.current && scheduleBaselineRef.current !== ''
+
+    if (!eventDirty && !scheduleDirty) {
+      return
+    }
+
+    try {
+      if (scheduleDirty) {
+        const d = values.schedule_date
+        const st = values.schedule_start_time
+        const et = values.schedule_end_time
+        const tz = values.schedule_timezone
+        if (!d || !st || !et || !tz || !d.isValid() || !st.isValid() || !et.isValid()) {
+          message.error(t('events.schedule.saveError'))
+          goToFormSection('schedules')
+          return
+        }
+        const startMin = st.hour() * 60 + st.minute()
+        const endMin = et.hour() * 60 + et.minute()
+        if (endMin < startMin) {
+          message.error(t('events.schedule.endTimeBeforeStart'))
+          goToFormSection('schedules')
+          return
+        }
+        const start_date = d.format('YYYY-MM-DD')
+        const end_date = start_date
+        const start_time = st.format('HH:mm')
+        const end_time = et.format('HH:mm')
+        if (primarySchedule) {
+          await updateScheduleMutation.mutateAsync({
+            scheduleId: primarySchedule.id,
+            eventId,
+            payload: {
+              start_date,
+              end_date,
+              start_time,
+              end_time,
+              timezone: tz,
+            },
+          })
+        } else {
+          await createScheduleMutation.mutateAsync({
+            event_id: eventId,
+            start_date,
+            end_date,
+            start_time,
+            end_time,
+            timezone: tz,
+            status: 'active',
+            exclusions: [],
+          })
+        }
+        scheduleBaselineRef.current = schedSnap
+      }
+      if (eventDirty) {
+        await onSubmit(eventPayload)
+      } else if (scheduleDirty) {
+        message.success(t('events.edit.saveSuccess'))
+      }
+    } catch (e) {
+      const text = e instanceof Error ? e.message : t('events.form.submitError')
+      message.error(text)
+    }
   }
 
   async function performEventImageUpload(file: File) {
@@ -475,16 +714,53 @@ export function EventForm({
     [t]
   )
 
-  const onSectionMenuSelect = (key: string) => {
-    if (key !== 'identity' && key !== 'venue' && key !== 'tags' && key !== 'schedules') return
+  function goToFormSection(sectionKey: EventFormSectionKey) {
+    if (mode === 'create') {
+      setCreateSection(sectionKey)
+      return
+    }
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
-        next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG[key])
+        next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG[sectionKey])
         return next
       },
       { replace: true },
     )
+  }
+
+  const onSectionMenuSelect = (key: string) => {
+    if (key !== 'identity' && key !== 'venue' && key !== 'tags' && key !== 'schedules') return
+    goToFormSection(key as EventFormSectionKey)
+  }
+
+  function goToPrevCreateSection() {
+    if (mode !== 'create') return
+    const idx = CREATE_SECTION_ORDER.indexOf(activeSection)
+    if (idx <= 0) return
+    setCreateSection(CREATE_SECTION_ORDER[idx - 1])
+  }
+
+  async function goToNextCreateSection() {
+    if (mode !== 'create') return
+    const idx = CREATE_SECTION_ORDER.indexOf(activeSection)
+    if (idx < 0 || idx >= CREATE_SECTION_ORDER.length - 1) return
+    try {
+      if (activeSection === 'identity') {
+        await form.validateFields(['name', 'description'])
+      } else if (activeSection === 'tags') {
+        await form.validateFields(['tag_ids', 'is_paid', 'is_online'])
+      } else if (activeSection === 'venue') {
+        await form.validateFields(['location_id'])
+      }
+      const ae = document.activeElement
+      if (ae instanceof HTMLElement) {
+        ae.blur()
+      }
+      setCreateSection(CREATE_SECTION_ORDER[idx + 1])
+    } catch {
+      /* field errors */
+    }
   }
 
   return (
@@ -503,15 +779,7 @@ export function EventForm({
                 ? raw
                 : null
           if (typeof first === 'string' && sectionKeyByField[first]) {
-            const sk = sectionKeyByField[first]
-            setSearchParams(
-              (prev) => {
-                const next = new URLSearchParams(prev)
-                next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG[sk])
-                return next
-              },
-              { replace: true },
-            )
+            goToFormSection(sectionKeyByField[first])
           }
         }}
         initialValues={{
@@ -545,8 +813,11 @@ export function EventForm({
                 <Input />
               </Form.Item>
 
-              {activeSection === 'identity' ? (
-            <div style={{ width: '100%' }}>
+              {sectionFormPanelMounted(mode, activeSection, 'identity') ? (
+            <div
+              hidden={sectionFormPanelHidden(mode, activeSection, 'identity')}
+              style={{ width: '100%' }}
+            >
               <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
                 {t('events.form.sectionIdentity')}
               </Typography.Title>
@@ -656,8 +927,11 @@ export function EventForm({
             </div>
               ) : null}
 
-              {activeSection === 'tags' ? (
-            <div style={{ width: '100%' }}>
+              {sectionFormPanelMounted(mode, activeSection, 'tags') ? (
+            <div
+              hidden={sectionFormPanelHidden(mode, activeSection, 'tags')}
+              style={{ width: '100%' }}
+            >
               <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div style={{ width: '100%' }}>
                   <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
@@ -738,8 +1012,11 @@ export function EventForm({
             </div>
               ) : null}
 
-              {activeSection === 'venue' ? (
-            <div style={{ width: '100%' }}>
+              {sectionFormPanelMounted(mode, activeSection, 'venue') ? (
+            <div
+              hidden={sectionFormPanelHidden(mode, activeSection, 'venue')}
+              style={{ width: '100%' }}
+            >
               <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
                 {t('events.form.sectionVenue')}
               </Typography.Title>
@@ -796,32 +1073,151 @@ export function EventForm({
             </div>
               ) : null}
 
-              {activeSection === 'schedules' ? (
-                <div style={{ width: '100%' }}>
+              {sectionFormPanelMounted(mode, activeSection, 'schedules') ? (
+                <div
+                  hidden={sectionFormPanelHidden(mode, activeSection, 'schedules')}
+                  style={{ width: '100%' }}
+                >
+                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                    {t('events.schedule.sectionTitle')}
+                  </Typography.Title>
                   {mode === 'edit' && eventId ? (
-                    <EventScheduleSection eventId={eventId} />
+                    schedulesLoading ? (
+                      <Spin />
+                    ) : (
+                      <>
+                        {schedules.length > 1 ? (
+                          <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+                            {t('events.schedule.multipleHint')}
+                          </Typography.Paragraph>
+                        ) : null}
+                        <Form.Item
+                          style={fieldItemStyle}
+                          name="schedule_date"
+                          label={t('events.schedule.dateLabel')}
+                          rules={[{ required: true, message: t('events.schedule.dateRequired') }]}
+                        >
+                          <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                        </Form.Item>
+                        <Form.Item
+                          style={fieldItemStyle}
+                          name="schedule_start_time"
+                          label={t('events.schedule.startTimeLabel')}
+                          dependencies={['schedule_end_time']}
+                          rules={[
+                            {
+                              validator: async (_: unknown, value: Dayjs | undefined) => {
+                                const et = form.getFieldValue('schedule_end_time') as Dayjs | undefined
+                                if (!value?.isValid() || !et?.isValid()) return
+                                const a = value.hour() * 60 + value.minute()
+                                const b = et.hour() * 60 + et.minute()
+                                if (b < a) {
+                                  throw new Error(t('events.schedule.endTimeBeforeStart'))
+                                }
+                              },
+                            },
+                          ]}
+                        >
+                          <TimePicker
+                            needConfirm={false}
+                            format="HH:mm"
+                            style={{ width: '100%' }}
+                            minuteStep={1}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          style={fieldItemStyle}
+                          name="schedule_end_time"
+                          label={t('events.schedule.endTimeLabel')}
+                          dependencies={['schedule_start_time']}
+                          rules={[
+                            {
+                              validator: async (_: unknown, value: Dayjs | undefined) => {
+                                const st = form.getFieldValue('schedule_start_time') as Dayjs | undefined
+                                if (!st?.isValid() || !value?.isValid()) return
+                                const a = st.hour() * 60 + st.minute()
+                                const b = value.hour() * 60 + value.minute()
+                                if (b < a) {
+                                  throw new Error(t('events.schedule.endTimeBeforeStart'))
+                                }
+                              },
+                            },
+                          ]}
+                        >
+                          <TimePicker
+                            needConfirm={false}
+                            format="HH:mm"
+                            style={{ width: '100%' }}
+                            minuteStep={1}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          style={fieldItemStyle}
+                          name="schedule_timezone"
+                          label={t('events.schedule.timezoneLabel')}
+                        >
+                          <Select
+                            showSearch
+                            allowClear={false}
+                            optionFilterProp="label"
+                            options={tzOptions}
+                            style={{ width: '100%' }}
+                            placeholder={t('events.schedule.timezonePlaceholder')}
+                          />
+                        </Form.Item>
+                      </>
+                    )
                   ) : (
-                    <>
-                      <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
-                        {t('events.schedule.sectionTitle')}
-                      </Typography.Title>
-                      <Typography.Text type="secondary" style={{ display: 'block' }}>
-                        {t('events.form.scheduleAfterCreateHint')}
-                      </Typography.Text>
-                    </>
+                    <Typography.Text type="secondary" style={{ display: 'block' }}>
+                      {t('events.form.scheduleAfterCreateHint')}
+                    </Typography.Text>
                   )}
                 </div>
               ) : null}
 
-              <Form.Item style={{ marginBottom: 0, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={submitLoading}
-                  disabled={mode === 'edit' && !isDirty}
-                >
-                  {mode === 'create' ? t('events.create.submit') : t('events.edit.submit')}
-                </Button>
+              <Form.Item style={{ marginBottom: 0 }}>
+                {mode === 'create' ? (
+                  <Flex justify="flex-end" gap={8} wrap="wrap" style={{ width: '100%' }}>
+                    {activeSection !== 'identity' ? (
+                      <Button htmlType="button" onClick={goToPrevCreateSection}>
+                        {t('events.create.back')}
+                      </Button>
+                    ) : null}
+                    {activeSection !== 'schedules' ? (
+                      <Button
+                        type="primary"
+                        htmlType="button"
+                        onClick={() => void goToNextCreateSection()}
+                      >
+                        {t('events.create.next')}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="primary"
+                        htmlType="button"
+                        loading={submitLoading}
+                        onClick={() => void form.submit()}
+                      >
+                        {t('events.create.submit')}
+                      </Button>
+                    )}
+                  </Flex>
+                ) : (
+                  <Flex justify="flex-end" style={{ width: '100%' }}>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={
+                        submitLoading ||
+                        createScheduleMutation.isPending ||
+                        updateScheduleMutation.isPending
+                      }
+                      disabled={!isDirty}
+                    >
+                      {t('events.edit.submit')}
+                    </Button>
+                  </Flex>
+                )}
               </Form.Item>
             </Card>
 

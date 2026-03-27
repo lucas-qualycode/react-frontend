@@ -32,7 +32,7 @@ Order in `src/main.tsx`:
 1. `QueryClientProvider`
 2. `AuthProvider` (`AuthContext`)
 3. `AppearanceThemeProvider` (Ant `ConfigProvider` + theme + **locale** + `document.documentElement.lang`; appearance + **i18n** sync from user profile when signed in)
-4. `RouterProvider` with router from `src/app/routes`
+4. `RouterProvider` with router from `@/app/routes/index` in `main.tsx`
 
 ---
 

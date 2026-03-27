@@ -1,61 +1,58 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { Alert, Button, Card, Divider, Form, Input, Layout, message, Space, Typography } from 'antd'
+import { message } from 'antd'
 import { z } from 'zod'
 import type { OAuthCredential } from 'firebase/auth'
+import { Alert, Button, Card, Divider, Form, Input, Layout, Space, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
-import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
+import { AuthFooterLink } from '../AuthFooterLink'
 import { GoogleOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons'
 
-function buildSignUpSchema(t: (key: string) => string) {
-  return z
-    .object({
-      email: z.string().min(1, t('auth.validation.emailRequired')).email(t('auth.validation.emailInvalid')),
-      password: z.string().min(6, t('auth.validation.passwordMin')),
-      confirmPassword: z.string().min(1, t('auth.signUp.confirmPasswordRequired')),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: t('auth.signUp.passwordsMismatch'),
-      path: ['confirmPassword'],
-    })
+type SignInFormValues = z.infer<ReturnType<typeof buildSignInSchema>>
+
+function buildSignInSchema(t: (key: string) => string) {
+  return z.object({
+    email: z.string().min(1, t('auth.validation.emailRequired')).email(t('auth.validation.emailInvalid')),
+    password: z.string().min(6, t('auth.validation.passwordMin')),
+  })
 }
 
-type SignUpFormValues = z.infer<ReturnType<typeof buildSignUpSchema>>
-
-function getSignUpErrorMessage(err: unknown, t: (key: string) => string): string {
+function getAuthErrorMessage(err: unknown, t: (key: string) => string): string {
   const code =
     err && typeof err === 'object' && 'code' in err
       ? (err as { code: string }).code
       : ''
   const messages: Record<string, string> = {
-    'auth/email-already-in-use': t('auth.signUp.errors.emailInUse'),
+    'auth/invalid-credential': t('auth.errors.invalidCredential'),
     'auth/invalid-email': t('auth.errors.invalidEmail'),
-    'auth/weak-password': t('auth.signUp.errors.weakPassword'),
+    'auth/user-disabled': t('auth.errors.userDisabled'),
+    'auth/user-not-found': t('auth.errors.userNotFound'),
+    'auth/wrong-password': t('auth.errors.wrongPassword'),
     'auth/too-many-requests': t('auth.errors.tooManyRequests'),
     'auth/network-request-failed': t('auth.errors.network'),
     'auth/popup-closed-by-user': t('auth.errors.popupClosed'),
     'auth/popup-blocked': t('auth.errors.popupBlocked'),
   }
-  return messages[code] ?? (err instanceof Error ? err.message : t('auth.signUp.errors.generic'))
+  return messages[code] ?? (err instanceof Error ? err.message : t('auth.errors.generic'))
 }
 
 type PendingLink = { email: string; credential: OAuthCredential }
 
-export function SignUpPage() {
+export function SignInPage() {
   const { t } = useTranslation()
-  const { user, signUp, signInWithGoogle, signIn, linkWithCredential } = useAuth()
+  const { user, signIn, signInWithGoogle, linkWithCredential } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const [form] = Form.useForm<SignUpFormValues>()
+  const [form] = Form.useForm<SignInFormValues>()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [linkLoading, setLinkLoading] = useState(false)
   const [pendingLink, setPendingLink] = useState<PendingLink | null>(null)
   const [linkPassword, setLinkPassword] = useState('')
 
-  const signUpSchema = useMemo(() => buildSignUpSchema(t), [t])
+  const signInSchema = useMemo(() => buildSignInSchema(t), [t])
 
   const from = (location.state as { from?: { pathname: string } })?.from
   const redirectTo = from?.pathname ?? '/'
@@ -64,14 +61,13 @@ export function SignUpPage() {
     return <Navigate to={redirectTo} replace />
   }
 
-  async function onFinish(values: SignUpFormValues) {
+  async function onFinish(values: SignInFormValues) {
     setIsSubmitting(true)
     try {
-      await signUp(values.email, values.password)
-      message.success(t('auth.signUp.success', { email: values.email }))
+      await signIn(values.email, values.password)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      message.error(getSignUpErrorMessage(err, t))
+      message.error(getAuthErrorMessage(err, t))
     } finally {
       setIsSubmitting(false)
     }
@@ -89,7 +85,7 @@ export function SignUpPage() {
           credential: (err as { credential?: OAuthCredential }).credential!,
         })
       } else {
-        message.error(getSignUpErrorMessage(err, t))
+        message.error(getAuthErrorMessage(err, t))
       }
     } finally {
       setGoogleLoading(false)
@@ -105,7 +101,7 @@ export function SignUpPage() {
       await linkWithCredential(pendingLink.credential)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      message.error(getSignUpErrorMessage(err, t))
+      message.error(getAuthErrorMessage(err, t))
     } finally {
       setLinkLoading(false)
     }
@@ -115,7 +111,7 @@ export function SignUpPage() {
   const { Title, Text } = Typography
   return (
     <Content style={{ padding: 32, maxWidth: 384, margin: '0 auto', width: '100%' }}>
-      <Title level={2}>{t('auth.signUp.title')}</Title>
+      <Title level={2}>{t('auth.signIn.title')}</Title>
       {pendingLink ? (
         <Card style={{ marginTop: 24 }}>
           <Alert
@@ -162,15 +158,9 @@ export function SignUpPage() {
             layout="vertical"
             style={{ marginTop: 24 }}
             onFinish={(values) => {
-              const parsed = signUpSchema.safeParse(values)
+              const parsed = signInSchema.safeParse(values)
               if (parsed.success) onFinish(parsed.data)
-              else
-                form.setFields(
-                  parsed.error.issues.map((issue) => ({
-                    name: issue.path[0] as 'email' | 'password' | 'confirmPassword',
-                    errors: [issue.message],
-                  }))
-                )
+              else form.setFields(parsed.error.issues.map((issue) => ({ name: issue.path[0] as 'email' | 'password', errors: [issue.message] })))
             }}
           >
             <Form.Item
@@ -187,31 +177,15 @@ export function SignUpPage() {
               name="password"
               label={t('auth.signIn.password')}
               rules={[
-                { required: true, message: t('auth.signUp.passwordRequired') },
+                { required: true, message: t('auth.signIn.passwordRequired') },
                 { min: 6, message: t('auth.validation.passwordMin') },
               ]}
             >
-              <Input.Password autoComplete="new-password" />
+              <Input.Password autoComplete="current-password" />
             </Form.Item>
-            <Form.Item
-              name="confirmPassword"
-              label={t('auth.signUp.confirmPassword')}
-              dependencies={['password']}
-              rules={[
-                { required: true, message: t('auth.signUp.confirmPasswordRequired') },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue('password') === value) return Promise.resolve()
-                    return Promise.reject(new Error(t('auth.signUp.passwordsMismatch')))
-                  },
-                }),
-              ]}
-            >
-              <Input.Password autoComplete="new-password" />
-            </Form.Item>
-            <Form.Item style={{ marginTop: 24 }}>
+            <Form.Item style={{ marginTop: 35 }}>
               <Button type="primary" htmlType="submit" loading={isSubmitting} block>
-                {t('auth.signUp.submit')}
+                {t('auth.signIn.submit')}
               </Button>
             </Form.Item>
           </Form>
@@ -223,27 +197,27 @@ export function SignUpPage() {
               block
               loading={googleLoading}
               onClick={onGoogleClick}
-              aria-label={googleLoading ? t('auth.signUp.googleAriaLoading') : t('auth.signUp.googleAria')}
+              aria-label={googleLoading ? t('auth.signIn.googleAriaLoading') : t('auth.signIn.googleAria')}
               icon={<GoogleOutlined style={{ fontSize: 20 }} />}
             >
-              {t('auth.signUp.google')}
+              {t('auth.signIn.google')}
             </Button>
             <Link to="/signin/link" state={location.state} style={{ display: 'block' }}>
               <Button type="default" block icon={<MailOutlined style={{ fontSize: 20 }} />}>
-                {t('auth.signUp.emailLink')}
+                {t('auth.signIn.emailLink')}
               </Button>
             </Link>
             <Link to="/signin/phone" state={location.state} style={{ display: 'block' }}>
               <Button type="default" block icon={<PhoneOutlined style={{ fontSize: 20 }} />}>
-                {t('auth.signUp.phone')}
+                {t('auth.signIn.phone')}
               </Button>
             </Link>
           </Space>
 
           <Divider />
           <Text style={{ display: 'block', textAlign: 'center' }}>
-            {t('auth.signUp.hasAccount')}{' '}
-            <AuthFooterLink to="/signin">{t('auth.signUp.signInLink')}</AuthFooterLink>
+            {t('auth.signIn.noAccount')}{' '}
+            <AuthFooterLink to="/signup">{t('auth.signIn.signUp')}</AuthFooterLink>
           </Text>
         </>
       )}

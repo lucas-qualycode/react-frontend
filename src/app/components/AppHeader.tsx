@@ -4,16 +4,14 @@ import { Avatar, Button, Dropdown, Flex, Grid, Input, Popover, Tooltip, theme } 
 import type { MenuProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
-import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
+import { AuthFooterLink } from '@/features/auth'
 import {
   CalendarOutlined,
-  HeartOutlined,
   LoginOutlined,
   LogoutOutlined,
   MenuOutlined,
   SearchOutlined,
   SettingOutlined,
-  ShoppingCartOutlined,
   UserAddOutlined,
 } from '@ant-design/icons'
 
@@ -27,8 +25,6 @@ export function AppHeader() {
     () =>
       [
         { to: '/user-events' as const, labelKey: 'shell.myEvents' as const, icon: CalendarOutlined },
-        { to: '/favorites' as const, labelKey: 'shell.favorites' as const, icon: HeartOutlined },
-        { to: '/orders' as const, labelKey: 'shell.cart' as const, icon: ShoppingCartOutlined },
       ] as const,
     []
   )
@@ -110,12 +106,6 @@ export function AppHeader() {
   ]
 
   const unauthMenuItems: MenuProps['items'] = [
-    {
-      key: 'favorites',
-      icon: <HeartOutlined />,
-      label: t('shell.favorites'),
-      onClick: () => navigate('/favorites'),
-    },
     {
       key: 'signin',
       icon: <LoginOutlined />,
@@ -219,7 +209,6 @@ export function AppHeader() {
           )}
           {navIcons.map(({ to, labelKey, icon: Icon }) => {
             if (!user && to === '/user-events') return null
-            if (!user && signedOutNarrow && to === '/favorites') return null
             return (
               <Tooltip key={to} title={t(labelKey)} placement="bottom">
                 <span style={{ display: 'inline-flex' }}>

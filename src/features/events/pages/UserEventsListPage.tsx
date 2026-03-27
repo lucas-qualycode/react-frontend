@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/app/auth/AuthContext'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
-import { useUserEvents } from './hooks'
+import { useUserEvents } from '../hooks'
 
 const { Title, Text } = Typography
 

@@ -3,9 +3,9 @@ import { Button, Flex, Grid, Tooltip, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
-import { EventForm } from './components/EventForm'
-import { useCreateEvent } from './hooks'
-import { type CreateEventPayload, type UpdateEventPayload } from './api'
+import { EventForm } from '../components/EventForm'
+import { useCreateEvent } from '../hooks'
+import { type CreateEventPayload, type UpdateEventPayload } from '../api'
 
 const { Title, Text } = Typography
 

@@ -2,7 +2,7 @@ import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Modal, Spin, Tag, Typography, message, Space } from 'antd'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useDeleteEvent, useEvent } from './hooks'
+import { useDeleteEvent, useEvent } from '../hooks'
 import type { Event } from '@/shared/types/api'
 
 const { Title, Text, Paragraph } = Typography
@@ -144,20 +144,6 @@ export function EventDetailPage() {
                     <Tag key={tg.id}>{tg.name}</Tag>
                   ))}
                 </Flex>
-              </Flex>
-
-              <Flex gap={12} wrap style={{ marginTop: 12 }}>
-                <Link to={`/events/${event.id}/schedules`}>
-                  <Button>{t('events.detail.goToSchedules')}</Button>
-                </Link>
-                <Link to={`/events/${event.id}/products`}>
-                  <Button>{t('events.detail.goToProducts')}</Button>
-                </Link>
-                <Link to={`/events/${event.id}/products`}>
-                  <Button type="default" disabled>
-                    {t('events.detail.goToInvitations')}
-                  </Button>
-                </Link>
               </Flex>
             </Flex>
           </Flex>

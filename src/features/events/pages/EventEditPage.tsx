@@ -5,9 +5,9 @@ import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link, useBlocker, useParams } from 'react-router-dom'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
-import { EventForm } from './components/EventForm'
-import { useEvent, useUpdateEvent } from './hooks'
-import type { UpdateEventPayload } from './api'
+import { EventForm } from '../components/EventForm'
+import { useEvent, useUpdateEvent } from '../hooks'
+import type { UpdateEventPayload } from '../api'
 
 const { Title, Text } = Typography
 

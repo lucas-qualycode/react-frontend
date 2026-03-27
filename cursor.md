@@ -9,7 +9,7 @@ Reference for the **react-frontend** app: stack, structure, patterns, and conven
 | Area | Choice | Notes |
 |------|--------|--------|
 | **Build** | Vite + TypeScript | `vite.config.ts`, path alias `@/` → `src/`. |
-| **Routing** | `react-router-dom` v7 | `createBrowserRouter` + `RouterProvider`; definitions in `src/app/routes.tsx`. |
+| **Routing** | `react-router-dom` v7 | `createBrowserRouter` + `RouterProvider`; entry `src/app/routes/index.tsx`, segments in `src/app/routes/*.tsx`. |
 | **Server/API state** | TanStack Query (React Query) | API data: cache, loading, error, refetch. Prefer hooks over ad-hoc global server state. |
 | **Client state** | React state or Zustand | Zustand for cross-cutting client state (e.g. `shared/stores/guestListStore.ts`, `shared/stores/screenLoaderStore.ts`). |
 | **Forms** | Ant Design `Form`, `react-hook-form`, Zod | Use what fits the screen: Ant Form with Zod where validation is centralized; `react-hook-form` + `@hookform/resolvers` + Zod where that pattern is already used. |
@@ -32,7 +32,7 @@ Order in `src/main.tsx`:
 1. `QueryClientProvider`
 2. `AuthProvider` (`AuthContext`)
 3. `AppearanceThemeProvider` (Ant `ConfigProvider` + theme + **locale** + `document.documentElement.lang`; appearance + **i18n** sync from user profile when signed in)
-4. `RouterProvider` with router from `src/app/routes.tsx`
+4. `RouterProvider` with router from `src/app/routes`
 
 ---
 
@@ -55,34 +55,29 @@ src/
   i18n/                   # i18next init, storage key, supported locale helpers
   locales/                # translation JSON per language
   app/
-    routes.tsx              # createBrowserRouter, lazy routes, Suspense fallbacks
+    routes/                 # index.tsx (createBrowserRouter), shell, auth/events/settings/home route modules
+    auth/                   # AuthContext (and related) lives here
     Layout.tsx              # Ant layout, AppHeader, Outlet, ScreenLoader
     ProtectedRoute.tsx      # auth gate; loading Spin; redirect to /signin
-    AuthContext.tsx
     AppearanceThemeProvider.tsx
     antdTheme.ts
     firebase.ts
     appearance/             # mergeAppearancePreferences, storage keys
     components/             # AppHeader, ScreenLoader, …
   features/
-    auth/                   # SignIn, SignUp, email link, phone, AuthComplete, …
+    auth/                   # index.ts (AuthFooterLink); pages/ lazy-loaded from app/routes
     home/
-    events/                 # list, create, detail, schedules, products, invitations, user products, …
-    invitations/            # public invitation flows (view, confirmed, declined, expired)
-    settings/               # SettingsPage, sections (profile, notifications, appearance, language, security), api/hooks/types
-    orders/
-    payment/
-    tickets/
-    favorites/
+    events/                 # index.ts (api, hooks); pages/ lazy-loaded; components/EventForm
+    settings/               # SettingsLayout, sections, api/hooks/types
   shared/
     api/client.ts
     stores/                 # guestListStore, screenLoaderStore
-    components/, hooks/, utils/, types/
+    components/, types/     # api.ts types (no barrel); add hooks/utils when needed
   assets/
 ```
 
 - **`app/`**: Shell, routing, auth, theme, shared layout components.
-- **`features/`**: Own components, hooks, API hooks, types. Prefer `shared/` for generic reuse; avoid importing another feature’s internals.
+- **`features/`**: Own components, hooks, API hooks, types. Prefer `shared/` for generic reuse; avoid importing another feature’s internals. Agent-facing conventions for new pages, route modules, and barrels: **`.cursor/rules/react-frontend-feature-structure.mdc`** (repo root).
 - **`shared/`**: API client, stores, cross-feature utilities. **`ImageEditModal`** (`shared/components/ImageEditModal.tsx`): Firebase upload + remove in a modal; profile uses `avatars/{uid}/…` and persists photo via profile PATCH immediately; event **edit** uses `event-images/{uid}/{eventId}/…` then **`updateEvent`** immediately (same pattern as profile), not on “Save changes”.
 
 Tests: colocate `*.test.ts(x)` or `__tests__/` next to source.
@@ -188,7 +183,7 @@ For `src/app/components/AppHeader.tsx`:
 1. Add `features/<feature>/` with `components/`, `hooks/`, `api` helpers, `types.ts` as needed.
 2. **Strings**: Add English and Portuguese keys under `src/locales/{en,pt-BR}/translation.json` and use `useTranslation()` in UI. Do not merge user-visible copy without both locales.
 3. Wire API through `fetchApi` and TanStack Query; reuse auth and env patterns from existing features.
-4. Register routes in `app/routes.tsx` with `lazy` where appropriate.
+4. Register routes in `app/routes/` (e.g. `eventsRoutes.tsx`) with `lazy` where appropriate.
 5. Update this file if you add a library or change global patterns.
 
 ---

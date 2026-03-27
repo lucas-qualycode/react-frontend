@@ -5,7 +5,7 @@ import type { OAuthCredential } from 'firebase/auth'
 import { Alert, Button, Card, Divider, Form, Input, Layout, Space, Typography } from 'antd'
 import { useAuth } from '@/app/auth/AuthContext'
 import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
-import { AuthFooterLink } from '@/features/auth/AuthFooterLink'
+import { AuthFooterLink } from '../AuthFooterLink'
 import { GoogleOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons'
 
 type PendingLink = { email: string; credential: OAuthCredential }

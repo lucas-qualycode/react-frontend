@@ -83,7 +83,7 @@ src/
 
 - **`app/`**: Shell, routing, auth, theme, shared layout components.
 - **`features/`**: Own components, hooks, API hooks, types. Prefer `shared/` for generic reuse; avoid importing another feature’s internals.
-- **`shared/`**: API client, stores, cross-feature utilities. **`ImageEditModal`** (`shared/components/ImageEditModal.tsx`): Firebase upload + remove in a modal; profile uses `avatars/{uid}/…`, event form uses `event-images/{uid}/…` (same `settingsStorage` as settings).
+- **`shared/`**: API client, stores, cross-feature utilities. **`ImageEditModal`** (`shared/components/ImageEditModal.tsx`): Firebase upload + remove in a modal; profile uses `avatars/{uid}/…` and persists photo via profile PATCH immediately; event **edit** uses `event-images/{uid}/{eventId}/…` then **`updateEvent`** immediately (same pattern as profile), not on “Save changes”.
 
 Tests: colocate `*.test.ts(x)` or `__tests__/` next to source.
 
@@ -109,6 +109,31 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 
 ---
 
+## Events (my events, create, edit)
+
+### My events list (`features/events/UserEventsListPage.tsx`)
+
+- Card **click** navigates to **edit** (`/events/:id/edit`). **View** / **edit** icon buttons use **`Tooltip`** + **`aria-label`** (`userEvents.viewTooltip`, `userEvents.editTooltip`, and aria keys with event name). See **`.cursor/rules/react-icon-only-tooltip.mdc`**.
+- Header row: **name** (left), **active** tag + **actions** (right). **Cover** image below; **created** date under the image only (no location on the list card).
+
+### Create event (`EventCreatePage` + `EventForm` `mode="create"`)
+
+- **No** cover image block (image is added on **edit** only). **No** full-page **`Spin`** while submitting—only the submit button **`loading`** state.
+
+### Edit event (`EventEditPage` + `EventForm` `mode="edit"`)
+
+- **Collapse** (`Venue & location`, **`Media`** for cover): both start **collapsed** on open (`activeKey` initially `undefined`). Validation can open the right panel via `panelKeyByField` (e.g. location fields → `venue`, `imageURL` → `media`).
+- **Unsaved-changes / dirty pattern** (reusable for other edit pages): **`.cursor/rules/react-edit-page-dirty.mdc`**.
+- **“Save changes”** is **disabled** until the form is dirty. Dirty state uses **`Form.useWatch([], form)`** and compares to a baseline; **cover `imageURL` is excluded** from dirty snapshots (`snapshotEventFormValuesForDirty` / `snapshotFromInitialForDirty`) because the image is persisted separately.
+- **Cover image**: after Firebase upload, call **`updateEvent`**, then **`queryClient.setQueryData(['event', eventId], updated)`** and **`invalidateQueries`** for `userEvents`. Clearing the image uses **`updateEvent` with `imageURL: null`** (JSON must include `null`, not omit the field). Toasts: `events.form.imageUpdated` / `events.form.imageRemoved`. Do not reset the whole form on every cache bump: **sync `setFieldsValue` from `initialValues` on edit only when `eventId` changes**, not on every `initialValues` reference change.
+- **Leave guard**: `useBlocker(formDirty)`, `beforeunload` when dirty, Ant **`modal.confirm`** for in-app navigation. After a **successful** main-form save, use **`flushSync(() => setFormDirty(false))`** before **`navigate(...)`** so programmatic navigation is not blocked while `formDirty` is still true.
+
+### API types (`features/events/api.ts`)
+
+- **`UpdateEventPayload.imageURL`**: `string | null` so the client can **clear** the server field with `"imageURL": null` in the PATCH body.
+
+---
+
 ## Routing
 
 - **Router**: `createBrowserRouter` in `routes.tsx` with nested routes under `Layout`.
@@ -128,6 +153,7 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **Code splitting**: Route-level `lazy()` imports in `routes.tsx`.
 - **TypeScript**: Strict; feature types in `features/<name>/types.ts` or colocated.
 - **i18n**: Follow **[Internationalization (i18n)](#internationalization-i18n)** for all new and changed UI copy.
+- **Icon-only controls**: **`.cursor/rules/react-icon-only-tooltip.mdc`** — `Tooltip` + `t()` + `aria-label`; optional `<span style={{ display: 'inline-flex' }}>` for `Link` / `Dropdown` triggers.
 
 ---
 

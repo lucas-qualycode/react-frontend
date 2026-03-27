@@ -174,7 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = auth.currentUser
       if (!u) throw new Error('Must be signed in.')
       const continueUrl =
-        typeof window !== 'undefined' ? `${window.location.origin}/settings/security` : ''
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/settings?section=security`
+          : ''
       await verifyBeforeUpdateEmail(u, newEmail, {
         url: continueUrl,
         handleCodeInApp: false,
@@ -221,7 +223,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentUser = auth.currentUser
     if (!currentUser) throw new Error('Must be signed in.')
     const continueUrl =
-      typeof window !== 'undefined' ? `${window.location.origin}/settings/security` : ''
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/settings?section=security`
+        : ''
     await sendEmailVerification(currentUser, {
       url: continueUrl,
       handleCodeInApp: false,

@@ -133,31 +133,6 @@ const SettingsLayout = lazy(() =>
     default: m.SettingsLayout,
   }))
 )
-const ProfileSettingsSection = lazy(() =>
-  import('@/features/settings/sections/ProfileSettingsSection').then((m) => ({
-    default: m.ProfileSettingsSection,
-  }))
-)
-const NotificationsSettingsSection = lazy(() =>
-  import('@/features/settings/sections/NotificationsSettingsSection').then((m) => ({
-    default: m.NotificationsSettingsSection,
-  }))
-)
-const LanguageRegionSettingsSection = lazy(() =>
-  import('@/features/settings/sections/LanguageRegionSettingsSection').then((m) => ({
-    default: m.LanguageRegionSettingsSection,
-  }))
-)
-const AppearanceSettingsSection = lazy(() =>
-  import('@/features/settings/sections/AppearanceSettingsSection').then((m) => ({
-    default: m.AppearanceSettingsSection,
-  }))
-)
-const SecuritySettingsSection = lazy(() =>
-  import('@/features/settings/sections/SecuritySettingsSection').then((m) => ({
-    default: m.SecuritySettingsSection,
-  }))
-)
 
 function PageFallback() {
   return (
@@ -318,60 +293,40 @@ export const router = createBrowserRouter([
         element: <Protected><OrdersPage /></Protected>,
       },
       {
+        path: 'settings/privacy',
+        element: <Navigate to={{ pathname: '/settings', search: '?section=profile' }} replace />,
+      },
+      {
+        path: 'settings/profile',
+        element: <Navigate to={{ pathname: '/settings', search: '?section=profile' }} replace />,
+      },
+      {
+        path: 'settings/notifications',
+        element: <Navigate to={{ pathname: '/settings', search: '?section=notifications' }} replace />,
+      },
+      {
+        path: 'settings/appearance',
+        element: <Navigate to={{ pathname: '/settings', search: '?section=appearance' }} replace />,
+      },
+      {
+        path: 'settings/language',
+        element: <Navigate to={{ pathname: '/settings', search: '?section=language' }} replace />,
+      },
+      {
+        path: 'settings/security',
+        element: <Navigate to={{ pathname: '/settings', search: '?section=security' }} replace />,
+      },
+      {
+        path: 'settings/*',
+        element: <Navigate to={{ pathname: '/settings', search: '?section=profile' }} replace />,
+      },
+      {
         path: 'settings',
         element: (
           <Protected>
             <SettingsLayout />
           </Protected>
         ),
-        children: [
-          { index: true, element: <Navigate to="profile" replace /> },
-          {
-            path: 'profile',
-            element: (
-              <SuspensePage>
-                <ProfileSettingsSection />
-              </SuspensePage>
-            ),
-          },
-          {
-            path: 'notifications',
-            element: (
-              <SuspensePage>
-                <NotificationsSettingsSection />
-              </SuspensePage>
-            ),
-          },
-          {
-            path: 'privacy',
-            element: <Navigate to="/settings/profile" replace />,
-          },
-          {
-            path: 'appearance',
-            element: (
-              <SuspensePage>
-                <AppearanceSettingsSection />
-              </SuspensePage>
-            ),
-          },
-          {
-            path: 'language',
-            element: (
-              <SuspensePage>
-                <LanguageRegionSettingsSection />
-              </SuspensePage>
-            ),
-          },
-          {
-            path: 'security',
-            element: (
-              <SuspensePage>
-                <SecuritySettingsSection />
-              </SuspensePage>
-            ),
-          },
-          { path: '*', element: <Navigate to="/settings/profile" replace /> },
-        ],
       },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

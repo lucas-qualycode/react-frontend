@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Card, Form, Switch, message } from 'antd'
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
+import { useSettingsOutletContext } from '@/features/settings/SettingsLayoutOutletContext'
 
 type NotificationsFormValues = {
   notifications: boolean
@@ -10,7 +9,7 @@ type NotificationsFormValues = {
 
 export function NotificationsSettingsSection() {
   const { t } = useTranslation()
-  const { profile, updateMutation } = useOutletContext<SettingsOutletContext>()
+  const { profile, updateMutation } = useSettingsOutletContext()
   const [notificationsForm] = Form.useForm<NotificationsFormValues>()
   const [notificationsSaving, setNotificationsSaving] = useState(false)
 

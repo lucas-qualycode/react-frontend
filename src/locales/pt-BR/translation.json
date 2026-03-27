@@ -118,7 +118,6 @@
       "loadError": "Não foi possível carregar o evento.",
       "retry": "Tentar novamente",
       "noImage": "Sem imagem",
-      "backToMyEvents": "Voltar para meus eventos",
       "backToDetail": "Voltar para o evento",
       "badgeActive": "Ativo",
       "badgeInactive": "Inativo",
@@ -187,10 +186,9 @@
       "menuTagsVisibility": "Tags e visibilidade",
       "sectionIdentity": "Identidade do evento",
       "sectionVenue": "Local e endereço",
-      "sectionTagsAndVisibility": "Tags e visibilidade",
       "sectionMedia": "Mídia",
       "sectionTags": "Tags",
-      "sectionVisibility": "Visibilidade e pagamento",
+      "sectionVisibility": "Visibilidade",
       "submitError": "Não foi possível salvar. Tente novamente."
     },
     "tags": {
@@ -377,7 +375,10 @@
     "menu": "Menu",
     "account": "Conta",
     "noAccount": "Não tem uma conta?",
-    "signUpLink": "Cadastre-se"
+    "signUpLink": "Cadastre-se",
+    "copyPageLink": "Copiar link da página",
+    "copyPageLinkSuccess": "Link copiado para a área de transferência",
+    "copyPageLinkError": "Não foi possível copiar o link"
   },
   "auth": {
     "signIn": {

@@ -1,8 +1,9 @@
-import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
-import { Breadcrumb, Card, Col, Empty, Flex, Grid, Row, Space, Spin, Tag, Tooltip, Typography, Button } from 'antd'
+import { EditOutlined, EyeOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons'
+import { Card, Col, Empty, Flex, Grid, Row, Space, Spin, Tag, Tooltip, Typography, Button } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/app/auth/AuthContext'
+import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 import { useUserEvents } from './hooks'
 
 const { Title, Text } = Typography
@@ -25,8 +26,7 @@ export function UserEventsListPage() {
 
   return (
     <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-      <Breadcrumb
-        style={{ marginBottom: 24 }}
+      <PageBreadcrumbBar
         items={[
           { title: <Link to="/">{t('events.breadcrumb.home')}</Link> },
           { title: t('userEvents.title') },
@@ -64,6 +64,7 @@ export function UserEventsListPage() {
           <Row gutter={[16, 16]}>
             {events.map((event) => {
               const createdAtLabel = formatEventDate(locale, event.created_at)
+              const imageHeight = xs ? 180 : 200
               return (
                 <Col key={event.id} xs={24} sm={12}>
                   <Card
@@ -117,18 +118,43 @@ export function UserEventsListPage() {
                           </span>
                         </Flex>
                       </Flex>
-                      {event.imageURL ? (
-                        <img
-                          src={event.imageURL}
-                          alt={event.name}
-                          style={{
-                            width: '100%',
-                            height: xs ? 180 : 200,
-                            objectFit: 'cover',
-                            display: 'block',
-                          }}
-                        />
-                      ) : null}
+                      <div style={{ width: '100%', height: imageHeight, overflow: 'hidden' }}>
+                        {event.imageURL ? (
+                          <img
+                            src={event.imageURL}
+                            alt={event.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              display: 'block',
+                            }}
+                          />
+                        ) : (
+                          <Flex
+                            vertical
+                            align="center"
+                            justify="center"
+                            gap={8}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              background: 'var(--ant-color-bg-elevated)',
+                              borderTop: '1px dashed var(--ant-color-border)',
+                              padding: 16,
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            <PictureOutlined
+                              style={{ fontSize: 40, color: 'var(--ant-color-text-quaternary)' }}
+                              aria-hidden
+                            />
+                            <Text type="secondary" style={{ textAlign: 'center' }}>
+                              {t('events.detail.noImage')}
+                            </Text>
+                          </Flex>
+                        )}
+                      </div>
                       {createdAtLabel ? (
                         <Flex vertical gap={8} style={{ padding: '12px 24px 24px' }}>
                           <Text type="secondary">{createdAtLabel}</Text>

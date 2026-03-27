@@ -25,6 +25,7 @@ import { settingsStorage } from '@/features/settings/storage'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { useEventTags, useCreateTag, useLocations, useCreateLocation } from '../hooks'
 
 import type { Location, Tag as EventTag } from '@/shared/types/api'
@@ -52,6 +53,25 @@ type EventFormProps = {
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
 
 type EventFormSectionKey = 'identity' | 'venue' | 'tags'
+
+const SECTION_QUERY_PARAM = 'section'
+
+const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
+  details: 'identity',
+  tags: 'tags',
+  venue: 'venue',
+}
+
+const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
+  identity: 'details',
+  tags: 'tags',
+  venue: 'venue',
+}
+
+function slugToSection(slug: string | null): EventFormSectionKey | null {
+  if (!slug) return null
+  return SLUG_TO_SECTION[slug] ?? null
+}
 
 function snapshotEventFormValuesForDirty(v: EventFormValues): string {
   return JSON.stringify({
@@ -169,12 +189,29 @@ export function EventForm({
   const [venueModalOpen, setVenueModalOpen] = useState(false)
   const [tagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
   const [venueForm] = Form.useForm<{ venue_name: string; formatted_address?: string; maps_url?: string }>()
-  const [activeSection, setActiveSection] = useState<EventFormSectionKey>('identity')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeSection = useMemo((): EventFormSectionKey => {
+    return slugToSection(searchParams.get(SECTION_QUERY_PARAM)) ?? 'identity'
+  }, [searchParams])
   const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
   const screens = Grid.useBreakpoint()
   const compactSectionNav = screens.md === false
 
   const fieldItemStyle = { marginBottom: 10 } as const
+
+  useEffect(() => {
+    const slug = searchParams.get(SECTION_QUERY_PARAM)
+    if (slugToSection(slug) !== null) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG.identity)
+        return next
+      },
+      { replace: true },
+    )
+  }, [searchParams, setSearchParams])
+
   const sectionKeyByField: Record<string, EventFormSectionKey> = {
     name: 'identity',
     description: 'identity',
@@ -411,23 +448,29 @@ export function EventForm({
         label: t('events.form.menuIdentity'),
       },
       {
-        key: 'venue' as const,
-        icon: <EnvironmentOutlined />,
-        label: t('events.form.menuVenue'),
-      },
-      {
         key: 'tags' as const,
         icon: <TagsOutlined />,
         label: t('events.form.menuTagsVisibility'),
+      },
+      {
+        key: 'venue' as const,
+        icon: <EnvironmentOutlined />,
+        label: t('events.form.menuVenue'),
       },
     ],
     [t]
   )
 
   const onSectionMenuSelect = (key: string) => {
-    if (key === 'identity' || key === 'venue' || key === 'tags') {
-      setActiveSection(key)
-    }
+    if (key !== 'identity' && key !== 'venue' && key !== 'tags') return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG[key])
+        return next
+      },
+      { replace: true },
+    )
   }
 
   return (
@@ -446,7 +489,15 @@ export function EventForm({
                 ? raw
                 : null
           if (typeof first === 'string' && sectionKeyByField[first]) {
-            setActiveSection(sectionKeyByField[first])
+            const sk = sectionKeyByField[first]
+            setSearchParams(
+              (prev) => {
+                const next = new URLSearchParams(prev)
+                next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG[sk])
+                return next
+              },
+              { replace: true },
+            )
           }
         }}
         initialValues={{
@@ -591,6 +642,88 @@ export function EventForm({
             </div>
               ) : null}
 
+              {activeSection === 'tags' ? (
+            <div style={{ width: '100%' }}>
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <div style={{ width: '100%' }}>
+                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                    {t('events.form.sectionTags')}
+                  </Typography.Title>
+                  <Form.Item style={fieldItemStyle}>
+                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                      <Typography.Text type="secondary" style={{ display: 'block' }}>
+                        {t('events.tags.helpText')}
+                      </Typography.Text>
+                    <Form.Item
+                      name="tag_ids"
+                      noStyle
+                      getValueProps={tagIdsFormValueProps}
+                      getValueFromEvent={tagIdsFromTreeSelectEvent}
+                      rules={[
+                        {
+                          validator: async (_: unknown, value: string[] | undefined) => {
+                            if (value && value.length > 0) return
+                            throw new Error(t('events.form.tagIdsRequired'))
+                          },
+                        },
+                      ]}
+                    >
+                      <TreeSelect
+                        style={{ width: '100%' }}
+                        treeData={tagTreeData}
+                        treeCheckable
+                        treeCheckStrictly
+                        showCheckedStrategy={TreeSelect.SHOW_ALL}
+                        allowClear
+                        showSearch
+                        treeDefaultExpandAll
+                        loading={tagsLoading}
+                        placeholder={t('events.tags.pickerPlaceholder')}
+                        filterTreeNode={filterTagTreeNode}
+                        onOpenChange={(open) => {
+                          if (open) void refetchTags()
+                        }}
+                      />
+                    </Form.Item>
+                    <Button type="default" onClick={() => setTagModalOpen(true)} disabled={createTagMutation.isPending}>
+                      {t('events.tags.createButton')}
+                    </Button>
+                  </Space>
+                </Form.Item>
+                </div>
+
+                <div style={{ width: '100%' }}>
+                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                    {t('events.form.sectionVisibility')}
+                  </Typography.Title>
+                  <Space direction="vertical" size={0} style={{ width: '100%' }}>
+                  <Form.Item style={fieldItemStyle} name="is_paid" label={t('events.form.paidLabel')}>
+                    <Radio.Group
+                      optionType="button"
+                      buttonStyle="solid"
+                      options={[
+                        { label: t('events.form.yes'), value: true },
+                        { label: t('events.form.no'), value: false },
+                      ]}
+                    />
+                  </Form.Item>
+
+                  <Form.Item style={fieldItemStyle} name="is_online" label={t('events.form.onlineLabel')}>
+                    <Radio.Group
+                      optionType="button"
+                      buttonStyle="solid"
+                      options={[
+                        { label: t('events.form.onlineOptionOnline'), value: true },
+                        { label: t('events.form.onlineOptionInPerson'), value: false },
+                      ]}
+                    />
+                  </Form.Item>
+                </Space>
+                </div>
+              </Space>
+            </div>
+              ) : null}
+
               {activeSection === 'venue' ? (
             <div style={{ width: '100%' }}>
               <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
@@ -646,81 +779,6 @@ export function EventForm({
                   {t('events.form.addVenueButton')}
                 </Button>
               ) : null}
-            </div>
-              ) : null}
-
-              {activeSection === 'tags' ? (
-            <div style={{ width: '100%' }}>
-              <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
-                {t('events.form.sectionTagsAndVisibility')}
-              </Typography.Title>
-              <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                <Form.Item style={fieldItemStyle}>
-                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                    <Typography.Text type="secondary" style={{ display: 'block' }}>
-                      {t('events.tags.helpText')}
-                    </Typography.Text>
-                    <Form.Item
-                      name="tag_ids"
-                      noStyle
-                      getValueProps={tagIdsFormValueProps}
-                      getValueFromEvent={tagIdsFromTreeSelectEvent}
-                      rules={[
-                        {
-                          validator: async (_: unknown, value: string[] | undefined) => {
-                            if (value && value.length > 0) return
-                            throw new Error(t('events.form.tagIdsRequired'))
-                          },
-                        },
-                      ]}
-                    >
-                      <TreeSelect
-                        style={{ width: '100%' }}
-                        treeData={tagTreeData}
-                        treeCheckable
-                        treeCheckStrictly
-                        showCheckedStrategy={TreeSelect.SHOW_ALL}
-                        allowClear
-                        showSearch
-                        treeDefaultExpandAll
-                        loading={tagsLoading}
-                        placeholder={t('events.tags.pickerPlaceholder')}
-                        filterTreeNode={filterTagTreeNode}
-                        onOpenChange={(open) => {
-                          if (open) void refetchTags()
-                        }}
-                      />
-                    </Form.Item>
-                    <Button type="default" onClick={() => setTagModalOpen(true)} disabled={createTagMutation.isPending}>
-                      {t('events.tags.createButton')}
-                    </Button>
-                  </Space>
-                </Form.Item>
-
-                <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                  <Form.Item style={fieldItemStyle} name="is_paid" label={t('events.form.paidLabel')}>
-                    <Radio.Group
-                      optionType="button"
-                      buttonStyle="solid"
-                      options={[
-                        { label: t('events.form.yes'), value: true },
-                        { label: t('events.form.no'), value: false },
-                      ]}
-                    />
-                  </Form.Item>
-
-                  <Form.Item style={fieldItemStyle} name="is_online" label={t('events.form.onlineLabel')}>
-                    <Radio.Group
-                      optionType="button"
-                      buttonStyle="solid"
-                      options={[
-                        { label: t('events.form.onlineOptionOnline'), value: true },
-                        { label: t('events.form.onlineOptionInPerson'), value: false },
-                      ]}
-                    />
-                  </Form.Item>
-                </Space>
-              </Space>
             </div>
               ) : null}
 

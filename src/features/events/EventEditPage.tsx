@@ -1,9 +1,10 @@
 import { ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons'
-import { App, Breadcrumb, Button, Flex, Grid, Spin, Tooltip, Typography } from 'antd'
+import { App, Button, Flex, Grid, Spin, Tooltip, Typography } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link, useBlocker, useParams } from 'react-router-dom'
+import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 import { EventForm } from './components/EventForm'
 import { useEvent, useUpdateEvent } from './hooks'
 import type { UpdateEventPayload } from './api'
@@ -92,8 +93,7 @@ export function EventEditPage() {
   return (
     <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
       {!isLoading && !isError && event && id ? (
-        <Breadcrumb
-          style={{ marginBottom: 24 }}
+        <PageBreadcrumbBar
           items={[
             { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
             { title: <Link to={`/events/${id}`}>{event.name}</Link> },
@@ -130,19 +130,19 @@ export function EventEditPage() {
             )
           ) : null}
           {backButtonIconOnly ? (
-            <Tooltip title={t('events.detail.backToMyEvents')} placement="bottom">
+            <Tooltip title={t('userEvents.title')} placement="bottom">
               <span style={{ display: 'inline-flex' }}>
                 <Link to="/user-events">
                   <Button
                     icon={<ArrowLeftOutlined />}
-                    aria-label={t('events.detail.backToMyEvents')}
+                    aria-label={t('userEvents.title')}
                   />
                 </Link>
               </span>
             </Tooltip>
           ) : (
             <Link to="/user-events">
-              <Button icon={<ArrowLeftOutlined />}>{t('events.detail.backToMyEvents')}</Button>
+              <Button icon={<ArrowLeftOutlined />}>{t('userEvents.title')}</Button>
             </Link>
           )}
         </Flex>

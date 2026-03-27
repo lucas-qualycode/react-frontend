@@ -1,7 +1,6 @@
-import { Suspense, useEffect, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { MenuOutlined } from '@ant-design/icons'
 import {
-  Breadcrumb,
   Button,
   Dropdown,
   Flex,
@@ -13,20 +12,27 @@ import {
   Typography,
 } from 'antd'
 import type { MenuProps } from 'antd'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import { useUserProfile, useUpdateUserProfile } from '@/features/settings/hooks'
 import { initialUserPreferencesForCreate } from '@/features/settings/initialUserPreferences'
-import { SETTINGS_MENU_ITEMS, isSettingsSectionKey } from '@/features/settings/settingsMenu'
+import { SettingsSectionContent } from '@/features/settings/SettingsSectionContent'
+import {
+  SETTINGS_MENU_ITEMS,
+  SETTINGS_SECTION_QUERY_PARAM,
+  isSettingsSectionKey,
+  settingsPathSearch,
+} from '@/features/settings/settingsMenu'
+import { SettingsLayoutOutletProvider } from '@/features/settings/SettingsLayoutOutletContext'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
+import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 
 const { Content } = Layout
 
 export function SettingsLayout() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const screens = Grid.useBreakpoint()
   const settingsIconNav = screens.md === false
   const {
@@ -73,10 +79,36 @@ export function SettingsLayout() {
     updateMutation,
   ])
 
-  const segment = location.pathname.replace(/^\/settings\/?/, '').split('/')[0] || 'profile'
-  const activeKey = isSettingsSectionKey(segment) ? segment : 'profile'
+  const activeKey = useMemo(() => {
+    const raw = searchParams.get(SETTINGS_SECTION_QUERY_PARAM) ?? undefined
+    return isSettingsSectionKey(raw) ? raw : 'profile'
+  }, [searchParams])
+
+  useEffect(() => {
+    const raw = searchParams.get(SETTINGS_SECTION_QUERY_PARAM) ?? undefined
+    if (isSettingsSectionKey(raw)) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set(SETTINGS_SECTION_QUERY_PARAM, 'profile')
+        return next
+      },
+      { replace: true },
+    )
+  }, [searchParams, setSearchParams])
 
   const sectionLabel = t(`settings.menu.${activeKey}`)
+
+  const settingsIndexPath = useMemo(() => ({ pathname: '/settings', search: settingsPathSearch('profile') }), [])
+
+  const breadcrumbItems = useMemo(
+    () => [
+      { title: <Link to="/">{t('events.breadcrumb.home')}</Link> },
+      { title: <Link to={settingsIndexPath}>{t('settings.title')}</Link> },
+      { title: sectionLabel },
+    ],
+    [t, settingsIndexPath, sectionLabel],
+  )
 
   const menuItems = useMemo(
     () =>
@@ -128,13 +160,7 @@ export function SettingsLayout() {
   if (profileLoading && !profile) {
     return (
       <Content style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-        <Breadcrumb
-          style={{ marginBottom: 24 }}
-          items={[
-            { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
-            { title: sectionLabel },
-          ]}
-        />
+        <PageBreadcrumbBar items={breadcrumbItems} />
         <Spin size="large" />
       </Content>
     )
@@ -143,13 +169,7 @@ export function SettingsLayout() {
   if (profileError) {
     return (
       <Content style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-        <Breadcrumb
-          style={{ marginBottom: 24 }}
-          items={[
-            { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
-            { title: sectionLabel },
-          ]}
-        />
+        <PageBreadcrumbBar items={breadcrumbItems} />
         <Typography.Text type="danger">{t('settings.loadError')}</Typography.Text>
       </Content>
     )
@@ -161,56 +181,60 @@ export function SettingsLayout() {
         <Flex flex={1} vertical style={{ minWidth: 0, width: '100%' }}>
           {modalContextHolder}
           {settingsIconNav ? (
-            <Flex justify="space-between" align="center" gap={12} style={{ marginBottom: 24 }}>
-              <Breadcrumb
-                style={{ marginBottom: 0, flex: 1, minWidth: 0 }}
-                items={[
-                  { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
-                  { title: sectionLabel },
-                ]}
-              />
-              <span style={{ display: 'inline-flex' }}>
-                <Dropdown
-                  menu={{
-                    items: settingsDropdownItems,
-                    selectedKeys: [activeKey],
-                    onClick: ({ key }) => navigate(`/settings/${key}`),
-                  }}
-                  trigger={['hover', 'click']}
-                  placement="bottomRight"
-                >
-                  <Button
-                    type="text"
-                    icon={<MenuOutlined />}
-                    aria-label={t('settings.menuDropdownAria')}
-                    style={{ flexShrink: 0 }}
-                  />
-                </Dropdown>
-              </span>
-            </Flex>
-          ) : (
-            <Breadcrumb
-              style={{ marginBottom: 24 }}
-              items={[
-                { title: <Link to="/settings/profile">{t('settings.title')}</Link> },
-                { title: sectionLabel },
-              ]}
+            <PageBreadcrumbBar
+              items={breadcrumbItems}
+              trailing={
+                <span style={{ display: 'inline-flex' }}>
+                  <Dropdown
+                    menu={{
+                      items: settingsDropdownItems,
+                      selectedKeys: [activeKey],
+                      onClick: ({ key }) => {
+                        if (!isSettingsSectionKey(key)) return
+                        setSearchParams(
+                          (prev) => {
+                            const next = new URLSearchParams(prev)
+                            next.set(SETTINGS_SECTION_QUERY_PARAM, key)
+                            return next
+                          },
+                          { replace: true },
+                        )
+                      },
+                    }}
+                    trigger={['hover', 'click']}
+                    placement="bottomRight"
+                  >
+                    <Button
+                      type="text"
+                      icon={<MenuOutlined />}
+                      aria-label={t('settings.menuDropdownAria')}
+                      style={{ flexShrink: 0 }}
+                    />
+                  </Dropdown>
+                </span>
+              }
             />
+          ) : (
+            <PageBreadcrumbBar items={breadcrumbItems} />
           )}
-          <Suspense
-            fallback={
-              <Flex style={{ minHeight: 200 }} align="center" justify="center">
-                <Spin size="large" />
-              </Flex>
-            }
-          >
-            <Outlet context={outletContext} />
-          </Suspense>
+          <SettingsLayoutOutletProvider value={outletContext}>
+            <SettingsSectionContent activeKey={activeKey} />
+          </SettingsLayoutOutletProvider>
         </Flex>
         {!settingsIconNav ? (
           <Menu
             selectedKeys={[activeKey]}
-            onSelect={({ key }) => navigate(`/settings/${key}`)}
+            onSelect={({ key }) => {
+              if (!isSettingsSectionKey(key)) return
+              setSearchParams(
+                (prev) => {
+                  const next = new URLSearchParams(prev)
+                  next.set(SETTINGS_SECTION_QUERY_PARAM, key)
+                  return next
+                },
+                { replace: true },
+              )
+            }}
             mode="vertical"
             style={{ width: 220, flexShrink: 0 }}
             items={menuItems}

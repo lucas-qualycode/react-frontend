@@ -99,7 +99,7 @@ export function AppHeader() {
       key: 'settings',
       icon: <SettingOutlined />,
       label: t('shell.settings'),
-      onClick: () => navigate('/settings/profile'),
+      onClick: () => navigate({ pathname: '/settings', search: '?section=profile' }),
     },
     {
       key: 'signout',

@@ -1,7 +1,8 @@
 import { ArrowLeftOutlined } from '@ant-design/icons'
-import { Breadcrumb, Button, Flex, Grid, Tooltip, Typography, message } from 'antd'
+import { Button, Flex, Grid, Tooltip, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
+import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 import { EventForm } from './components/EventForm'
 import { useCreateEvent } from './hooks'
 import { type CreateEventPayload, type UpdateEventPayload } from './api'
@@ -36,8 +37,7 @@ export function EventCreatePage() {
 
   return (
     <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-      <Breadcrumb
-        style={{ marginBottom: 24 }}
+      <PageBreadcrumbBar
         items={[
           { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
           { title: t('events.create.title') },
@@ -51,19 +51,19 @@ export function EventCreatePage() {
           <Text type="secondary">{t('events.create.subtitle')}</Text>
         </div>
         {backButtonIconOnly ? (
-          <Tooltip title={t('events.detail.backToMyEvents')} placement="bottom">
+          <Tooltip title={t('userEvents.title')} placement="bottom">
             <span style={{ display: 'inline-flex' }}>
               <Link to="/user-events">
                 <Button
                   icon={<ArrowLeftOutlined />}
-                  aria-label={t('events.detail.backToMyEvents')}
+                  aria-label={t('userEvents.title')}
                 />
               </Link>
             </span>
           </Tooltip>
         ) : (
           <Link to="/user-events">
-            <Button icon={<ArrowLeftOutlined />}>{t('events.detail.backToMyEvents')}</Button>
+            <Button icon={<ArrowLeftOutlined />}>{t('userEvents.title')}</Button>
           </Link>
         )}
       </Flex>

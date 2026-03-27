@@ -12,9 +12,8 @@ import {
   theme,
 } from 'antd'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
+import { useSettingsOutletContext } from '@/features/settings/SettingsLayoutOutletContext'
 import { settingsStorage } from '@/features/settings/storage'
 import type { UpdateUserProfileInput, UserProfile } from '@/features/settings/types'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
@@ -34,7 +33,7 @@ function toProfileFormValues(p: UserProfile | undefined): Partial<ProfileFormVal
 
 export function ProfileSettingsSection() {
   const { t } = useTranslation()
-  const { user, profile, updateMutation, updateProfile } = useOutletContext<SettingsOutletContext>()
+  const { user, profile, updateMutation, updateProfile } = useSettingsOutletContext()
   const [profileForm] = Form.useForm<ProfileFormValues>()
   const [photoEditOpen, setPhotoEditOpen] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)

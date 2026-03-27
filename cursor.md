@@ -139,7 +139,11 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **Router**: `createBrowserRouter` in `routes.tsx` with nested routes under `Layout`.
 - **Lazy loading**: Heavy pages use `React.lazy` + `SuspensePage` wrapper with a small fallback (`PageFallback` with `Spin`).
 - **Protected areas**: Wrap segments with `ProtectedRoute` where only signed-in users should enter (e.g. organizer flows, settings).
-- **Settings**: Nested under `/settings` with sections `profile`, `notifications`, `appearance`, `language`, `security`. Route `/settings/privacy` redirects to `/settings/profile` (privacy UI deferred; see repo root `docs/privacy-settings-deferred.md`).
+- **Settings**: `/settings` with `?section=` query (`profile`, `notifications`, `appearance`, `language`, `security`). Legacy paths like `/settings/profile` redirect to `/settings?section=profile`. `/settings/privacy` redirects to `?section=profile` (privacy UI deferred; see repo root `docs/privacy-settings-deferred.md`).
+- **Section menus (mandatory)**: Any in-page section menu or dropdown that switches content on the **same** route must sync the active section to the URL with **query params** (see **`EventForm`** and **`SettingsLayout`**). Prefer key **`section`** and `replace: true` on updates; normalize invalid params. Add redirects if old path-based URLs existed.
+- **Breadcrumbs (mandatory)**: Use **`PageBreadcrumbBar`** (`shared/components/PageBreadcrumbBar.tsx`) whenever showing a breadcrumb so the **link icon** (copy full page URL) always appears next to the trail. Do not use raw `Breadcrumb` alone on feature pages.
+
+Cursor rule: **`.cursor/rules/react-nav-menus-and-breadcrumbs.mdc`**.
 
 ---
 

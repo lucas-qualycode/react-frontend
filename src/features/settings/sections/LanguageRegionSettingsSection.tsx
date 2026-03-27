@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Card, Form, Select, message } from 'antd'
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
+import { useSettingsOutletContext } from '@/features/settings/SettingsLayoutOutletContext'
 
 type LanguageFormValues = {
   language: string
@@ -11,7 +10,7 @@ type LanguageFormValues = {
 
 export function LanguageRegionSettingsSection() {
   const { t, i18n } = useTranslation()
-  const { profile, updateMutation } = useOutletContext<SettingsOutletContext>()
+  const { profile, updateMutation } = useSettingsOutletContext()
   const [languageForm] = Form.useForm<LanguageFormValues>()
   const [languageSaving, setLanguageSaving] = useState(false)
 

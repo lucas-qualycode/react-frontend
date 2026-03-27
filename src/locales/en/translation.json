@@ -118,7 +118,6 @@
       "loadError": "Failed to load event.",
       "retry": "Try again",
       "noImage": "No image",
-      "backToMyEvents": "Back to my events",
       "backToDetail": "Back to event",
       "badgeActive": "Active",
       "badgeInactive": "Inactive",
@@ -187,10 +186,9 @@
       "menuTagsVisibility": "Tags & visibility",
       "sectionIdentity": "Event identity",
       "sectionVenue": "Venue & location",
-      "sectionTagsAndVisibility": "Tags & visibility",
       "sectionMedia": "Media",
       "sectionTags": "Tags",
-      "sectionVisibility": "Visibility & payment",
+      "sectionVisibility": "Visibility",
       "submitError": "Could not save. Please try again."
     },
     "tags": {
@@ -377,7 +375,10 @@
     "menu": "Menu",
     "account": "Account",
     "noAccount": "Don't have an account?",
-    "signUpLink": "Sign up"
+    "signUpLink": "Sign up",
+    "copyPageLink": "Copy page link",
+    "copyPageLinkSuccess": "Link copied to clipboard",
+    "copyPageLinkError": "Could not copy link"
   },
   "auth": {
     "signIn": {

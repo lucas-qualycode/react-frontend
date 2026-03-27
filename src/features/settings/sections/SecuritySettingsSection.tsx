@@ -11,9 +11,9 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
+import { useSettingsOutletContext } from '@/features/settings/SettingsLayoutOutletContext'
 import { securityAuthErrorMessage } from '@/features/settings/utils/securityAuthErrorMessage'
 
 const { Text } = Typography
@@ -40,7 +40,7 @@ export function SecuritySettingsSection() {
     signOut,
     sendVerificationEmail,
     modalApi,
-  } = useOutletContext<SettingsOutletContext>()
+  } = useSettingsOutletContext()
   const [securityEmailForm] = Form.useForm<SecurityEmailFormValues>()
   const [securityPasswordForm] = Form.useForm<SecurityPasswordFormValues>()
   const [signOutEverywhereLoading, setSignOutEverywhereLoading] = useState(false)

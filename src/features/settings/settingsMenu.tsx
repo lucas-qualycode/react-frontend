@@ -6,6 +6,8 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 
+export const SETTINGS_SECTION_QUERY_PARAM = 'section'
+
 export type SettingsSectionKey =
   | 'profile'
   | 'notifications'
@@ -26,6 +28,10 @@ export const SETTINGS_MENU_ITEMS: {
 
 export const SETTINGS_SECTION_KEYS = SETTINGS_MENU_ITEMS.map((i) => i.key)
 
-export function isSettingsSectionKey(s: string | undefined): s is SettingsSectionKey {
+export function isSettingsSectionKey(s: string | null | undefined): s is SettingsSectionKey {
   return !!s && SETTINGS_SECTION_KEYS.includes(s as SettingsSectionKey)
+}
+
+export function settingsPathSearch(section: SettingsSectionKey): string {
+  return `?${SETTINGS_SECTION_QUERY_PARAM}=${section}`
 }

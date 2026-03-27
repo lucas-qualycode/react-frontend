@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Card, Flex, Form, Segmented, Typography, message } from 'antd'
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useSettingsOutletContext } from '@/features/settings/SettingsLayoutOutletContext'
 import {
   mergeAppearancePreferences,
   saveAppearanceToStorage,
 } from '@/app/appearance/mergeAppearancePreferences'
-import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
 import type {
   DensityPref,
   FontSizePref,
@@ -45,7 +44,7 @@ function valuesFromProfile(profile: UserProfile): AppearanceFormValues {
 
 export function AppearanceSettingsSection() {
   const { t } = useTranslation()
-  const { profile, updateMutation } = useOutletContext<SettingsOutletContext>()
+  const { profile, updateMutation } = useSettingsOutletContext()
   const [form] = Form.useForm<AppearanceFormValues>()
   const [saving, setSaving] = useState(false)
   const skipAutoSaveRef = useRef(true)

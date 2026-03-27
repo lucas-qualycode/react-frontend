@@ -136,6 +136,7 @@ export function AppHeader() {
         position: 'sticky',
         top: 0,
         zIndex: 50,
+        backgroundColor: token.colorFillQuaternary,
         borderBottom: `1px solid ${token.colorBorder ?? '#e5e7eb'}`,
         padding: '8px 16px',
         boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',

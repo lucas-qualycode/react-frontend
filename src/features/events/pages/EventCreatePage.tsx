@@ -14,7 +14,7 @@ export function EventCreatePage() {
   const navigate = useNavigate()
   const createMutation = useCreateEvent()
   const screens = Grid.useBreakpoint()
-  const backButtonIconOnly = screens.lg === false
+  const backButtonIconOnly = screens.md === false
 
   const initialValues = {
     name: '',
@@ -52,19 +52,16 @@ export function EventCreatePage() {
         </div>
         {backButtonIconOnly ? (
           <Tooltip title={t('userEvents.title')} placement="bottom">
-            <span style={{ display: 'inline-flex' }}>
-              <Link to="/user-events">
-                <Button
-                  icon={<ArrowLeftOutlined />}
-                  aria-label={t('userEvents.title')}
-                />
-              </Link>
-            </span>
+            <Button
+              icon={<ArrowLeftOutlined />}
+              aria-label={t('userEvents.title')}
+              onClick={() => navigate('/user-events')}
+            />
           </Tooltip>
         ) : (
-          <Link to="/user-events">
-            <Button icon={<ArrowLeftOutlined />}>{t('userEvents.title')}</Button>
-          </Link>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/user-events')}>
+            {t('userEvents.title')}
+          </Button>
         )}
       </Flex>
 

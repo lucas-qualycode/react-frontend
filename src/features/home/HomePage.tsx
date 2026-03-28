@@ -8,7 +8,7 @@ import {
   TeamOutlined,
 } from '@ant-design/icons'
 import { Button, Card, Collapse, Flex, Image, Row, Col, theme, Typography } from 'antd'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 
@@ -19,6 +19,7 @@ const HOME_CONTACT_EMAIL = 'contato@partiiu.com'
 export function HomePage() {
   const { t } = useTranslation()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { token } = theme.useToken()
 
   const featureItems = [
@@ -97,21 +98,17 @@ export function HomePage() {
                   </Paragraph>
                   <Flex gap={12} wrap="wrap">
                     {user ? (
-                      <Link to="/user-events">
-                        <Button type="primary" size="large">
-                          {t('home.hero.ctaSignedIn')}
-                        </Button>
-                      </Link>
+                      <Button type="primary" size="large" onClick={() => navigate('/user-events')}>
+                        {t('home.hero.ctaSignedIn')}
+                      </Button>
                     ) : (
                       <>
-                        <Link to="/signup">
-                          <Button type="primary" size="large">
-                            {t('home.hero.ctaSignUp')}
-                          </Button>
-                        </Link>
-                        <Link to="/signin">
-                          <Button size="large">{t('home.hero.ctaSignIn')}</Button>
-                        </Link>
+                        <Button type="primary" size="large" onClick={() => navigate('/signup')}>
+                          {t('home.hero.ctaSignUp')}
+                        </Button>
+                        <Button size="large" onClick={() => navigate('/signin')}>
+                          {t('home.hero.ctaSignIn')}
+                        </Button>
                       </>
                     )}
                   </Flex>
@@ -258,21 +255,17 @@ export function HomePage() {
               </Text>
               <Flex gap={12} wrap="wrap" justify="center">
                 {user ? (
-                  <Link to="/user-events">
-                    <Button type="primary" size="large">
-                      {t('home.hero.ctaSignedIn')}
-                    </Button>
-                  </Link>
+                  <Button type="primary" size="large" onClick={() => navigate('/user-events')}>
+                    {t('home.hero.ctaSignedIn')}
+                  </Button>
                 ) : (
                   <>
-                    <Link to="/signup">
-                      <Button type="primary" size="large">
-                        {t('home.ctaBand.primary')}
-                      </Button>
-                    </Link>
-                    <Link to="/signin">
-                      <Button size="large">{t('home.ctaBand.secondary')}</Button>
-                    </Link>
+                    <Button type="primary" size="large" onClick={() => navigate('/signup')}>
+                      {t('home.ctaBand.primary')}
+                    </Button>
+                    <Button size="large" onClick={() => navigate('/signin')}>
+                      {t('home.ctaBand.secondary')}
+                    </Button>
                   </>
                 )}
               </Flex>

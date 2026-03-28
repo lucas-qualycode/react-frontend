@@ -200,13 +200,16 @@
     "schedule": {
       "sectionTitle": "Cronograma",
       "dateLabel": "Data do evento",
+      "datePlaceholder": "Escolha a data · ex.: {{example}}",
       "dateRequired": "Selecione a data do evento.",
       "startTimeLabel": "Horário diário de início",
+      "startTimePlaceholder": "Horário de início · ex.: {{example}}",
       "endTimeLabel": "Horário diário de fim",
+      "endTimePlaceholder": "Horário de fim · ex.: {{example}}",
       "endTimeBeforeStart": "O horário de fim deve ser igual ou posterior ao de início.",
       "timeRequired": "Selecione um horário.",
       "timezoneLabel": "Fuso horário",
-      "timezonePlaceholder": "Selecione um fuso horário",
+      "timezonePlaceholder": "Escolha o fuso · ex.: {{example}}",
       "timezoneRequired": "Selecione um fuso horário.",
       "saveError": "Não foi possível salvar o cronograma. Tente novamente.",
       "multipleHint": "Este evento tem mais de um cronograma no sistema. Você está editando o mais antigo. Entre em contato com o suporte se precisar gerenciar cronogramas adicionais."

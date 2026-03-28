@@ -11,17 +11,18 @@ import {
   Button,
   Card,
   DatePicker,
+  Divider,
   Dropdown,
   Flex,
   Form,
   Grid,
   Input,
-  Menu,
   Modal,
   Radio,
   Select,
   Space,
   Spin,
+  Steps,
   TimePicker,
   TreeSelect,
   Typography,
@@ -302,6 +303,24 @@ export function EventForm({
   const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
   const screens = Grid.useBreakpoint()
   const compactSectionNav = screens.md === false
+
+  const scheduleFieldPlaceholders = useMemo(() => {
+    const dateExample = dayjs().format('YYYY-MM-DD')
+    const startExample = '09:00'
+    const endExample = '18:00'
+    let tzExample = 'UTC'
+    try {
+      tzExample = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    } catch {
+      /* ignore */
+    }
+    return {
+      date: t('events.schedule.datePlaceholder', { example: dateExample }),
+      startTime: t('events.schedule.startTimePlaceholder', { example: startExample }),
+      endTime: t('events.schedule.endTimePlaceholder', { example: endExample }),
+      timezone: t('events.schedule.timezonePlaceholder', { example: tzExample }),
+    }
+  }, [t])
 
   const fieldItemStyle = { marginBottom: 10 } as const
 
@@ -701,6 +720,61 @@ export function EventForm({
     [t]
   )
 
+  const sectionStepIndex = Math.max(0, CREATE_SECTION_ORDER.indexOf(activeSection))
+
+  const wideSectionStepItems = useMemo(
+    () =>
+      CREATE_SECTION_ORDER.map((sectionKey) => {
+        const m = eventFormMenuItems.find((x) => x.key === sectionKey)
+        return {
+          title: m?.label ?? sectionKey,
+          icon: m?.icon,
+        }
+      }),
+    [eventFormMenuItems],
+  )
+
+  const compactSectionStepItems = useMemo(
+    () =>
+      CREATE_SECTION_ORDER.map((sectionKey, index) => {
+        const m = eventFormMenuItems.find((x) => x.key === sectionKey)
+        const label = m?.label ?? sectionKey
+        const isFirst = index === 0
+        const isLast = index === CREATE_SECTION_ORDER.length - 1
+        return {
+          title: null,
+          icon: (
+            <span style={{ display: 'inline-flex', alignItems: 'center' }} aria-label={label}>
+              {m?.icon}
+            </span>
+          ),
+          style: {
+            flex: '1 1 0%',
+            minWidth: 0,
+            maxWidth: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            paddingInlineStart: isFirst ? 0 : 6,
+            paddingInlineEnd: isLast ? 0 : 6,
+          },
+          styles: {
+            wrapper: {
+              flex: 1,
+              minWidth: 0,
+              width: '100%',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 0,
+            },
+            section: { flex: '0 0 auto', minWidth: 0, maxWidth: 'max-content' },
+            header: { gap: 0, justifyContent: 'center' },
+            rail: { marginInlineStart: 6 },
+          },
+        }
+      }),
+    [eventFormMenuItems],
+  )
+
   function goToFormSection(sectionKey: EventFormSectionKey) {
     if (mode === 'create') {
       setCreateSection(sectionKey)
@@ -777,8 +851,21 @@ export function EventForm({
       >
         <Flex vertical gap={compactSectionNav ? 12 : 0} style={{ width: '100%' }}>
           {compactSectionNav ? (
-            <Flex justify="flex-end">
-              <span style={{ display: 'inline-flex' }}>
+            <Flex align="center" gap={16} style={{ width: '100%' }}>
+              <div style={{ flex: 1, minWidth: 0, overflowX: 'visible', paddingBottom: 4 }}>
+                <Steps
+                  className="event-form-compact-steps"
+                  style={{ width: '100%' }}
+                  size="small"
+                  type="navigation"
+                  orientation="horizontal"
+                  responsive={false}
+                  current={sectionStepIndex}
+                  items={compactSectionStepItems}
+                  onChange={(step) => goToFormSection(CREATE_SECTION_ORDER[step])}
+                />
+              </div>
+              <span style={{ display: 'inline-flex', flexShrink: 0 }}>
                 <Dropdown
                   menu={{
                     items: eventFormMenuItems.map(({ key, icon, label }) => ({ key, icon, label })),
@@ -802,12 +889,14 @@ export function EventForm({
 
               {sectionFormPanelMounted(mode, activeSection, 'identity') ? (
             <div
+              className="event-form-section-panel"
               hidden={sectionFormPanelHidden(mode, activeSection, 'identity')}
               style={{ width: '100%' }}
             >
-              <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+              <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
                 {t('events.form.sectionIdentity')}
               </Typography.Title>
+              <Divider style={{ margin: '0 0 16px' }} />
               <Form.Item
                 style={fieldItemStyle}
                 name="name"
@@ -926,14 +1015,16 @@ export function EventForm({
 
               {sectionFormPanelMounted(mode, activeSection, 'tags') ? (
             <div
+              className="event-form-section-panel"
               hidden={sectionFormPanelHidden(mode, activeSection, 'tags')}
               style={{ width: '100%' }}
             >
               <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div style={{ width: '100%' }}>
-                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
                     {t('events.form.sectionTags')}
                   </Typography.Title>
+                  <Divider style={{ margin: '0 0 16px' }} />
                   <Form.Item style={fieldItemStyle}>
                     <Space direction="vertical" size={8} style={{ width: '100%' }}>
                       <Typography.Text type="secondary" style={{ display: 'block' }}>
@@ -978,9 +1069,10 @@ export function EventForm({
                 </div>
 
                 <div style={{ width: '100%' }}>
-                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
                     {t('events.form.sectionVisibility')}
                   </Typography.Title>
+                  <Divider style={{ margin: '0 0 16px' }} />
                   <Space direction="vertical" size={0} style={{ width: '100%' }}>
                   <Form.Item style={fieldItemStyle} name="is_paid" label={t('events.form.paidLabel')}>
                     <Radio.Group
@@ -1011,12 +1103,14 @@ export function EventForm({
 
               {sectionFormPanelMounted(mode, activeSection, 'venue') ? (
             <div
+              className="event-form-section-panel"
               hidden={sectionFormPanelHidden(mode, activeSection, 'venue')}
               style={{ width: '100%' }}
             >
-              <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+              <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
                 {t('events.form.sectionVenue')}
               </Typography.Title>
+              <Divider style={{ margin: '0 0 16px' }} />
               {isOnlineWatched === true ? (
                 <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
                   {t('events.form.venueOnlineHint')}
@@ -1072,12 +1166,14 @@ export function EventForm({
 
               {sectionFormPanelMounted(mode, activeSection, 'schedules') ? (
                 <div
+                  className="event-form-section-panel"
                   hidden={sectionFormPanelHidden(mode, activeSection, 'schedules')}
                   style={{ width: '100%' }}
                 >
-                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 16 }}>
+                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
                     {t('events.schedule.sectionTitle')}
                   </Typography.Title>
+                  <Divider style={{ margin: '0 0 16px' }} />
                   {mode === 'edit' && eventId ? (
                     schedulesLoading ? (
                       <Spin />
@@ -1089,7 +1185,11 @@ export function EventForm({
                           </Typography.Paragraph>
                         ) : null}
                         <Form.Item style={fieldItemStyle} name="schedule_date" label={t('events.schedule.dateLabel')}>
-                          <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                          <DatePicker
+                            style={{ width: '100%' }}
+                            format="YYYY-MM-DD"
+                            placeholder={scheduleFieldPlaceholders.date}
+                          />
                         </Form.Item>
                         <Form.Item
                           style={fieldItemStyle}
@@ -1115,6 +1215,7 @@ export function EventForm({
                             format="HH:mm"
                             style={{ width: '100%' }}
                             minuteStep={1}
+                            placeholder={scheduleFieldPlaceholders.startTime}
                           />
                         </Form.Item>
                         <Form.Item
@@ -1141,6 +1242,7 @@ export function EventForm({
                             format="HH:mm"
                             style={{ width: '100%' }}
                             minuteStep={1}
+                            placeholder={scheduleFieldPlaceholders.endTime}
                           />
                         </Form.Item>
                         <Form.Item
@@ -1154,7 +1256,7 @@ export function EventForm({
                             optionFilterProp="label"
                             options={tzOptions}
                             style={{ width: '100%' }}
-                            placeholder={t('events.schedule.timezonePlaceholder')}
+                            placeholder={scheduleFieldPlaceholders.timezone}
                           />
                         </Form.Item>
                       </>
@@ -1214,13 +1316,17 @@ export function EventForm({
             </Card>
 
             {!compactSectionNav ? (
-              <Menu
-                mode="vertical"
-                selectedKeys={[activeSection]}
-                onSelect={({ key }) => onSectionMenuSelect(key)}
-                style={{ width: 220, flexShrink: 0 }}
-                items={eventFormMenuItems}
-              />
+              <div style={{ width: 220, flexShrink: 0 }}>
+                <Steps
+                  className="event-form-wide-steps"
+                  orientation="vertical"
+                  size="small"
+                  responsive={false}
+                  current={sectionStepIndex}
+                  items={wideSectionStepItems}
+                  onChange={(step) => goToFormSection(CREATE_SECTION_ORDER[step])}
+                />
+              </div>
             ) : null}
           </Flex>
         </Flex>

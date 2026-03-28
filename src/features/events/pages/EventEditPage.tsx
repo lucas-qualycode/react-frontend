@@ -3,7 +3,7 @@ import { App, Button, Flex, Grid, Spin, Tooltip, Typography } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Link, useBlocker, useParams } from 'react-router-dom'
+import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 import { EventForm } from '../components/EventForm'
 import { useEvent, useUpdateEvent } from '../hooks'
@@ -14,11 +14,12 @@ const { Title, Text } = Typography
 export function EventEditPage() {
   const { t } = useTranslation()
   const { modal, message } = App.useApp()
+  const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const updateMutation = useUpdateEvent()
   const { data: event, isLoading, isError, refetch } = useEvent(id)
   const screens = Grid.useBreakpoint()
-  const backButtonIconOnly = screens.lg === false
+  const backButtonIconOnly = screens.md === false
   const [formDirty, setFormDirty] = useState(false)
   const leaveModalShownRef = useRef(false)
 
@@ -111,39 +112,35 @@ export function EventEditPage() {
           {id ? (
             backButtonIconOnly ? (
               <Tooltip title={t('events.edit.viewEventPage')} placement="bottom">
-                <span style={{ display: 'inline-flex' }}>
-                  <Link to={`/events/${id}`}>
-                    <Button
-                      type="default"
-                      icon={<EyeOutlined />}
-                      aria-label={t('events.edit.viewEventPage')}
-                    />
-                  </Link>
-                </span>
+                <Button
+                  type="default"
+                  icon={<EyeOutlined />}
+                  aria-label={t('events.edit.viewEventPage')}
+                  onClick={() => navigate(`/events/${id}`)}
+                />
               </Tooltip>
             ) : (
-              <Link to={`/events/${id}`}>
-                <Button type="default" icon={<EyeOutlined />}>
-                  {t('events.edit.viewEventPage')}
-                </Button>
-              </Link>
+              <Button
+                type="default"
+                icon={<EyeOutlined />}
+                onClick={() => navigate(`/events/${id}`)}
+              >
+                {t('events.edit.viewEventPage')}
+              </Button>
             )
           ) : null}
           {backButtonIconOnly ? (
             <Tooltip title={t('userEvents.title')} placement="bottom">
-              <span style={{ display: 'inline-flex' }}>
-                <Link to="/user-events">
-                  <Button
-                    icon={<ArrowLeftOutlined />}
-                    aria-label={t('userEvents.title')}
-                  />
-                </Link>
-              </span>
+              <Button
+                icon={<ArrowLeftOutlined />}
+                aria-label={t('userEvents.title')}
+                onClick={() => navigate('/user-events')}
+              />
             </Tooltip>
           ) : (
-            <Link to="/user-events">
-              <Button icon={<ArrowLeftOutlined />}>{t('userEvents.title')}</Button>
-            </Link>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/user-events')}>
+              {t('userEvents.title')}
+            </Button>
           )}
         </Flex>
       </Flex>

@@ -39,11 +39,9 @@ export function UserEventsListPage() {
           </Title>
           <Text type="secondary">{t('userEvents.subtitle')}</Text>
         </div>
-        <Link to="/events/create">
-          <Button type="primary" icon={<PlusOutlined />}>
-            {t('userEvents.create')}
-          </Button>
-        </Link>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/events/create')}>
+          {t('userEvents.create')}
+        </Button>
       </Flex>
 
       {isLoading ? (
@@ -173,11 +171,9 @@ export function UserEventsListPage() {
             style={{ marginTop: 24 }}
           >
             <Flex justify="center" align="center" gap={12}>
-              <Link to="/events/create">
-                <Button type="primary" icon={<PlusOutlined />}>
-                  {t('userEvents.create')}
-                </Button>
-              </Link>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/events/create')}>
+                {t('userEvents.create')}
+              </Button>
             </Flex>
           </Empty>
         )

@@ -37,9 +37,101 @@
   scroll-behavior: auto !important;
 }
 
+@keyframes event-form-section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.event-form-section-panel:not([hidden]) {
+  animation: event-form-section-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.event-form-compact-steps .ant-steps-item::before {
+  transition:
+    inset-inline-start 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.event-form-compact-steps.ant-steps-horizontal {
+  width: 100%;
+  max-width: 100%;
+}
+
+.event-form-wide-steps.ant-steps-vertical > .ant-steps-item:not(:last-child) {
+  padding-bottom: calc(2 * var(--ant-padding-sm, 12px));
+}
+
+.event-form-wide-steps.ant-steps-vertical .ant-steps-item-process {
+  padding: 0;
+  margin-inline: -4px;
+  background: transparent;
+}
+
+.event-form-wide-steps.ant-steps-vertical .ant-steps-item-process > .ant-steps-item-wrapper {
+  display: flex;
+  align-items: center;
+  column-gap: var(--ant-margin-xs, 8px);
+  box-sizing: border-box;
+  width: 100%;
+  padding-block: 8px;
+  padding-inline: 10px 12px;
+  background: var(--ant-color-primary-bg);
+  border-radius: 8px;
+  border-inline-start: 3px solid var(--ant-color-primary);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.event-form-wide-steps.ant-steps-vertical .ant-steps-item-process .ant-steps-item-icon {
+  margin-block-start: 0 !important;
+}
+
+.event-form-wide-steps.ant-steps-vertical .ant-steps-item-process .ant-steps-item-header {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+.event-form-wide-steps.ant-steps-vertical .ant-steps-item-process .ant-steps-item-title {
+  color: var(--ant-color-primary);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.event-form-wide-steps.ant-steps-vertical .ant-steps-item-process:focus-visible > .ant-steps-item-wrapper {
+  outline: 2px solid var(--ant-color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-form-section-panel:not([hidden]) {
+    animation: none;
+  }
+
+  .event-form-compact-steps .ant-steps-item::before {
+    transition: none;
+  }
+}
+
 button.profile-avatar-edit.ant-btn:hover,
 button.profile-avatar-edit.ant-btn:focus-visible {
   background: transparent !important;
+}
+
+.app-header-nav-focus-target {
+  outline: none;
+}
+
+.app-header-nav-focus-target:focus-visible {
+  outline: 2px solid var(--ant-color-primary);
+  outline-offset: 2px;
 }
 
 body {

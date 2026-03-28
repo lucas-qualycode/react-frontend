@@ -185,6 +185,7 @@ export function AppHeader() {
             >
               <span
                 ref={searchTriggerRef}
+                className="app-header-nav-focus-target"
                 role="button"
                 tabIndex={0}
                 aria-label={t('shell.searchAria')}
@@ -214,6 +215,7 @@ export function AppHeader() {
                 <span style={{ display: 'inline-flex' }}>
                   <Link
                     to={to}
+                    className="app-header-nav-focus-target"
                     style={{
                       color: hoveredNav === to ? token.colorPrimary : token.colorTextSecondary,
                       padding: 8,
@@ -261,6 +263,7 @@ export function AppHeader() {
             signedOutNarrow ? (
               <Dropdown menu={{ items: unauthMenuItems }} trigger={['click']} placement="bottomRight">
                 <span
+                  className="app-header-nav-focus-target"
                   role="button"
                   tabIndex={0}
                   aria-label={t('shell.menu')}
@@ -294,9 +297,9 @@ export function AppHeader() {
                   {`${t('shell.noAccount')}\n`}
                   <AuthFooterLink to="/signup">{t('shell.signUpLink')}</AuthFooterLink>
                 </span>
-                <Link to="/signin">
-                  <Button type="primary">{t('shell.signIn')}</Button>
-                </Link>
+                <Button type="primary" onClick={() => navigate('/signin')}>
+                  {t('shell.signIn')}
+                </Button>
               </Flex>
             )
           )}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { message } from 'antd'
 import { z } from 'zod'
 import type { OAuthCredential } from 'firebase/auth'
@@ -202,16 +202,22 @@ export function SignInPage() {
             >
               {t('auth.signIn.google')}
             </Button>
-            <Link to="/signin/link" state={location.state} style={{ display: 'block' }}>
-              <Button type="default" block icon={<MailOutlined style={{ fontSize: 20 }} />}>
-                {t('auth.signIn.emailLink')}
-              </Button>
-            </Link>
-            <Link to="/signin/phone" state={location.state} style={{ display: 'block' }}>
-              <Button type="default" block icon={<PhoneOutlined style={{ fontSize: 20 }} />}>
-                {t('auth.signIn.phone')}
-              </Button>
-            </Link>
+            <Button
+              type="default"
+              block
+              icon={<MailOutlined style={{ fontSize: 20 }} />}
+              onClick={() => navigate('/signin/link', { state: location.state })}
+            >
+              {t('auth.signIn.emailLink')}
+            </Button>
+            <Button
+              type="default"
+              block
+              icon={<PhoneOutlined style={{ fontSize: 20 }} />}
+              onClick={() => navigate('/signin/phone', { state: location.state })}
+            >
+              {t('auth.signIn.phone')}
+            </Button>
           </Space>
 
           <Divider />

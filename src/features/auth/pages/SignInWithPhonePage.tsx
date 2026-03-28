@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { message } from 'antd'
 import { getAuth, RecaptchaVerifier } from 'firebase/auth'
 import type { OAuthCredential } from 'firebase/auth'
@@ -218,16 +218,22 @@ export function SignInWithPhonePage() {
             >
               Sign in with Google
             </Button>
-            <Link to="/signin" state={location.state} style={{ display: 'block' }}>
-              <Button type="default" block icon={<MailOutlined style={{ fontSize: 20 }} />}>
-                Sign in with email and password
-              </Button>
-            </Link>
-            <Link to="/signin/link" state={location.state} style={{ display: 'block' }}>
-              <Button type="default" block icon={<MailOutlined style={{ fontSize: 20 }} />}>
-                Sign in with email link
-              </Button>
-            </Link>
+            <Button
+              type="default"
+              block
+              icon={<MailOutlined style={{ fontSize: 20 }} />}
+              onClick={() => navigate('/signin', { state: location.state })}
+            >
+              Sign in with email and password
+            </Button>
+            <Button
+              type="default"
+              block
+              icon={<MailOutlined style={{ fontSize: 20 }} />}
+              onClick={() => navigate('/signin/link', { state: location.state })}
+            >
+              Sign in with email link
+            </Button>
           </Space>
 
           <Divider />

@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Modal, Spin, Tag, Typography, message, Space } from 'antd'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDeleteEvent, useEvent } from '../hooks'
 import type { Event } from '@/shared/types/api'
@@ -44,9 +44,9 @@ export function EventDetailPage() {
           {event?.name ? <Text type="secondary">{event.name}</Text> : null}
         </div>
         <Space size={8} wrap>
-          <Link to={`/events/${id}/edit`}>
-            <Button icon={<EditOutlined />}>{t('events.detail.edit')}</Button>
-          </Link>
+          <Button icon={<EditOutlined />} onClick={() => id && navigate(`/events/${id}/edit`)}>
+            {t('events.detail.edit')}
+          </Button>
           <Button
             danger
             icon={<DeleteOutlined />}

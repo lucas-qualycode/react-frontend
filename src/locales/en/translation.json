@@ -200,13 +200,16 @@
     "schedule": {
       "sectionTitle": "Schedule",
       "dateLabel": "Event date",
+      "datePlaceholder": "Pick a date · e.g. {{example}}",
       "dateRequired": "Select the event date.",
       "startTimeLabel": "Daily start time",
+      "startTimePlaceholder": "Pick a start time · e.g. {{example}}",
       "endTimeLabel": "Daily end time",
+      "endTimePlaceholder": "Pick an end time · e.g. {{example}}",
       "endTimeBeforeStart": "The end time must be the same as or after the start time.",
       "timeRequired": "Select a time.",
       "timezoneLabel": "Time zone",
-      "timezonePlaceholder": "Select a time zone",
+      "timezonePlaceholder": "Pick a time zone · e.g. {{example}}",
       "timezoneRequired": "Select a time zone.",
       "saveError": "Could not save schedule. Please try again.",
       "multipleHint": "This event has more than one schedule in the system. You are editing the earliest one. Contact support if you need to manage additional schedules."

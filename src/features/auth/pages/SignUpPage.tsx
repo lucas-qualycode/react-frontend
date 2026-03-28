@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Alert, Button, Card, Divider, Form, Input, Layout, message, Space, Typography } from 'antd'
 import { z } from 'zod'
 import type { OAuthCredential } from 'firebase/auth'
@@ -228,16 +228,22 @@ export function SignUpPage() {
             >
               {t('auth.signUp.google')}
             </Button>
-            <Link to="/signin/link" state={location.state} style={{ display: 'block' }}>
-              <Button type="default" block icon={<MailOutlined style={{ fontSize: 20 }} />}>
-                {t('auth.signUp.emailLink')}
-              </Button>
-            </Link>
-            <Link to="/signin/phone" state={location.state} style={{ display: 'block' }}>
-              <Button type="default" block icon={<PhoneOutlined style={{ fontSize: 20 }} />}>
-                {t('auth.signUp.phone')}
-              </Button>
-            </Link>
+            <Button
+              type="default"
+              block
+              icon={<MailOutlined style={{ fontSize: 20 }} />}
+              onClick={() => navigate('/signin/link', { state: location.state })}
+            >
+              {t('auth.signUp.emailLink')}
+            </Button>
+            <Button
+              type="default"
+              block
+              icon={<PhoneOutlined style={{ fontSize: 20 }} />}
+              onClick={() => navigate('/signin/phone', { state: location.state })}
+            >
+              {t('auth.signUp.phone')}
+            </Button>
           </Space>
 
           <Divider />

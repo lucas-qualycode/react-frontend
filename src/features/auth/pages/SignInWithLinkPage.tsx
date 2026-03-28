@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { message } from 'antd'
 import type { OAuthCredential } from 'firebase/auth'
 import { Alert, Button, Card, Divider, Form, Input, Layout, Space, Typography } from 'antd'
@@ -161,16 +161,22 @@ export function SignInWithLinkPage() {
         >
           Sign in with Google
         </Button>
-        <Link to="/signin" state={location.state} style={{ display: 'block' }}>
-          <Button type="default" block icon={<MailOutlined style={{ fontSize: 20 }} />}>
-            Sign in with email and password
-          </Button>
-        </Link>
-        <Link to="/signin/phone" state={location.state} style={{ display: 'block' }}>
-          <Button type="default" block icon={<PhoneOutlined style={{ fontSize: 20 }} />}>
-            Sign in with phone
-          </Button>
-        </Link>
+        <Button
+          type="default"
+          block
+          icon={<MailOutlined style={{ fontSize: 20 }} />}
+          onClick={() => navigate('/signin', { state: location.state })}
+        >
+          Sign in with email and password
+        </Button>
+        <Button
+          type="default"
+          block
+          icon={<PhoneOutlined style={{ fontSize: 20 }} />}
+          onClick={() => navigate('/signin/phone', { state: location.state })}
+        >
+          Sign in with phone
+        </Button>
       </Space>
 
       <Divider />

@@ -158,21 +158,7 @@ function snapshotScheduleForDirty(v: EventFormValues): string {
 }
 
 function snapshotScheduleFromLoaded(primary: Schedule | undefined): string {
-  if (!primary) {
-    let browserTz = 'UTC'
-    try {
-      browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-    } catch {
-      /* ignore */
-    }
-    return JSON.stringify({
-      start_date: dayjs().format('YYYY-MM-DD'),
-      end_date: dayjs().format('YYYY-MM-DD'),
-      start_time: '09:00',
-      end_time: '17:00',
-      timezone: browserTz,
-    })
-  }
+  if (!primary) return ''
   const day = primary.start_date
   return JSON.stringify({
     start_date: day,
@@ -181,6 +167,13 @@ function snapshotScheduleFromLoaded(primary: Schedule | undefined): string {
     end_time: primary.end_time,
     timezone: primary.timezone,
   })
+}
+
+function isScheduleDirty(schedSnap: string, baseline: string): boolean {
+  if (baseline === '') {
+    return schedSnap !== ''
+  }
+  return schedSnap !== baseline
 }
 
 function listTimeZones(): string[] {
@@ -428,20 +421,15 @@ export function EventForm({
         schedule_end_time: dayjs(primarySchedule.end_time, 'HH:mm'),
         schedule_timezone: primarySchedule.timezone,
       })
-      return
+    } else {
+      let browserTz = 'UTC'
+      try {
+        browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      } catch {
+        /* ignore */
+      }
+      form.setFieldsValue({ schedule_timezone: browserTz })
     }
-    let browserTz = 'UTC'
-    try {
-      browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-    } catch {
-      /* ignore */
-    }
-    form.setFieldsValue({
-      schedule_date: dayjs(),
-      schedule_start_time: dayjs('09:00', 'HH:mm'),
-      schedule_end_time: dayjs('17:00', 'HH:mm'),
-      schedule_timezone: browserTz,
-    })
   }, [mode, eventId, schedulesLoading, primarySchedule?.id, form])
 
   useEffect(() => {
@@ -453,8 +441,8 @@ export function EventForm({
     if (!onDirtyChange) return
     const raw = form.getFieldsValue(true) as EventFormValues
     const eventDirty = snapshotEventFormValuesForDirty(raw) !== editBaselineRef.current
-    const scheduleDirty =
-      snapshotScheduleForDirty(raw) !== scheduleBaselineRef.current && scheduleBaselineRef.current !== ''
+    const schedSnap = snapshotScheduleForDirty(raw)
+    const scheduleDirty = isScheduleDirty(schedSnap, scheduleBaselineRef.current)
     const next = eventDirty || scheduleDirty
     setIsDirty(next)
     onDirtyChange(next)
@@ -567,8 +555,7 @@ export function EventForm({
     const eventPayload = normalizePayload(values, mode, active)
     const eventDirty = snapshotEventFormValuesForDirty(values) !== editBaselineRef.current
     const schedSnap = snapshotScheduleForDirty(values)
-    const scheduleDirty =
-      schedSnap !== scheduleBaselineRef.current && scheduleBaselineRef.current !== ''
+    const scheduleDirty = isScheduleDirty(schedSnap, scheduleBaselineRef.current)
 
     if (!eventDirty && !scheduleDirty) {
       return
@@ -839,6 +826,9 @@ export function EventForm({
 
               {mode === 'edit' ? (
                 <div style={{ width: '100%' }}>
+                  <Typography.Title level={5} style={{ marginTop: 16, marginBottom: coverPreviewSrc ? 12 : 4 }}>
+                    {t('events.form.coverImageTitle')}
+                  </Typography.Title>
                   {coverPreviewSrc ? (
                     <div
                       style={{
@@ -864,37 +854,44 @@ export function EventForm({
                         }}
                       />
                     </div>
-                  ) : (
-                    <div
+                  ) : null}
+                  {!coverPreviewSrc ? (
+                    <Button
+                      type="link"
+                      onClick={() => setImageEditOpen(true)}
+                      onMouseEnter={() => setEditImageHover(true)}
+                      onMouseLeave={() => setEditImageHover(false)}
                       style={{
-                        width: '100%',
-                        aspectRatio: '2 / 1',
-                        borderRadius: 12,
-                        border: '1px dashed var(--ant-color-border)',
-                        background: 'var(--ant-color-bg-elevated)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 16,
+                        padding: 0,
+                        height: 'auto',
+                        display: 'block',
+                        marginTop: 0,
+                        marginBottom: 8,
+                        textAlign: 'left',
+                        fontWeight: 700,
+                        whiteSpace: 'normal',
+                        color: editImageHover ? token.colorPrimary : token.colorTextSecondary,
                       }}
                     >
-                      <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
-                    </div>
-                  )}
-                  <Button
-                    type="text"
-                    onClick={() => setImageEditOpen(true)}
-                    onMouseEnter={() => setEditImageHover(true)}
-                    onMouseLeave={() => setEditImageHover(false)}
-                    style={{
-                      padding: 0,
-                      height: 'auto',
-                      marginTop: 8,
-                      color: editImageHover ? token.colorPrimary : token.colorTextSecondary,
-                    }}
-                  >
-                    {coverPreviewSrc ? t('events.form.imageEdit') : t('events.form.imageAdd')}
-                  </Button>
+                      {t('events.form.coverImageEmptyHint')}
+                    </Button>
+                  ) : null}
+                  {coverPreviewSrc ? (
+                    <Button
+                      type="text"
+                      onClick={() => setImageEditOpen(true)}
+                      onMouseEnter={() => setEditImageHover(true)}
+                      onMouseLeave={() => setEditImageHover(false)}
+                      style={{
+                        padding: 0,
+                        height: 'auto',
+                        marginTop: 8,
+                        color: editImageHover ? token.colorPrimary : token.colorTextSecondary,
+                      }}
+                    >
+                      {t('events.form.imageEdit')}
+                    </Button>
+                  ) : null}
                   <ImageEditModal
                     open={imageEditOpen}
                     onClose={() => setImageEditOpen(false)}
@@ -1091,12 +1088,7 @@ export function EventForm({
                             {t('events.schedule.multipleHint')}
                           </Typography.Paragraph>
                         ) : null}
-                        <Form.Item
-                          style={fieldItemStyle}
-                          name="schedule_date"
-                          label={t('events.schedule.dateLabel')}
-                          rules={[{ required: true, message: t('events.schedule.dateRequired') }]}
-                        >
+                        <Form.Item style={fieldItemStyle} name="schedule_date" label={t('events.schedule.dateLabel')}>
                           <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
                         </Form.Item>
                         <Form.Item
@@ -1158,7 +1150,7 @@ export function EventForm({
                         >
                           <Select
                             showSearch
-                            allowClear={false}
+                            allowClear
                             optionFilterProp="label"
                             options={tzOptions}
                             style={{ width: '100%' }}

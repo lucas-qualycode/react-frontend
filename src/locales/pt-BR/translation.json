@@ -189,6 +189,8 @@
       "menuTagsVisibility": "Tags e visibilidade",
       "scheduleAfterCreateHint": "Você pode definir datas e horários de início e fim depois que o evento for criado.",
       "sectionIdentity": "Identidade do evento",
+      "coverImageTitle": "Imagem de capa",
+      "coverImageEmptyHint": "Clique aqui para adicionar",
       "sectionVenue": "Local e endereço",
       "sectionMedia": "Mídia",
       "sectionTags": "Tags",

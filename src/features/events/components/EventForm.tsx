@@ -3,7 +3,6 @@ import {
   CalendarOutlined,
   EnvironmentOutlined,
   FileTextOutlined,
-  MenuOutlined,
   TagsOutlined,
 } from '@ant-design/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -12,17 +11,14 @@ import {
   Card,
   DatePicker,
   Divider,
-  Dropdown,
   Flex,
   Form,
-  Grid,
   Input,
   Modal,
   Radio,
   Select,
   Space,
   Spin,
-  Steps,
   TimePicker,
   TreeSelect,
   Typography,
@@ -33,6 +29,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { useAuth } from '@/app/auth/AuthContext'
 import { settingsStorage } from '@/features/settings/storage'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
+import { SectionStepsNavLayout } from '@/shared/components/SectionStepsNavLayout'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -301,8 +298,6 @@ export function EventForm({
       ? createSection
       : slugToSection(searchParams.get(SECTION_QUERY_PARAM)) ?? 'identity'
   const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
-  const screens = Grid.useBreakpoint()
-  const compactSectionNav = screens.md === false
 
   const scheduleFieldPlaceholders = useMemo(() => {
     const dateExample = dayjs().format('YYYY-MM-DD')
@@ -720,61 +715,6 @@ export function EventForm({
     [t]
   )
 
-  const sectionStepIndex = Math.max(0, CREATE_SECTION_ORDER.indexOf(activeSection))
-
-  const wideSectionStepItems = useMemo(
-    () =>
-      CREATE_SECTION_ORDER.map((sectionKey) => {
-        const m = eventFormMenuItems.find((x) => x.key === sectionKey)
-        return {
-          title: m?.label ?? sectionKey,
-          icon: m?.icon,
-        }
-      }),
-    [eventFormMenuItems],
-  )
-
-  const compactSectionStepItems = useMemo(
-    () =>
-      CREATE_SECTION_ORDER.map((sectionKey, index) => {
-        const m = eventFormMenuItems.find((x) => x.key === sectionKey)
-        const label = m?.label ?? sectionKey
-        const isFirst = index === 0
-        const isLast = index === CREATE_SECTION_ORDER.length - 1
-        return {
-          title: null,
-          icon: (
-            <span style={{ display: 'inline-flex', alignItems: 'center' }} aria-label={label}>
-              {m?.icon}
-            </span>
-          ),
-          style: {
-            flex: '1 1 0%',
-            minWidth: 0,
-            maxWidth: '100%',
-            display: 'flex',
-            justifyContent: 'center',
-            paddingInlineStart: isFirst ? 0 : 6,
-            paddingInlineEnd: isLast ? 0 : 6,
-          },
-          styles: {
-            wrapper: {
-              flex: 1,
-              minWidth: 0,
-              width: '100%',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 0,
-            },
-            section: { flex: '0 0 auto', minWidth: 0, maxWidth: 'max-content' },
-            header: { gap: 0, justifyContent: 'center' },
-            rail: { marginInlineStart: 6 },
-          },
-        }
-      }),
-    [eventFormMenuItems],
-  )
-
   function goToFormSection(sectionKey: EventFormSectionKey) {
     if (mode === 'create') {
       setCreateSection(sectionKey)
@@ -788,11 +728,6 @@ export function EventForm({
       },
       { replace: true },
     )
-  }
-
-  const onSectionMenuSelect = (key: string) => {
-    if (key !== 'identity' && key !== 'venue' && key !== 'tags' && key !== 'schedules') return
-    goToFormSection(key as EventFormSectionKey)
   }
 
   function goToPrevCreateSection() {
@@ -849,39 +784,13 @@ export function EventForm({
           ...formInitialRest,
         }}
       >
-        <Flex vertical gap={compactSectionNav ? 12 : 0} style={{ width: '100%' }}>
-          {compactSectionNav ? (
-            <Flex align="center" gap={16} style={{ width: '100%' }}>
-              <div style={{ flex: 1, minWidth: 0, overflowX: 'visible', paddingBottom: 4 }}>
-                <Steps
-                  className="event-form-compact-steps"
-                  style={{ width: '100%' }}
-                  size="small"
-                  type="navigation"
-                  orientation="horizontal"
-                  responsive={false}
-                  current={sectionStepIndex}
-                  items={compactSectionStepItems}
-                  onChange={(step) => goToFormSection(CREATE_SECTION_ORDER[step])}
-                />
-              </div>
-              <span style={{ display: 'inline-flex', flexShrink: 0 }}>
-                <Dropdown
-                  menu={{
-                    items: eventFormMenuItems.map(({ key, icon, label }) => ({ key, icon, label })),
-                    selectedKeys: [activeSection],
-                    onClick: ({ key }) => onSectionMenuSelect(key),
-                  }}
-                  trigger={['hover', 'click']}
-                  placement="bottomRight"
-                >
-                  <Button type="text" icon={<MenuOutlined />} aria-label={t('events.form.sectionNavAria')} />
-                </Dropdown>
-              </span>
-            </Flex>
-          ) : null}
-
-          <Flex gap={32} align="flex-start" style={{ width: '100%' }}>
+        <SectionStepsNavLayout
+          sectionOrder={CREATE_SECTION_ORDER}
+          items={eventFormMenuItems}
+          activeKey={activeSection}
+          onActiveKeyChange={goToFormSection}
+          menuDropdownAriaLabel={t('events.form.sectionNavAria')}
+        >
             <Card style={{ flex: 1, minWidth: 0 }}>
               <Form.Item name="imageURL" hidden rules={[urlRule]}>
                 <Input />
@@ -1314,22 +1223,7 @@ export function EventForm({
                 )}
               </Form.Item>
             </Card>
-
-            {!compactSectionNav ? (
-              <div style={{ width: 220, flexShrink: 0 }}>
-                <Steps
-                  className="event-form-wide-steps"
-                  orientation="vertical"
-                  size="small"
-                  responsive={false}
-                  current={sectionStepIndex}
-                  items={wideSectionStepItems}
-                  onChange={(step) => goToFormSection(CREATE_SECTION_ORDER[step])}
-                />
-              </div>
-            ) : null}
-          </Flex>
-        </Flex>
+        </SectionStepsNavLayout>
       </Form>
 
       <Modal

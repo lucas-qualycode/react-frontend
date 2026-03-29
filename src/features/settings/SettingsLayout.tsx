@@ -1,17 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { MenuOutlined } from '@ant-design/icons'
-import {
-  Button,
-  Dropdown,
-  Flex,
-  Grid,
-  Layout,
-  Menu,
-  Modal,
-  Spin,
-  Typography,
-} from 'antd'
-import type { MenuProps } from 'antd'
+import { Flex, Layout, Modal, Spin, Typography } from 'antd'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
@@ -20,21 +8,22 @@ import { initialUserPreferencesForCreate } from '@/features/settings/initialUser
 import { SettingsSectionContent } from '@/features/settings/SettingsSectionContent'
 import {
   SETTINGS_MENU_ITEMS,
+  SETTINGS_SECTION_KEYS,
   SETTINGS_SECTION_QUERY_PARAM,
+  type SettingsSectionKey,
   isSettingsSectionKey,
   settingsPathSearch,
 } from '@/features/settings/settingsMenu'
 import { SettingsLayoutOutletProvider } from '@/features/settings/SettingsLayoutOutletContext'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
+import { SectionStepsNavLayout } from '@/shared/components/SectionStepsNavLayout'
 
 const { Content } = Layout
 
 export function SettingsLayout() {
   const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const screens = Grid.useBreakpoint()
-  const settingsIconNav = screens.md === false
   const {
     user,
     updateProfile,
@@ -110,17 +99,7 @@ export function SettingsLayout() {
     [t, settingsIndexPath, sectionLabel],
   )
 
-  const menuItems = useMemo(
-    () =>
-      SETTINGS_MENU_ITEMS.map(({ key, icon }) => ({
-        key,
-        icon,
-        label: t(`settings.menu.${key}`),
-      })),
-    [t]
-  )
-
-  const settingsDropdownItems: MenuProps['items'] = useMemo(
+  const navItems = useMemo(
     () =>
       SETTINGS_MENU_ITEMS.map(({ key, icon }) => ({
         key,
@@ -157,90 +136,44 @@ export function SettingsLayout() {
     ]
   )
 
-  if (profileLoading && !profile) {
-    return (
-      <Content style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-        <PageBreadcrumbBar items={breadcrumbItems} />
-        <Spin size="large" />
-      </Content>
+  function setSettingsSection(key: SettingsSectionKey) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set(SETTINGS_SECTION_QUERY_PARAM, key)
+        return next
+      },
+      { replace: true },
     )
   }
 
-  if (profileError) {
-    return (
-      <Content style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-        <PageBreadcrumbBar items={breadcrumbItems} />
-        <Typography.Text type="danger">{t('settings.loadError')}</Typography.Text>
-      </Content>
-    )
-  }
+  const mainColumn = profileLoading && !profile ? (
+    <Flex style={{ minHeight: 220 }} align="center" justify="center">
+      <Spin size="large" />
+    </Flex>
+  ) : profileError ? (
+    <Typography.Text type="danger">{t('settings.loadError')}</Typography.Text>
+  ) : (
+    <>
+      {modalContextHolder}
+      <PageBreadcrumbBar items={breadcrumbItems} />
+      <SettingsLayoutOutletProvider value={outletContext}>
+        <SettingsSectionContent activeKey={activeKey} />
+      </SettingsLayoutOutletProvider>
+    </>
+  )
 
   return (
     <Content style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-      <Flex gap={settingsIconNav ? 0 : 32} vertical={settingsIconNav} align="flex-start">
-        <Flex flex={1} vertical style={{ minWidth: 0, width: '100%' }}>
-          {modalContextHolder}
-          {settingsIconNav ? (
-            <PageBreadcrumbBar
-              items={breadcrumbItems}
-              trailing={
-                <span style={{ display: 'inline-flex' }}>
-                  <Dropdown
-                    menu={{
-                      items: settingsDropdownItems,
-                      selectedKeys: [activeKey],
-                      onClick: ({ key }) => {
-                        if (!isSettingsSectionKey(key)) return
-                        setSearchParams(
-                          (prev) => {
-                            const next = new URLSearchParams(prev)
-                            next.set(SETTINGS_SECTION_QUERY_PARAM, key)
-                            return next
-                          },
-                          { replace: true },
-                        )
-                      },
-                    }}
-                    trigger={['hover', 'click']}
-                    placement="bottomRight"
-                  >
-                    <Button
-                      type="text"
-                      icon={<MenuOutlined />}
-                      aria-label={t('settings.menuDropdownAria')}
-                      style={{ flexShrink: 0 }}
-                    />
-                  </Dropdown>
-                </span>
-              }
-            />
-          ) : (
-            <PageBreadcrumbBar items={breadcrumbItems} />
-          )}
-          <SettingsLayoutOutletProvider value={outletContext}>
-            <SettingsSectionContent activeKey={activeKey} />
-          </SettingsLayoutOutletProvider>
-        </Flex>
-        {!settingsIconNav ? (
-          <Menu
-            selectedKeys={[activeKey]}
-            onSelect={({ key }) => {
-              if (!isSettingsSectionKey(key)) return
-              setSearchParams(
-                (prev) => {
-                  const next = new URLSearchParams(prev)
-                  next.set(SETTINGS_SECTION_QUERY_PARAM, key)
-                  return next
-                },
-                { replace: true },
-              )
-            }}
-            mode="vertical"
-            style={{ width: 220, flexShrink: 0 }}
-            items={menuItems}
-          />
-        ) : null}
-      </Flex>
+      <SectionStepsNavLayout
+        sectionOrder={SETTINGS_SECTION_KEYS}
+        items={navItems}
+        activeKey={activeKey}
+        onActiveKeyChange={setSettingsSection}
+        menuDropdownAriaLabel={t('settings.menuDropdownAria')}
+      >
+        {mainColumn}
+      </SectionStepsNavLayout>
     </Content>
   )
 }

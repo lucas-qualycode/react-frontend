@@ -90,11 +90,36 @@ export interface Invitation {
   [key: string]: unknown
 }
 
+export interface ProductInventoryEmbed {
+  id: string
+  available_quantity: number
+  reserved_quantity: number
+  total_quantity: number
+}
+
 export interface Product {
   id: string
-  name?: string
-  parent_id?: string
-  [key: string]: unknown
+  name: string
+  description: string
+  imageURL?: string | null
+  parent_id?: string | null
+  parent_type?: string | null
+  type?: string | null
+  user_id: string
+  is_free: boolean
+  value: number
+  quantity: number
+  max_per_user: number
+  request_additional_info: boolean
+  active: boolean
+  deleted?: boolean
+  created_at: string
+  updated_at: string
+  created_by: string
+  last_updated_by: string
+  metadata?: Record<string, unknown>
+  tags?: EventTagEmbed[]
+  inventory?: ProductInventoryEmbed | null
 }
 
 export interface Address {

@@ -2,24 +2,30 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createEvent,
   createLocation,
+  createProduct,
   createSchedule,
   createTag,
   deleteEvent,
+  deleteProduct,
   getEvent,
+  listEventProducts,
   listLocations,
   listSchedules,
   listTags,
   listUserEvents,
   updateEvent,
+  updateProduct,
   updateSchedule,
   type CreateEventPayload,
   type CreateLocationPayload,
+  type CreateProductPayload,
   type CreateSchedulePayload,
   type CreateTagPayload,
   type UpdateEventPayload,
+  type UpdateProductPayload,
   type UpdateSchedulePayload,
 } from './api'
-import type { Event, Schedule, Tag } from '@/shared/types/api'
+import type { Event, Product, Schedule, Tag } from '@/shared/types/api'
 
 function compareByCreatedAtDesc(a: Event, b: Event): number {
   const at = a.created_at ? new Date(a.created_at).getTime() : 0
@@ -119,6 +125,7 @@ export function useCreateTag() {
     mutationFn: (payload: CreateTagPayload) => createTag(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['eventTags'] })
+      queryClient.invalidateQueries({ queryKey: ['productTags'] })
     },
   })
 }
@@ -155,6 +162,66 @@ export function useUpdateSchedule() {
     }) => updateSchedule(scheduleId, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['schedules', variables.eventId] })
+    },
+  })
+}
+
+function isMerchandiseProduct(p: Product): boolean {
+  return p.type !== 'TICKET'
+}
+
+export function useEventMerchProducts(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['eventProducts', eventId, 'merch'],
+    queryFn: async (): Promise<Product[]> => listEventProducts(eventId!),
+    enabled: !!eventId,
+    select: (list) => list.filter(isMerchandiseProduct),
+    staleTime: 30_000,
+  })
+}
+
+export function useProductTags() {
+  return useQuery({
+    queryKey: ['productTags'],
+    queryFn: async (): Promise<Tag[]> =>
+      listTags({ active: true, deleted: false, applies_to: 'PRODUCT' }),
+    staleTime: 60_000,
+  })
+}
+
+export function useCreateProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateProductPayload) => createProduct(payload),
+    onSuccess: (_data, variables) => {
+      if (variables.parent_id) {
+        queryClient.invalidateQueries({ queryKey: ['eventProducts', variables.parent_id] })
+      }
+    },
+  })
+}
+
+export function useUpdateProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: {
+      productId: string
+      eventId: string
+      payload: UpdateProductPayload
+    }) => updateProduct(vars.productId, vars.payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['eventProducts', variables.eventId] })
+    },
+  })
+}
+
+export function useDeleteProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ productId }: { productId: string; eventId: string }) =>
+      deleteProduct(productId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['eventProducts', variables.eventId] })
     },
   })
 }

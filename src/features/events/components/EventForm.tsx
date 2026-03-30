@@ -3,6 +3,7 @@ import {
   CalendarOutlined,
   EnvironmentOutlined,
   FileTextOutlined,
+  ShoppingOutlined,
   TagsOutlined,
 } from '@ant-design/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -30,6 +31,7 @@ import { useAuth } from '@/app/auth/AuthContext'
 import { settingsStorage } from '@/features/settings/storage'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
 import { SectionStepsNavLayout } from '@/shared/components/SectionStepsNavLayout'
+import { EventProductsSection } from './EventProductsSection'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -73,7 +75,7 @@ type EventFormProps = {
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
 
-type EventFormSectionKey = 'identity' | 'venue' | 'tags' | 'schedules'
+type EventFormSectionKey = 'identity' | 'venue' | 'tags' | 'schedules' | 'products'
 
 const SECTION_QUERY_PARAM = 'section'
 
@@ -82,6 +84,7 @@ const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
   tags: 'tags',
   venue: 'venue',
   schedule: 'schedules',
+  products: 'products',
 }
 
 const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
@@ -89,9 +92,16 @@ const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
   tags: 'tags',
   venue: 'venue',
   schedules: 'schedule',
+  products: 'products',
 }
 
-const CREATE_SECTION_ORDER: EventFormSectionKey[] = ['identity', 'tags', 'venue', 'schedules']
+const CREATE_SECTION_ORDER: EventFormSectionKey[] = [
+  'identity',
+  'tags',
+  'venue',
+  'schedules',
+  'products',
+]
 
 function slugToSection(slug: string | null): EventFormSectionKey | null {
   if (!slug) return null
@@ -711,8 +721,13 @@ export function EventForm({
         icon: <CalendarOutlined />,
         label: t('events.form.menuSchedules'),
       },
+      {
+        key: 'products' as const,
+        icon: <ShoppingOutlined />,
+        label: t('events.form.menuProducts'),
+      },
     ],
-    [t]
+    [t],
   )
 
   function goToFormSection(sectionKey: EventFormSectionKey) {
@@ -1178,6 +1193,22 @@ export function EventForm({
                 </div>
               ) : null}
 
+              {sectionFormPanelMounted(mode, activeSection, 'products') ? (
+                <div
+                  className="event-form-section-panel"
+                  hidden={sectionFormPanelHidden(mode, activeSection, 'products')}
+                  style={{ width: '100%' }}
+                >
+                  {mode === 'edit' && eventId ? (
+                    <EventProductsSection eventId={eventId} />
+                  ) : (
+                    <Typography.Text type="secondary" style={{ display: 'block' }}>
+                      {t('events.form.productsAfterCreateHint')}
+                    </Typography.Text>
+                  )}
+                </div>
+              ) : null}
+
               <Form.Item style={{ marginBottom: 0 }}>
                 {mode === 'create' ? (
                   <Flex justify="flex-end" gap={8} wrap="wrap" style={{ width: '100%' }}>
@@ -1186,7 +1217,7 @@ export function EventForm({
                         {t('events.create.back')}
                       </Button>
                     ) : null}
-                    {activeSection !== 'schedules' ? (
+                    {activeSection !== 'products' ? (
                       <Button
                         type="primary"
                         htmlType="button"

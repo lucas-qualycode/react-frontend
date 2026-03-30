@@ -1,5 +1,5 @@
 import { fetchApi } from '@/shared/api/client'
-import type { Event, Location, Schedule, Tag } from '@/shared/types/api'
+import type { Event, Location, Product, Schedule, Tag } from '@/shared/types/api'
 
 async function apiErrorMessage(res: Response): Promise<string> {
   try {
@@ -194,4 +194,81 @@ export async function updateSchedule(
   })
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Schedule>
+}
+
+export type CreateProductPayload = {
+  name: string
+  description: string
+  imageURL?: string | null
+  parent_id: string | null
+  parent_type: string | null
+  type?: string | null
+  is_free: boolean
+  value: number
+  quantity: number
+  max_per_user: number
+  request_additional_info: boolean
+  active?: boolean
+  metadata?: Record<string, unknown>
+  tag_ids?: string[]
+}
+
+export type UpdateProductPayload = {
+  name?: string
+  description?: string
+  imageURL?: string | null
+  parent_id?: string | null
+  parent_type?: string | null
+  type?: string | null
+  is_free?: boolean
+  value?: number
+  quantity?: number
+  max_per_user?: number
+  request_additional_info?: boolean
+  active?: boolean
+  metadata?: Record<string, unknown>
+  tag_ids?: string[]
+}
+
+export async function listEventProducts(eventId: string): Promise<Product[]> {
+  const params = new URLSearchParams({
+    parent_id: eventId,
+    deleted: 'false',
+  })
+  const res = await fetchApi(`products?${params.toString()}`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Product[]>
+}
+
+export async function createProduct(payload: CreateProductPayload): Promise<Product> {
+  const res = await fetchApi('products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...payload,
+      tag_ids: payload.tag_ids ?? [],
+      metadata: payload.metadata ?? {},
+      active: payload.active ?? true,
+    }),
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Product>
+}
+
+export async function updateProduct(
+  productId: string,
+  payload: UpdateProductPayload
+): Promise<Product> {
+  const res = await fetchApi(`products/${productId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Product>
+}
+
+export async function deleteProduct(productId: string): Promise<void> {
+  const res = await fetchApi(`products/${productId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
 }

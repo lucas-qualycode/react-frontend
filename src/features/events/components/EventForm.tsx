@@ -1209,50 +1209,52 @@ export function EventForm({
                 </div>
               ) : null}
 
-              <Form.Item style={{ marginBottom: 0 }}>
-                {mode === 'create' ? (
-                  <Flex justify="flex-end" gap={8} wrap="wrap" style={{ width: '100%' }}>
-                    {activeSection !== 'identity' ? (
-                      <Button htmlType="button" onClick={goToPrevCreateSection}>
-                        {t('events.create.back')}
-                      </Button>
-                    ) : null}
-                    {activeSection !== 'products' ? (
+              {mode === 'create' || activeSection !== 'products' ? (
+                <Form.Item style={{ marginBottom: 0 }}>
+                  {mode === 'create' ? (
+                    <Flex justify="flex-end" gap={8} wrap="wrap" style={{ width: '100%' }}>
+                      {activeSection !== 'identity' ? (
+                        <Button htmlType="button" onClick={goToPrevCreateSection}>
+                          {t('events.create.back')}
+                        </Button>
+                      ) : null}
+                      {activeSection !== 'products' ? (
+                        <Button
+                          type="primary"
+                          htmlType="button"
+                          onClick={() => void goToNextCreateSection()}
+                        >
+                          {t('events.create.next')}
+                        </Button>
+                      ) : (
+                        <Button
+                          type="primary"
+                          htmlType="button"
+                          loading={submitLoading}
+                          onClick={() => void form.submit()}
+                        >
+                          {t('events.create.submit')}
+                        </Button>
+                      )}
+                    </Flex>
+                  ) : (
+                    <Flex justify="flex-end" style={{ width: '100%' }}>
                       <Button
                         type="primary"
-                        htmlType="button"
-                        onClick={() => void goToNextCreateSection()}
+                        htmlType="submit"
+                        loading={
+                          submitLoading ||
+                          createScheduleMutation.isPending ||
+                          updateScheduleMutation.isPending
+                        }
+                        disabled={!isDirty}
                       >
-                        {t('events.create.next')}
+                        {t('events.edit.submit')}
                       </Button>
-                    ) : (
-                      <Button
-                        type="primary"
-                        htmlType="button"
-                        loading={submitLoading}
-                        onClick={() => void form.submit()}
-                      >
-                        {t('events.create.submit')}
-                      </Button>
-                    )}
-                  </Flex>
-                ) : (
-                  <Flex justify="flex-end" style={{ width: '100%' }}>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      loading={
-                        submitLoading ||
-                        createScheduleMutation.isPending ||
-                        updateScheduleMutation.isPending
-                      }
-                      disabled={!isDirty}
-                    >
-                      {t('events.edit.submit')}
-                    </Button>
-                  </Flex>
-                )}
-              </Form.Item>
+                    </Flex>
+                  )}
+                </Form.Item>
+              ) : null}
             </Card>
         </SectionStepsNavLayout>
       </Form>

@@ -1,9 +1,8 @@
-import { DeleteOutlined, EditOutlined, PictureOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Button,
-  Card,
   Col,
   Divider,
   Empty,
@@ -30,6 +29,7 @@ import {
 import { useAuth } from '@/app/auth/AuthContext'
 import { settingsStorage } from '@/features/settings/storage'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
+import { ListItemMediaCard } from '@/shared/components/ListItemMediaCard'
 import type { ColumnsType } from 'antd/es/table'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
@@ -287,66 +287,8 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
     }
   }
 
-  const renderProductActions = useCallback(
-    (row: Product) => (
-      <Space size="small" wrap>
-        <Button type="link" size="small" onClick={() => openEdit(row)}>
-          {t('events.products.edit')}
-        </Button>
-        <Popconfirm
-          title={t('events.products.deleteConfirmTitle')}
-          description={t('events.products.deleteConfirmBody')}
-          okText={t('events.products.deleteOk')}
-          cancelText={t('events.tags.cancel')}
-          onConfirm={async () => {
-            try {
-              await deleteMutation.mutateAsync({ productId: row.id, eventId })
-              message.success(t('events.products.deleteSuccess'))
-            } catch (e) {
-              if (e instanceof Error && e.message) message.error(e.message)
-            }
-          }}
-        >
-          <Button type="link" size="small" danger>
-            {t('events.products.delete')}
-          </Button>
-        </Popconfirm>
-      </Space>
-    ),
-    [t, deleteMutation, eventId, openEdit],
-  )
-
   const columns: ColumnsType<Product> = useMemo(
     () => [
-      {
-        title: t('events.products.fieldImage'),
-        key: 'image',
-        width: 72,
-        render: (_, row) => {
-          const src = row.imageURL?.trim()
-          return src ? (
-            <img
-              src={src}
-              alt=""
-              style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, display: 'block' }}
-            />
-          ) : (
-            <Flex
-              align="center"
-              justify="center"
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 8,
-                background: 'var(--ant-color-bg-elevated)',
-                border: '1px dashed var(--ant-color-border)',
-              }}
-            >
-              <PictureOutlined style={{ color: 'var(--ant-color-text-quaternary)' }} />
-            </Flex>
-          )
-        },
-      },
       {
         title: t('events.products.colName'),
         dataIndex: 'name',
@@ -372,14 +314,8 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
         width: 90,
         render: (active: boolean) => (active ? t('events.form.yes') : t('events.form.no')),
       },
-      {
-        title: t('events.products.colActions'),
-        key: 'actions',
-        width: 160,
-        render: (_, row) => renderProductActions(row),
-      },
     ],
-    [t, renderProductActions],
+    [t],
   )
 
   return (
@@ -406,115 +342,67 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
               const imageHeight = xs ? 180 : 200
               return (
                 <Col key={row.id} span={24}>
-                  <Card
-                    hoverable
-                    styles={{ body: { padding: 0 } }}
+                  <ListItemMediaCard
+                    title={row.name}
+                    imageAlt={row.name}
+                    imageSrc={row.imageURL}
+                    imageHeight={imageHeight}
                     onClick={() => openEdit(row)}
-                  >
-                    <Flex vertical>
-                      <Flex
-                        justify="space-between"
-                        align="center"
-                        gap={12}
-                        style={{ padding: '12px 24px' }}
-                      >
-                        <Text strong ellipsis style={{ flex: 1, minWidth: 0 }}>
-                          {row.name}
-                        </Text>
-                        <Flex align="center" gap={8} wrap="wrap" justify="flex-end" style={{ flexShrink: 0 }}>
-                          <Tag color={row.active ? 'green' : 'default'}>
-                            {row.active ? t('userEvents.badgeActive') : t('userEvents.badgeInactive')}
-                          </Tag>
-                          <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
-                            <Space size={0}>
-                              <Tooltip title={t('events.products.edit')} placement="bottom">
-                                <Button
-                                  type="text"
-                                  icon={<EditOutlined />}
-                                  aria-label={t('events.products.edit')}
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    openEdit(row)
-                                  }}
-                                />
-                              </Tooltip>
-                              <Popconfirm
-                                title={t('events.products.deleteConfirmTitle')}
-                                description={t('events.products.deleteConfirmBody')}
-                                okText={t('events.products.deleteOk')}
-                                cancelText={t('events.tags.cancel')}
-                                onConfirm={async () => {
-                                  try {
-                                    await deleteMutation.mutateAsync({ productId: row.id, eventId })
-                                    message.success(t('events.products.deleteSuccess'))
-                                  } catch (e) {
-                                    if (e instanceof Error && e.message) message.error(e.message)
-                                  }
+                    noImageText={t('events.detail.noImage')}
+                    headerTrailing={
+                      <>
+                        <Tag color={row.active ? 'green' : 'default'}>
+                          {row.active ? t('userEvents.badgeActive') : t('userEvents.badgeInactive')}
+                        </Tag>
+                        <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                          <Space size={0}>
+                            <Tooltip title={t('events.products.edit')} placement="bottom">
+                              <Button
+                                type="text"
+                                icon={<EditOutlined />}
+                                aria-label={t('events.products.edit')}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  openEdit(row)
                                 }}
-                              >
-                                <Tooltip title={t('events.products.delete')} placement="bottom">
-                                  <span>
-                                    <Button
-                                      type="text"
-                                      danger
-                                      icon={<DeleteOutlined />}
-                                      aria-label={t('events.products.delete')}
-                                      onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                      }}
-                                    />
-                                  </span>
-                                </Tooltip>
-                              </Popconfirm>
-                            </Space>
-                          </span>
-                        </Flex>
-                      </Flex>
-                      <div style={{ width: '100%', height: imageHeight, overflow: 'hidden' }}>
-                        {row.imageURL?.trim() ? (
-                          <img
-                            src={row.imageURL.trim()}
-                            alt={row.name}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              display: 'block',
-                            }}
-                          />
-                        ) : (
-                          <Flex
-                            vertical
-                            align="center"
-                            justify="center"
-                            gap={8}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              background: 'var(--ant-color-bg-elevated)',
-                              borderTop: '1px dashed var(--ant-color-border)',
-                              padding: 16,
-                              boxSizing: 'border-box',
-                            }}
-                          >
-                            <PictureOutlined
-                              style={{ fontSize: 40, color: 'var(--ant-color-text-quaternary)' }}
-                              aria-hidden
-                            />
-                            <Text type="secondary" style={{ textAlign: 'center' }}>
-                              {t('events.detail.noImage')}
-                            </Text>
-                          </Flex>
-                        )}
-                      </div>
-                      <Flex
-                        wrap="wrap"
-                        align="center"
-                        gap={4}
-                        style={{ padding: '12px 24px 24px' }}
-                      >
+                              />
+                            </Tooltip>
+                            <Popconfirm
+                              title={t('events.products.deleteConfirmTitle')}
+                              description={t('events.products.deleteConfirmBody')}
+                              okText={t('events.products.deleteOk')}
+                              cancelText={t('events.tags.cancel')}
+                              onConfirm={async () => {
+                                try {
+                                  await deleteMutation.mutateAsync({ productId: row.id, eventId })
+                                  message.success(t('events.products.deleteSuccess'))
+                                } catch (e) {
+                                  if (e instanceof Error && e.message) message.error(e.message)
+                                }
+                              }}
+                            >
+                              <Tooltip title={t('events.products.delete')} placement="bottom">
+                                <span>
+                                  <Button
+                                    type="text"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    aria-label={t('events.products.delete')}
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                    }}
+                                  />
+                                </span>
+                              </Tooltip>
+                            </Popconfirm>
+                          </Space>
+                        </span>
+                      </>
+                    }
+                    footer={
+                      <Flex wrap="wrap" align="center" gap={4} style={{ padding: '12px 24px 24px' }}>
                         <Text type="secondary">
                           {t('events.products.colPrice')}: {productPriceLabel(row, t)}
                         </Text>
@@ -531,8 +419,8 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                           })}
                         </Text>
                       </Flex>
-                    </Flex>
-                  </Card>
+                    }
+                  />
                 </Col>
               )
             })}
@@ -547,6 +435,10 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
           pagination={false}
           scroll={{ x: 'max-content' }}
           locale={{ emptyText: t('events.products.tableEmpty') }}
+          onRow={(record) => ({
+            onClick: () => openEdit(record),
+            style: { cursor: 'pointer' },
+          })}
         />
       )}
       <Modal
@@ -556,12 +448,53 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
           setModalOpen(false)
           setEditing(null)
         }}
-        onOk={() => void handleModalOk()}
-        okText={t('events.products.modalOk')}
-        cancelText={t('events.tags.cancel')}
-        confirmLoading={createMutation.isPending || updateMutation.isPending}
         destroyOnClose
         width={600}
+        footer={
+          <Flex justify="space-between" align="center" gap={16} wrap="wrap" style={{ width: '100%' }}>
+            <div>
+              {editing ? (
+                <Popconfirm
+                  title={t('events.products.deleteConfirmTitle')}
+                  description={t('events.products.deleteConfirmBody')}
+                  okText={t('events.products.deleteOk')}
+                  cancelText={t('events.tags.cancel')}
+                  onConfirm={async () => {
+                    try {
+                      await deleteMutation.mutateAsync({ productId: editing.id, eventId })
+                      message.success(t('events.products.deleteSuccess'))
+                      setModalOpen(false)
+                      setEditing(null)
+                    } catch (e) {
+                      if (e instanceof Error && e.message) message.error(e.message)
+                    }
+                  }}
+                >
+                  <Button danger disabled={deleteMutation.isPending}>
+                    {t('events.products.delete')}
+                  </Button>
+                </Popconfirm>
+              ) : null}
+            </div>
+            <Space>
+              <Button
+                onClick={() => {
+                  setModalOpen(false)
+                  setEditing(null)
+                }}
+              >
+                {t('events.tags.cancel')}
+              </Button>
+              <Button
+                type="primary"
+                loading={createMutation.isPending || updateMutation.isPending}
+                onClick={() => void handleModalOk()}
+              >
+                {t('events.products.modalOk')}
+              </Button>
+            </Space>
+          </Flex>
+        }
       >
         <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
           <Form.Item name="imageURL" hidden rules={[urlRule]}>

@@ -1,8 +1,9 @@
-import { EditOutlined, EyeOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons'
-import { Card, Col, Empty, Flex, Grid, Row, Space, Spin, Tag, Tooltip, Typography, Button } from 'antd'
+import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
+import { Col, Empty, Flex, Grid, Row, Space, Spin, Tag, Tooltip, Typography, Button } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/app/auth/AuthContext'
+import { ListItemMediaCard } from '@/shared/components/ListItemMediaCard'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 import { useUserEvents } from '../hooks'
 
@@ -65,101 +66,58 @@ export function UserEventsListPage() {
               const imageHeight = xs ? 180 : 200
               return (
                 <Col key={event.id} xs={24} sm={12}>
-                  <Card
-                    hoverable
-                    styles={{ body: { padding: 0 } }}
+                  <ListItemMediaCard
+                    title={event.name}
+                    imageAlt={event.name}
+                    imageSrc={event.imageURL}
+                    imageHeight={imageHeight}
                     onClick={() => navigate(`/events/${event.id}/edit`)}
-                  >
-                    <Flex vertical>
-                      <Flex
-                        justify="space-between"
-                        align="center"
-                        gap={12}
-                        style={{ padding: '12px 24px' }}
-                      >
-                        <Text strong ellipsis style={{ flex: 1, minWidth: 0 }}>
-                          {event.name}
-                        </Text>
-                        <Flex align="center" gap={8} wrap="wrap" justify="flex-end" style={{ flexShrink: 0 }}>
-                          {typeof event.active === 'boolean' ? (
-                            <Tag color={event.active ? 'green' : 'default'}>
-                              {event.active ? t('userEvents.badgeActive') : t('userEvents.badgeInactive')}
-                            </Tag>
-                          ) : null}
-                          <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
-                            <Space size={0}>
-                              <Tooltip title={t('userEvents.viewTooltip')} placement="bottom">
-                                <Button
-                                  type="text"
-                                  icon={<EyeOutlined />}
-                                  aria-label={t('userEvents.viewEventAria', { name: event.name })}
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    navigate(`/events/${event.id}`)
-                                  }}
-                                />
-                              </Tooltip>
-                              <Tooltip title={t('userEvents.editTooltip')} placement="bottom">
-                                <Button
-                                  type="text"
-                                  icon={<EditOutlined />}
-                                  aria-label={t('userEvents.editAria', { name: event.name })}
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    navigate(`/events/${event.id}/edit`)
-                                  }}
-                                />
-                              </Tooltip>
-                            </Space>
-                          </span>
-                        </Flex>
-                      </Flex>
-                      <div style={{ width: '100%', height: imageHeight, overflow: 'hidden' }}>
-                        {event.imageURL ? (
-                          <img
-                            src={event.imageURL}
-                            alt={event.name}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              display: 'block',
-                            }}
-                          />
-                        ) : (
-                          <Flex
-                            vertical
-                            align="center"
-                            justify="center"
-                            gap={8}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              background: 'var(--ant-color-bg-elevated)',
-                              borderTop: '1px dashed var(--ant-color-border)',
-                              padding: 16,
-                              boxSizing: 'border-box',
-                            }}
-                          >
-                            <PictureOutlined
-                              style={{ fontSize: 40, color: 'var(--ant-color-text-quaternary)' }}
-                              aria-hidden
-                            />
-                            <Text type="secondary" style={{ textAlign: 'center' }}>
-                              {t('events.detail.noImage')}
-                            </Text>
-                          </Flex>
-                        )}
-                      </div>
-                      {createdAtLabel ? (
+                    noImageText={t('events.detail.noImage')}
+                    headerTrailing={
+                      <>
+                        {typeof event.active === 'boolean' ? (
+                          <Tag color={event.active ? 'green' : 'default'}>
+                            {event.active ? t('userEvents.badgeActive') : t('userEvents.badgeInactive')}
+                          </Tag>
+                        ) : null}
+                        <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                          <Space size={0}>
+                            <Tooltip title={t('userEvents.viewTooltip')} placement="bottom">
+                              <Button
+                                type="text"
+                                icon={<EyeOutlined />}
+                                aria-label={t('userEvents.viewEventAria', { name: event.name })}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  navigate(`/events/${event.id}`)
+                                }}
+                              />
+                            </Tooltip>
+                            <Tooltip title={t('userEvents.editTooltip')} placement="bottom">
+                              <Button
+                                type="text"
+                                icon={<EditOutlined />}
+                                aria-label={t('userEvents.editAria', { name: event.name })}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  navigate(`/events/${event.id}/edit`)
+                                }}
+                              />
+                            </Tooltip>
+                          </Space>
+                        </span>
+                      </>
+                    }
+                    footer={
+                      createdAtLabel ? (
                         <Flex vertical gap={8} style={{ padding: '12px 24px 24px' }}>
                           <Text type="secondary">{createdAtLabel}</Text>
                         </Flex>
-                      ) : null}
-                    </Flex>
-                  </Card>
+                      ) : null
+                    }
+                  />
                 </Col>
               )
             })}

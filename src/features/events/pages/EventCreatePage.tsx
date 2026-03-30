@@ -1,13 +1,14 @@
 import { ArrowLeftOutlined } from '@ant-design/icons'
-import { Button, Flex, Grid, Tooltip, Typography, message } from 'antd'
+import { Grid, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
+import { EditorPageColumn } from '@/shared/components/EditorPageColumn'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
+import { PageHeaderRow } from '@/shared/components/PageHeaderRow'
+import { ResponsiveLabelButton } from '@/shared/components/ResponsiveLabelButton'
 import { EventForm } from '../components/EventForm'
 import { useCreateEvent } from '../hooks'
 import { type CreateEventPayload, type UpdateEventPayload } from '../api'
-
-const { Title, Text } = Typography
 
 export function EventCreatePage() {
   const { t } = useTranslation()
@@ -36,41 +37,34 @@ export function EventCreatePage() {
   }
 
   return (
-    <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
+    <EditorPageColumn>
       <PageBreadcrumbBar
         items={[
           { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
           { title: t('events.create.title') },
         ]}
       />
-      <Flex align="flex-start" justify="space-between" gap={16} style={{ marginBottom: 24, flexWrap: 'wrap' }}>
-        <div>
-          <Title level={2} style={{ marginBottom: 0 }}>
-            {t('events.create.title')}
-          </Title>
-          <Text type="secondary">{t('events.create.subtitle')}</Text>
-        </div>
-        {backButtonIconOnly ? (
-          <Tooltip title={t('userEvents.title')} placement="bottom">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              aria-label={t('userEvents.title')}
-              onClick={() => navigate('/user-events')}
-            />
-          </Tooltip>
-        ) : (
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/user-events')}>
+      <PageHeaderRow
+        title={t('events.create.title')}
+        subtitle={t('events.create.subtitle')}
+        actions={
+          <ResponsiveLabelButton
+            type="default"
+            icon={<ArrowLeftOutlined />}
+            iconOnly={backButtonIconOnly}
+            tooltipTitle={t('userEvents.title')}
+            onClick={() => navigate('/user-events')}
+          >
             {t('userEvents.title')}
-          </Button>
-        )}
-      </Flex>
-
+          </ResponsiveLabelButton>
+        }
+      />
       <EventForm
         mode="create"
         initialValues={initialValues}
         submitLoading={createMutation.isPending}
         onSubmit={handleSubmit}
       />
-    </Flex>
+    </EditorPageColumn>
   )
 }

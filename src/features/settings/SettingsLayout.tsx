@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { Flex, Layout, Modal, Spin, Typography } from 'antd'
+import { Flex, Layout, Modal, Spin, Typography, theme } from 'antd'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
@@ -16,12 +16,15 @@ import {
 } from '@/features/settings/settingsMenu'
 import { SettingsLayoutOutletProvider } from '@/features/settings/SettingsLayoutOutletContext'
 import type { SettingsOutletContext } from '@/features/settings/settingsOutletContext'
+import { EditorPageColumn } from '@/shared/components/EditorPageColumn'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
+import { PageHeaderRow } from '@/shared/components/PageHeaderRow'
 import { SectionStepsNavLayout } from '@/shared/components/SectionStepsNavLayout'
 
 const { Content } = Layout
 
 export function SettingsLayout() {
+  const { token } = theme.useToken()
   const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const {
@@ -147,33 +150,36 @@ export function SettingsLayout() {
     )
   }
 
-  const mainColumn = profileLoading && !profile ? (
+  const workspace = profileLoading && !profile ? (
     <Flex style={{ minHeight: 220 }} align="center" justify="center">
       <Spin size="large" />
     </Flex>
   ) : profileError ? (
     <Typography.Text type="danger">{t('settings.loadError')}</Typography.Text>
   ) : (
-    <>
-      {modalContextHolder}
-      <PageBreadcrumbBar items={breadcrumbItems} />
-      <SettingsLayoutOutletProvider value={outletContext}>
-        <SettingsSectionContent activeKey={activeKey} />
-      </SettingsLayoutOutletProvider>
-    </>
+    <SectionStepsNavLayout
+      sectionOrder={SETTINGS_SECTION_KEYS}
+      items={navItems}
+      activeKey={activeKey}
+      onActiveKeyChange={setSettingsSection}
+      menuDropdownAriaLabel={t('settings.menuDropdownAria')}
+    >
+      <>
+        {modalContextHolder}
+        <SettingsLayoutOutletProvider value={outletContext}>
+          <SettingsSectionContent activeKey={activeKey} />
+        </SettingsLayoutOutletProvider>
+      </>
+    </SectionStepsNavLayout>
   )
 
   return (
-    <Content style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-      <SectionStepsNavLayout
-        sectionOrder={SETTINGS_SECTION_KEYS}
-        items={navItems}
-        activeKey={activeKey}
-        onActiveKeyChange={setSettingsSection}
-        menuDropdownAriaLabel={t('settings.menuDropdownAria')}
-      >
-        {mainColumn}
-      </SectionStepsNavLayout>
+    <Content>
+      <EditorPageColumn gap={token.marginLG}>
+        <PageBreadcrumbBar items={breadcrumbItems} />
+        <PageHeaderRow title={t('settings.title')} />
+        {workspace}
+      </EditorPageColumn>
     </Content>
   )
 }

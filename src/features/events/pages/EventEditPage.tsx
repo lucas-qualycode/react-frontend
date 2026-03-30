@@ -1,10 +1,13 @@
 import { ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons'
-import { App, Button, Flex, Grid, Spin, Tooltip, Typography } from 'antd'
+import { App, Button, Flex, Grid, Spin, Typography } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { EditorPageColumn } from '@/shared/components/EditorPageColumn'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
+import { PageHeaderRow } from '@/shared/components/PageHeaderRow'
+import { ResponsiveLabelButton } from '@/shared/components/ResponsiveLabelButton'
 import { EventForm } from '../components/EventForm'
 import { useEvent, useUpdateEvent } from '../hooks'
 import type { UpdateEventPayload } from '../api'
@@ -92,59 +95,7 @@ export function EventEditPage() {
   )
 
   return (
-    <Flex vertical style={{ padding: 32, maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-      {!isLoading && !isError && event && id ? (
-        <PageBreadcrumbBar
-          items={[
-            { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
-            { title: <Link to={`/events/${id}`}>{event.name}</Link> },
-            { title: t('events.detail.edit') },
-          ]}
-        />
-      ) : null}
-      <Flex align="flex-start" justify="space-between" gap={16} style={{ marginBottom: 24, flexWrap: 'wrap' }}>
-        <div>
-          <Title level={2} style={{ marginBottom: 0 }}>
-            {event?.name ?? ''}
-          </Title>
-        </div>
-        <Flex align="center" gap={8} wrap="wrap" style={{ flexShrink: 0 }}>
-          {id ? (
-            backButtonIconOnly ? (
-              <Tooltip title={t('events.edit.viewEventPage')} placement="bottom">
-                <Button
-                  type="default"
-                  icon={<EyeOutlined />}
-                  aria-label={t('events.edit.viewEventPage')}
-                  onClick={() => navigate(`/events/${id}`)}
-                />
-              </Tooltip>
-            ) : (
-              <Button
-                type="default"
-                icon={<EyeOutlined />}
-                onClick={() => navigate(`/events/${id}`)}
-              >
-                {t('events.edit.viewEventPage')}
-              </Button>
-            )
-          ) : null}
-          {backButtonIconOnly ? (
-            <Tooltip title={t('userEvents.title')} placement="bottom">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                aria-label={t('userEvents.title')}
-                onClick={() => navigate('/user-events')}
-              />
-            </Tooltip>
-          ) : (
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/user-events')}>
-              {t('userEvents.title')}
-            </Button>
-          )}
-        </Flex>
-      </Flex>
-
+    <EditorPageColumn>
       {isLoading ? (
         <Flex style={{ minHeight: 240 }} align="center" justify="center">
           <Spin size="large" />
@@ -158,16 +109,54 @@ export function EventEditPage() {
         </Flex>
       ) : null}
 
-      {!isLoading && !isError && initialValues ? (
-        <EventForm
-          mode="edit"
-          eventId={id}
-          initialValues={initialValues}
-          submitLoading={updateMutation.isPending}
-          onSubmit={handleSubmit}
-          onDirtyChange={setFormDirty}
-        />
+      {!isLoading && !isError && event && id && initialValues ? (
+        <>
+          <PageBreadcrumbBar
+            items={[
+              { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
+              { title: <Link to={`/events/${id}`}>{event.name}</Link> },
+              { title: t('events.detail.edit') },
+            ]}
+          />
+          <PageHeaderRow
+            title={
+              <Title level={2} style={{ marginBottom: 0 }}>
+                {event.name}
+              </Title>
+            }
+            actions={
+              <>
+                <ResponsiveLabelButton
+                  type="default"
+                  icon={<EyeOutlined />}
+                  iconOnly={backButtonIconOnly}
+                  tooltipTitle={t('events.edit.viewEventPage')}
+                  onClick={() => navigate(`/events/${id}`)}
+                >
+                  {t('events.edit.viewEventPage')}
+                </ResponsiveLabelButton>
+                <ResponsiveLabelButton
+                  type="default"
+                  icon={<ArrowLeftOutlined />}
+                  iconOnly={backButtonIconOnly}
+                  tooltipTitle={t('userEvents.title')}
+                  onClick={() => navigate('/user-events')}
+                >
+                  {t('userEvents.title')}
+                </ResponsiveLabelButton>
+              </>
+            }
+          />
+          <EventForm
+            mode="edit"
+            eventId={id}
+            initialValues={initialValues}
+            submitLoading={updateMutation.isPending}
+            onSubmit={handleSubmit}
+            onDirtyChange={setFormDirty}
+          />
+        </>
       ) : null}
-    </Flex>
+    </EditorPageColumn>
   )
 }

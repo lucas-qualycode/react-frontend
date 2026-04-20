@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
   CalendarOutlined,
+  CreditCardOutlined,
   EnvironmentOutlined,
   FileTextOutlined,
   ShoppingOutlined,
@@ -75,7 +76,7 @@ type EventFormProps = {
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
 
-type EventFormSectionKey = 'identity' | 'venue' | 'tags' | 'schedules' | 'products'
+type EventFormSectionKey = 'identity' | 'venue' | 'tags' | 'schedules' | 'products' | 'tickets'
 
 const SECTION_QUERY_PARAM = 'section'
 
@@ -85,6 +86,7 @@ const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
   venue: 'venue',
   schedule: 'schedules',
   products: 'products',
+  tickets: 'tickets',
 }
 
 const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
@@ -93,6 +95,7 @@ const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
   venue: 'venue',
   schedules: 'schedule',
   products: 'products',
+  tickets: 'tickets',
 }
 
 const CREATE_SECTION_ORDER: EventFormSectionKey[] = [
@@ -101,6 +104,7 @@ const CREATE_SECTION_ORDER: EventFormSectionKey[] = [
   'venue',
   'schedules',
   'products',
+  'tickets',
 ]
 
 function slugToSection(slug: string | null): EventFormSectionKey | null {
@@ -726,6 +730,11 @@ export function EventForm({
         icon: <ShoppingOutlined />,
         label: t('events.form.menuProducts'),
       },
+      {
+        key: 'tickets' as const,
+        icon: <CreditCardOutlined />,
+        label: t('events.form.menuTickets'),
+      },
     ],
     [t],
   )
@@ -1200,7 +1209,7 @@ export function EventForm({
                   style={{ width: '100%' }}
                 >
                   {mode === 'edit' && eventId ? (
-                    <EventProductsSection eventId={eventId} />
+                    <EventProductsSection eventId={eventId} variant="merchandise" />
                   ) : (
                     <Typography.Text type="secondary" style={{ display: 'block' }}>
                       {t('events.form.productsAfterCreateHint')}
@@ -1209,7 +1218,24 @@ export function EventForm({
                 </div>
               ) : null}
 
-              {mode === 'create' || activeSection !== 'products' ? (
+              {sectionFormPanelMounted(mode, activeSection, 'tickets') ? (
+                <div
+                  className="event-form-section-panel"
+                  hidden={sectionFormPanelHidden(mode, activeSection, 'tickets')}
+                  style={{ width: '100%' }}
+                >
+                  {mode === 'edit' && eventId ? (
+                    <EventProductsSection eventId={eventId} variant="ticket" />
+                  ) : (
+                    <Typography.Text type="secondary" style={{ display: 'block' }}>
+                      {t('events.form.ticketsAfterCreateHint')}
+                    </Typography.Text>
+                  )}
+                </div>
+              ) : null}
+
+              {mode === 'create' ||
+              (activeSection !== 'products' && activeSection !== 'tickets') ? (
                 <Form.Item style={{ marginBottom: 0 }}>
                   {mode === 'create' ? (
                     <Flex justify="flex-end" gap={8} wrap="wrap" style={{ width: '100%' }}>
@@ -1218,7 +1244,7 @@ export function EventForm({
                           {t('events.create.back')}
                         </Button>
                       ) : null}
-                      {activeSection !== 'products' ? (
+                      {activeSection !== 'tickets' ? (
                         <Button
                           type="primary"
                           htmlType="button"

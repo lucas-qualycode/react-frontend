@@ -97,6 +97,10 @@ export interface ProductInventoryEmbed {
   total_quantity: number
 }
 
+export type ProductKind = 'TICKET' | 'MERCH'
+
+export type FulfillmentType = 'DIGITAL' | 'WILL_CALL' | 'SHIPPING' | 'PICKUP'
+
 export interface Product {
   id: string
   name: string
@@ -104,7 +108,9 @@ export interface Product {
   imageURL?: string | null
   parent_id?: string | null
   parent_type?: string | null
-  type?: string | null
+  type?: ProductKind | null
+  fulfillment_type?: FulfillmentType | null
+  fulfillment_profile_id?: string | null
   user_id: string
   is_free: boolean
   value: number

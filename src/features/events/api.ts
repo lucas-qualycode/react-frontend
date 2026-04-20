@@ -1,5 +1,13 @@
 import { fetchApi } from '@/shared/api/client'
-import type { Event, Location, Product, Schedule, Tag } from '@/shared/types/api'
+import type {
+  Event,
+  FulfillmentType,
+  Location,
+  Product,
+  ProductKind,
+  Schedule,
+  Tag,
+} from '@/shared/types/api'
 
 async function apiErrorMessage(res: Response): Promise<string> {
   try {
@@ -202,7 +210,9 @@ export type CreateProductPayload = {
   imageURL?: string | null
   parent_id: string | null
   parent_type: string | null
-  type?: string | null
+  type?: ProductKind | null
+  fulfillment_type?: FulfillmentType | null
+  fulfillment_profile_id?: string | null
   is_free: boolean
   value: number
   quantity: number
@@ -219,7 +229,9 @@ export type UpdateProductPayload = {
   imageURL?: string | null
   parent_id?: string | null
   parent_type?: string | null
-  type?: string | null
+  type?: ProductKind | null
+  fulfillment_type?: FulfillmentType | null
+  fulfillment_profile_id?: string | null
   is_free?: boolean
   value?: number
   quantity?: number
@@ -230,11 +242,17 @@ export type UpdateProductPayload = {
   tag_ids?: string[]
 }
 
-export async function listEventProducts(eventId: string): Promise<Product[]> {
+export async function listEventProducts(
+  eventId: string,
+  opts?: { type?: ProductKind },
+): Promise<Product[]> {
   const params = new URLSearchParams({
     parent_id: eventId,
     deleted: 'false',
   })
+  if (opts?.type) {
+    params.set('type', opts.type)
+  }
   const res = await fetchApi(`products?${params.toString()}`)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Product[]>

@@ -170,12 +170,27 @@ function isMerchandiseProduct(p: Product): boolean {
   return p.type !== 'TICKET'
 }
 
+function isTicketProduct(p: Product): boolean {
+  return p.type === 'TICKET'
+}
+
 export function useEventMerchProducts(eventId: string | undefined) {
   return useQuery({
     queryKey: ['eventProducts', eventId, 'merch'],
     queryFn: async (): Promise<Product[]> => listEventProducts(eventId!),
     enabled: !!eventId,
     select: (list) => list.filter(isMerchandiseProduct),
+    staleTime: 30_000,
+  })
+}
+
+export function useEventTicketProducts(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['eventProducts', eventId, 'ticket'],
+    queryFn: async (): Promise<Product[]> =>
+      listEventProducts(eventId!, { type: 'TICKET' }),
+    enabled: !!eventId,
+    select: (list) => list.filter(isTicketProduct),
     staleTime: 30_000,
   })
 }

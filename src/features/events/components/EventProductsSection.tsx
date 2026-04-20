@@ -33,12 +33,13 @@ import { ListItemMediaCard } from '@/shared/components/ListItemMediaCard'
 import type { ColumnsType } from 'antd/es/table'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
-import type { Product, Tag as ProductTagType } from '@/shared/types/api'
+import type { FulfillmentType, Product, Tag as ProductTagType } from '@/shared/types/api'
 import {
   useCreateProduct,
   useCreateTag,
   useDeleteProduct,
   useEventMerchProducts,
+  useEventTicketProducts,
   useProductTags,
   useUpdateProduct,
 } from '../hooks'
@@ -55,6 +56,8 @@ type ProductFormValues = {
   max_per_user: number
   active: boolean
   tag_ids: string[]
+  fulfillment_type?: FulfillmentType | null
+  fulfillment_profile_id?: string
 }
 
 const brl = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'BRL' })
@@ -67,8 +70,8 @@ function formatPriceMinorUnits(minor: number): string {
   return brl.format(minor / 100)
 }
 
-function productPriceLabel(row: Product, t: (key: string) => string): string {
-  return row.is_free ? t('events.products.free') : formatPriceMinorUnits(row.value)
+function productPriceLabel(row: Product, tp: (key: string) => string): string {
+  return row.is_free ? tp('free') : formatPriceMinorUnits(row.value)
 }
 
 function productStockLabel(row: Product): string {
@@ -78,16 +81,25 @@ function productStockLabel(row: Product): string {
 
 export type EventProductsSectionProps = {
   eventId: string
+  variant?: 'merchandise' | 'ticket'
 }
 
-export function EventProductsSection({ eventId }: EventProductsSectionProps) {
+export function EventProductsSection({
+  eventId,
+  variant = 'merchandise',
+}: EventProductsSectionProps) {
   const { t } = useTranslation()
+  const ns = variant === 'ticket' ? 'events.tickets' : 'events.products'
+  const tp = useCallback((key: string) => t(`${ns}.${key}`), [t, ns])
   const { token } = theme.useToken()
   const { user } = useAuth()
   const screens = Grid.useBreakpoint()
   const useCardLayout = screens.md === false
   const { xs } = screens
-  const { data: products = [], isLoading } = useEventMerchProducts(eventId)
+  const merchQ = useEventMerchProducts(variant === 'merchandise' ? eventId : undefined)
+  const ticketQ = useEventTicketProducts(variant === 'ticket' ? eventId : undefined)
+  const isLoading = variant === 'merchandise' ? merchQ.isLoading : ticketQ.isLoading
+  const products = (variant === 'merchandise' ? merchQ.data : ticketQ.data) ?? []
   const { data: productTags = [], isLoading: productTagsLoading, refetch: refetchProductTags } =
     useProductTags()
   const createMutation = useCreateProduct()
@@ -157,7 +169,8 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
       message.error(t('events.form.submitError'))
       return
     }
-    const path = `product-images/${user.uid}/${eventId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+    const folder = variant === 'ticket' ? 'ticket-images' : 'product-images'
+    const path = `${folder}/${user.uid}/${eventId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
     const storageRef = ref(settingsStorage, path)
     await uploadBytes(storageRef, file)
     const url = await getDownloadURL(storageRef)
@@ -186,6 +199,8 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
         active: editing.active,
         tag_ids: (editing.tags ?? []).map((x) => x.id),
         imageURL: editing.imageURL ?? '',
+        fulfillment_type: editing.fulfillment_type ?? undefined,
+        fulfillment_profile_id: editing.fulfillment_profile_id ?? '',
       })
     } else {
       form.setFieldsValue({
@@ -198,6 +213,8 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
         max_per_user: 1,
         active: true,
         tag_ids: [],
+        fulfillment_type: undefined,
+        fulfillment_profile_id: '',
       })
     }
   }, [modalOpen, editing, form])
@@ -247,10 +264,12 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
       const v = await form.validateFields()
       const valueMinor = v.is_free ? 0 : Math.round((v.price_reais ?? 0) * 100)
       if (!v.is_free && valueMinor <= 0) {
-        message.error(t('events.products.priceRequired'))
+        message.error(tp('priceRequired'))
         return
       }
       const imageTrim = v.imageURL?.trim() ?? ''
+      const fulfillment_type = v.fulfillment_type ?? null
+      const fulfillment_profile_id = v.fulfillment_profile_id?.trim() || null
       const base = {
         name: v.name.trim(),
         description: v.description.trim(),
@@ -262,6 +281,8 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
         request_additional_info: editing ? editing.request_additional_info : false,
         active: v.active,
         tag_ids: v.tag_ids ?? [],
+        fulfillment_type,
+        fulfillment_profile_id,
       }
       if (editing) {
         await updateMutation.mutateAsync({
@@ -269,14 +290,15 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
           eventId,
           payload: base,
         })
-        message.success(t('events.products.updateSuccess'))
+        message.success(tp('updateSuccess'))
       } else {
         await createMutation.mutateAsync({
           ...base,
           parent_id: eventId,
           parent_type: 'EVENT',
+          type: variant === 'ticket' ? 'TICKET' : 'MERCH',
         })
-        message.success(t('events.products.createSuccess'))
+        message.success(tp('createSuccess'))
       }
       setModalOpen(false)
       setEditing(null)
@@ -290,52 +312,52 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
   const columns: ColumnsType<Product> = useMemo(
     () => [
       {
-        title: t('events.products.colName'),
+        title: tp('colName'),
         dataIndex: 'name',
         key: 'name',
         ellipsis: true,
       },
       {
-        title: t('events.products.colPrice'),
+        title: tp('colPrice'),
         key: 'price',
         width: 120,
-        render: (_, row) => productPriceLabel(row, t),
+        render: (_, row) => productPriceLabel(row, tp),
       },
       {
-        title: t('events.products.colStock'),
+        title: tp('colStock'),
         key: 'stock',
         width: 140,
         render: (_, row) => productStockLabel(row),
       },
       {
-        title: t('events.products.colActive'),
+        title: tp('colActive'),
         dataIndex: 'active',
         key: 'active',
         width: 90,
         render: (active: boolean) => (active ? t('events.form.yes') : t('events.form.no')),
       },
     ],
-    [t],
+    [t, tp],
   )
 
   return (
     <div className="event-form-section-panel" style={{ width: '100%' }}>
       <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
-        {t('events.products.sectionTitle')}
+        {tp('sectionTitle')}
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-        {t('events.products.sectionIntro')}
+        {tp('sectionIntro')}
       </Typography.Paragraph>
       <Space style={{ marginBottom: 16 }}>
         <Button type="primary" onClick={openCreate}>
-          {t('events.products.addButton')}
+          {tp('addButton')}
         </Button>
       </Space>
       {isLoading ? (
         <Spin />
       ) : useCardLayout ? (
         products.length === 0 ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('events.products.tableEmpty')} />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={tp('tableEmpty')} />
         ) : (
           <Row gutter={[16, 16]}>
             {products.map((row) => {
@@ -356,11 +378,11 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                         </Tag>
                         <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                           <Space size={0}>
-                            <Tooltip title={t('events.products.edit')} placement="bottom">
+                            <Tooltip title={tp('edit')} placement="bottom">
                               <Button
                                 type="text"
                                 icon={<EditOutlined />}
-                                aria-label={t('events.products.edit')}
+                                aria-label={tp('edit')}
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
@@ -369,26 +391,26 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                               />
                             </Tooltip>
                             <Popconfirm
-                              title={t('events.products.deleteConfirmTitle')}
-                              description={t('events.products.deleteConfirmBody')}
-                              okText={t('events.products.deleteOk')}
+                              title={tp('deleteConfirmTitle')}
+                              description={tp('deleteConfirmBody')}
+                              okText={tp('deleteOk')}
                               cancelText={t('events.tags.cancel')}
                               onConfirm={async () => {
                                 try {
                                   await deleteMutation.mutateAsync({ productId: row.id, eventId })
-                                  message.success(t('events.products.deleteSuccess'))
+                                  message.success(tp('deleteSuccess'))
                                 } catch (e) {
                                   if (e instanceof Error && e.message) message.error(e.message)
                                 }
                               }}
                             >
-                              <Tooltip title={t('events.products.delete')} placement="bottom">
+                              <Tooltip title={tp('delete')} placement="bottom">
                                 <span>
                                   <Button
                                     type="text"
                                     danger
                                     icon={<DeleteOutlined />}
-                                    aria-label={t('events.products.delete')}
+                                    aria-label={tp('delete')}
                                     onClick={(e) => {
                                       e.preventDefault()
                                       e.stopPropagation()
@@ -404,13 +426,13 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                     footer={
                       <Flex wrap="wrap" align="center" gap={4} style={{ padding: '12px 24px 24px' }}>
                         <Text type="secondary">
-                          {t('events.products.colPrice')}: {productPriceLabel(row, t)}
+                          {tp('colPrice')}: {productPriceLabel(row, tp)}
                         </Text>
                         <Text type="secondary" style={{ userSelect: 'none', opacity: 0.55 }}>
                           ·
                         </Text>
                         <Text type="secondary">
-                          {t('events.products.cardStockSlash', {
+                          {t(`${ns}.cardStockSlash`, {
                             available:
                               row.inventory?.available_quantity !== undefined
                                 ? row.inventory.available_quantity
@@ -434,7 +456,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
           dataSource={products}
           pagination={false}
           scroll={{ x: 'max-content' }}
-          locale={{ emptyText: t('events.products.tableEmpty') }}
+          locale={{ emptyText: tp('tableEmpty') }}
           onRow={(record) => ({
             onClick: () => openEdit(record),
             style: { cursor: 'pointer' },
@@ -442,7 +464,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
         />
       )}
       <Modal
-        title={editing ? t('events.products.modalEditTitle') : t('events.products.modalCreateTitle')}
+        title={editing ? tp('modalEditTitle') : tp('modalCreateTitle')}
         open={modalOpen}
         onCancel={() => {
           setModalOpen(false)
@@ -455,14 +477,14 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
             <div>
               {editing ? (
                 <Popconfirm
-                  title={t('events.products.deleteConfirmTitle')}
-                  description={t('events.products.deleteConfirmBody')}
-                  okText={t('events.products.deleteOk')}
+                  title={tp('deleteConfirmTitle')}
+                  description={tp('deleteConfirmBody')}
+                  okText={tp('deleteOk')}
                   cancelText={t('events.tags.cancel')}
                   onConfirm={async () => {
                     try {
                       await deleteMutation.mutateAsync({ productId: editing.id, eventId })
-                      message.success(t('events.products.deleteSuccess'))
+                      message.success(tp('deleteSuccess'))
                       setModalOpen(false)
                       setEditing(null)
                     } catch (e) {
@@ -471,7 +493,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                   }}
                 >
                   <Button danger disabled={deleteMutation.isPending}>
-                    {t('events.products.delete')}
+                    {tp('delete')}
                   </Button>
                 </Popconfirm>
               ) : null}
@@ -490,7 +512,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                 loading={createMutation.isPending || updateMutation.isPending}
                 onClick={() => void handleModalOk()}
               >
-                {t('events.products.modalOk')}
+                {tp('modalOk')}
               </Button>
             </Space>
           </Flex>
@@ -502,14 +524,14 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
           </Form.Item>
           <Form.Item
             name="name"
-            label={t('events.products.fieldName')}
-            rules={[{ required: true, message: t('events.products.nameRequired') }]}
+            label={tp('fieldName')}
+            rules={[{ required: true, message: tp('nameRequired') }]}
           >
             <Input maxLength={256} showCount />
           </Form.Item>
           <div style={{ width: '100%', marginBottom: 16 }}>
             <Typography.Title level={5} style={{ marginTop: 0, marginBottom: productImagePreviewSrc ? 12 : 4 }}>
-              {t('events.products.fieldImage')}
+              {tp('fieldImage')}
             </Typography.Title>
             {productImagePreviewSrc ? (
               <div
@@ -525,7 +547,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
               >
                 <img
                   src={productImagePreviewSrc}
-                  alt={t('events.products.productImageAlt')}
+                  alt={tp('productImageAlt')}
                   style={{
                     position: 'absolute',
                     inset: 0,
@@ -578,7 +600,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
               open={productImageEditOpen}
               onClose={() => setProductImageEditOpen(false)}
               imageUrl={productImagePreviewSrc || undefined}
-              imageAlt={t('events.products.productImageAlt')}
+              imageAlt={tp('productImageAlt')}
               variant="roundedRect"
               previewFallback={<Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>}
               labels={{
@@ -598,10 +620,27 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
           </div>
           <Form.Item
             name="description"
-            label={t('events.products.fieldDescription')}
-            rules={[{ required: true, message: t('events.products.descriptionRequired') }]}
+            label={tp('fieldDescription')}
+            rules={[{ required: true, message: tp('descriptionRequired') }]}
           >
             <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item name="fulfillment_type" label={tp('fieldFulfillmentType')}>
+            <Select
+              allowClear
+              placeholder={tp('fulfillmentTypePlaceholder')}
+              options={(
+                [
+                  ['DIGITAL', tp('fulfillmentTypeDigital')],
+                  ['WILL_CALL', tp('fulfillmentTypeWillCall')],
+                  ['SHIPPING', tp('fulfillmentTypeShipping')],
+                  ['PICKUP', tp('fulfillmentTypePickup')],
+                ] as const
+              ).map(([value, label]) => ({ value, label }))}
+            />
+          </Form.Item>
+          <Form.Item name="fulfillment_profile_id" label={tp('fieldFulfillmentProfile')}>
+            <Input placeholder={tp('fulfillmentProfilePlaceholder')} allowClear />
           </Form.Item>
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -610,8 +649,8 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                   const free = form.getFieldValue('is_free') as boolean | undefined
                   if (free) {
                     return (
-                      <Form.Item style={productModalFieldStyle} label={t('events.products.fieldPrice')}>
-                        <Typography.Text type="secondary">{t('events.products.free')}</Typography.Text>
+                      <Form.Item style={productModalFieldStyle} label={tp('fieldPrice')}>
+                        <Typography.Text type="secondary">{tp('free')}</Typography.Text>
                       </Form.Item>
                     )
                   }
@@ -619,14 +658,14 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                     <Form.Item
                       style={productModalFieldStyle}
                       name="price_reais"
-                      label={t('events.products.fieldPrice')}
-                      rules={[{ required: true, message: t('events.products.priceRequired') }]}
+                      label={tp('fieldPrice')}
+                      rules={[{ required: true, message: tp('priceRequired') }]}
                     >
                       <InputNumber
                         min={0}
                         step={0.01}
                         style={{ width: '100%' }}
-                        placeholder={t('events.products.pricePlaceholder')}
+                        placeholder={tp('pricePlaceholder')}
                       />
                     </Form.Item>
                   )
@@ -634,7 +673,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item style={productModalFieldStyle} name="is_free" label={t('events.products.freeProductQuestion')}>
+              <Form.Item style={productModalFieldStyle} name="is_free" label={tp('freeProductQuestion')}>
                 <Radio.Group
                   optionType="button"
                   buttonStyle="solid"
@@ -651,7 +690,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
               <Form.Item
                 style={productModalFieldStyle}
                 name="quantity"
-                label={t('events.products.fieldQuantity')}
+                label={tp('fieldQuantity')}
                 rules={[{ required: true, type: 'number', min: 1 }]}
               >
                 <InputNumber min={1} step={1} style={{ width: '100%' }} />
@@ -661,7 +700,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
               <Form.Item
                 style={productModalFieldStyle}
                 name="max_per_user"
-                label={t('events.products.fieldMaxPerUser')}
+                label={tp('fieldMaxPerUser')}
                 rules={[{ required: true, type: 'number', min: 1 }]}
               >
                 <InputNumber min={1} step={1} style={{ width: '100%' }} />
@@ -669,11 +708,11 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
             </Col>
           </Row>
           <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 8 }}>
-            {t('events.products.sectionOptions')}
+            {tp('sectionOptions')}
           </Typography.Title>
           <Divider style={{ margin: '0 0 16px' }} />
           <Space direction="vertical" size={0} style={{ width: '100%' }}>
-            <Form.Item style={productModalFieldStyle} name="active" label={t('events.products.activeQuestion')}>
+            <Form.Item style={productModalFieldStyle} name="active" label={tp('activeQuestion')}>
               <Radio.Group
                 optionType="button"
                 buttonStyle="solid"
@@ -684,7 +723,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
               />
             </Form.Item>
           </Space>
-          <Form.Item label={t('events.products.fieldTags')}>
+          <Form.Item label={tp('fieldTags')}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
               <Form.Item name="tag_ids" noStyle>
                 <Select
@@ -692,7 +731,7 @@ export function EventProductsSection({ eventId }: EventProductsSectionProps) {
                   allowClear
                   optionFilterProp="label"
                   options={tagOptions}
-                  placeholder={t('events.products.tagsPlaceholder')}
+                  placeholder={tp('tagsPlaceholder')}
                   loading={productTagsLoading}
                   onOpenChange={(open) => {
                     if (open) void refetchProductTags()

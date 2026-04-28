@@ -1,10 +1,17 @@
-import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
+} from '@ant-design/icons'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Button,
+  Checkbox,
   Col,
-  Divider,
   Empty,
   Flex,
   Form,
@@ -19,6 +26,7 @@ import {
   Space,
   Spin,
   Table,
+  Tabs,
   Tag,
   Tooltip,
   TreeSelect,
@@ -38,13 +46,49 @@ import {
   useCreateProduct,
   useCreateTag,
   useDeleteProduct,
+  useEvent,
   useEventMerchProducts,
   useEventTicketProducts,
+  useFieldDefinitions,
   useProductTags,
   useUpdateProduct,
 } from '../hooks'
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
+
+type AdditionalInfoFieldFormItem = {
+  field_id: string
+  required: boolean
+}
+
+function fieldDefinitionSelectOptionsForRow(
+  base: { value: string; label: string }[],
+  allRows: AdditionalInfoFieldFormItem[] | undefined,
+  rowIndex: number,
+) {
+  const rows = allRows ?? []
+  const taken = new Set<string>()
+  rows.forEach((row, i) => {
+    if (i === rowIndex) return
+    const id = typeof row?.field_id === 'string' ? row.field_id.trim() : ''
+    if (id) taken.add(id)
+  })
+  const current = typeof rows[rowIndex]?.field_id === 'string' ? rows[rowIndex].field_id.trim() : ''
+  return base.filter((o) => !taken.has(o.value) || o.value === current)
+}
+
+function orderedAdditionalInfoFieldsFromRefs(
+  refs: Product['additional_info_fields'] | undefined,
+): AdditionalInfoFieldFormItem[] {
+  if (!refs?.length) return []
+  return [...refs]
+    .filter((r) => r.active !== false)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((r) => ({
+      field_id: r.field_id,
+      required: r.required ?? false,
+    }))
+}
 
 type ProductFormValues = {
   name: string
@@ -57,12 +101,14 @@ type ProductFormValues = {
   active: boolean
   tag_ids: string[]
   fulfillment_type?: FulfillmentType | null
-  fulfillment_profile_id?: string
+  additional_info_fields?: AdditionalInfoFieldFormItem[]
 }
 
 const brl = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'BRL' })
 
 const productModalFieldStyle = { marginBottom: 10 } as const
+
+type ProductModalTabKey = 'basic' | 'config'
 
 const { Text } = Typography
 
@@ -98,6 +144,8 @@ export function EventProductsSection({
   const { xs } = screens
   const merchQ = useEventMerchProducts(variant === 'merchandise' ? eventId : undefined)
   const ticketQ = useEventTicketProducts(variant === 'ticket' ? eventId : undefined)
+  const { data: eventForTickets } = useEvent(variant === 'ticket' ? eventId : undefined)
+  const ticketForceFree = variant === 'ticket' && eventForTickets?.is_paid === false
   const isLoading = variant === 'merchandise' ? merchQ.isLoading : ticketQ.isLoading
   const products = (variant === 'merchandise' ? merchQ.data : ticketQ.data) ?? []
   const { data: productTags = [], isLoading: productTagsLoading, refetch: refetchProductTags } =
@@ -113,12 +161,26 @@ export function EventProductsSection({
   const [productTagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
   const [productImageEditOpen, setProductImageEditOpen] = useState(false)
   const [productImageHover, setProductImageHover] = useState(false)
+  const [productModalTab, setProductModalTab] = useState<ProductModalTabKey>('basic')
   const watchedProductImageUrl = Form.useWatch('imageURL', form) as string | undefined
+  const watchedProductIsFree = Form.useWatch('is_free', form) as boolean | undefined
+  const watchedAdditionalInfoFields = Form.useWatch('additional_info_fields', form) as
+    | AdditionalInfoFieldFormItem[]
+    | undefined
+  const fieldDefsQ = useFieldDefinitions(variant === 'ticket' && modalOpen)
 
   const tagOptions = useMemo(
     () => productTags.map((x) => ({ value: x.id, label: x.name })),
     [productTags],
   )
+
+  const fieldDefinitionOptions = useMemo(() => {
+    const rows = fieldDefsQ.data ?? []
+    return rows
+      .slice()
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .map((d) => ({ value: d.id, label: d.label }))
+  }, [fieldDefsQ.data])
 
   const productTagTreeData: TreeSelectProps['treeData'] = useMemo(() => {
     if (!productTags.length) return []
@@ -184,40 +246,57 @@ export function EventProductsSection({
   }
 
   useEffect(() => {
+    if (modalOpen) {
+      setProductModalTab('basic')
+    }
+  }, [modalOpen])
+
+  useEffect(() => {
     if (!modalOpen) {
       form.resetFields()
       return
     }
     if (editing) {
+      const forceFree = variant === 'ticket' && eventForTickets?.is_paid === false
       form.setFieldsValue({
         name: editing.name,
         description: editing.description,
-        is_free: editing.is_free,
-        price_reais: editing.is_free ? null : editing.value / 100,
+        is_free: forceFree ? true : editing.is_free,
+        price_reais: forceFree ? null : editing.is_free ? null : editing.value / 100,
         quantity: editing.quantity,
         max_per_user: editing.max_per_user,
         active: editing.active,
         tag_ids: (editing.tags ?? []).map((x) => x.id),
         imageURL: editing.imageURL ?? '',
         fulfillment_type: editing.fulfillment_type ?? undefined,
-        fulfillment_profile_id: editing.fulfillment_profile_id ?? '',
+        ...(variant === 'ticket'
+          ? {
+              additional_info_fields: orderedAdditionalInfoFieldsFromRefs(editing.additional_info_fields),
+            }
+          : {}),
       })
     } else {
       form.setFieldsValue({
         name: '',
         description: '',
         imageURL: '',
-        is_free: false,
+        is_free: variant === 'ticket' && eventForTickets?.is_paid === false,
         price_reais: null,
         quantity: 1,
         max_per_user: 1,
         active: true,
         tag_ids: [],
         fulfillment_type: undefined,
-        fulfillment_profile_id: '',
+        ...(variant === 'ticket' ? { additional_info_fields: [] } : {}),
       })
     }
-  }, [modalOpen, editing, form])
+  }, [modalOpen, editing, form, variant, eventForTickets?.is_paid])
+
+  useEffect(() => {
+    if (!modalOpen || variant !== 'ticket') return
+    if (eventForTickets?.is_paid !== false) return
+    form.setFieldsValue({ is_free: true, price_reais: null })
+  }, [modalOpen, variant, eventForTickets?.is_paid, form])
 
   useEffect(() => {
     if (!productTagModalOpen) {
@@ -262,27 +341,43 @@ export function EventProductsSection({
   async function handleModalOk() {
     try {
       const v = await form.validateFields()
-      const valueMinor = v.is_free ? 0 : Math.round((v.price_reais ?? 0) * 100)
-      if (!v.is_free && valueMinor <= 0) {
+      const isFree = ticketForceFree || v.is_free
+      const valueMinor = isFree ? 0 : Math.round((v.price_reais ?? 0) * 100)
+      if (!isFree && valueMinor <= 0) {
         message.error(tp('priceRequired'))
         return
       }
       const imageTrim = v.imageURL?.trim() ?? ''
       const fulfillment_type = v.fulfillment_type ?? null
-      const fulfillment_profile_id = v.fulfillment_profile_id?.trim() || null
+      const additional_info_fields =
+        variant === 'ticket'
+          ? (v.additional_info_fields ?? [])
+              .filter((row) => row?.field_id)
+              .map((row, index) => ({
+                field_id: row.field_id,
+                order: index,
+                required: row.required ?? false,
+              }))
+          : []
+      if (variant === 'ticket') {
+        const uniqueFieldIds = new Set(additional_info_fields.map((x) => x.field_id))
+        if (uniqueFieldIds.size !== additional_info_fields.length) {
+          message.error(tp('additionalFieldsDuplicate'))
+          return
+        }
+      }
       const base = {
         name: v.name.trim(),
         description: v.description.trim(),
         imageURL: imageTrim || null,
-        is_free: v.is_free,
+        is_free: isFree,
         value: valueMinor,
         quantity: v.quantity,
         max_per_user: v.max_per_user,
-        request_additional_info: editing ? editing.request_additional_info : false,
+        additional_info_fields,
         active: v.active,
         tag_ids: v.tag_ids ?? [],
         fulfillment_type,
-        fulfillment_profile_id,
       }
       if (editing) {
         await updateMutation.mutateAsync({
@@ -342,17 +437,23 @@ export function EventProductsSection({
 
   return (
     <div className="event-form-section-panel" style={{ width: '100%' }}>
-      <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
-        {tp('sectionTitle')}
-      </Typography.Title>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-        {tp('sectionIntro')}
-      </Typography.Paragraph>
-      <Space style={{ marginBottom: 16 }}>
+      <Flex
+        justify="space-between"
+        align="center"
+        gap={16}
+        wrap="wrap"
+        style={{ marginBottom: 8 }}
+      >
+        <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 0, flex: '1 1 auto' }}>
+          {tp('sectionTitle')}
+        </Typography.Title>
         <Button type="primary" onClick={openCreate}>
           {tp('addButton')}
         </Button>
-      </Space>
+      </Flex>
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        {tp('sectionIntro')}
+      </Typography.Paragraph>
       {isLoading ? (
         <Spin />
       ) : useCardLayout ? (
@@ -522,231 +623,390 @@ export function EventProductsSection({
           <Form.Item name="imageURL" hidden rules={[urlRule]}>
             <Input />
           </Form.Item>
-          <Form.Item
-            name="name"
-            label={tp('fieldName')}
-            rules={[{ required: true, message: tp('nameRequired') }]}
-          >
-            <Input maxLength={256} showCount />
-          </Form.Item>
-          <div style={{ width: '100%', marginBottom: 16 }}>
-            <Typography.Title level={5} style={{ marginTop: 0, marginBottom: productImagePreviewSrc ? 12 : 4 }}>
-              {tp('fieldImage')}
-            </Typography.Title>
-            {productImagePreviewSrc ? (
-              <div
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  aspectRatio: '2 / 1',
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                  border: '1px solid var(--ant-color-border)',
-                  background: 'var(--ant-color-bg-elevated)',
-                }}
-              >
-                <img
-                  src={productImagePreviewSrc}
-                  alt={tp('productImageAlt')}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                  }}
-                />
-              </div>
-            ) : null}
-            {!productImagePreviewSrc ? (
-              <Button
-                type="link"
-                onClick={() => setProductImageEditOpen(true)}
-                onMouseEnter={() => setProductImageHover(true)}
-                onMouseLeave={() => setProductImageHover(false)}
-                style={{
-                  padding: 0,
-                  height: 'auto',
-                  display: 'block',
-                  marginTop: 0,
-                  marginBottom: 8,
-                  textAlign: 'left',
-                  fontWeight: 700,
-                  whiteSpace: 'normal',
-                  color: productImageHover ? token.colorPrimary : token.colorTextSecondary,
-                }}
-              >
-                {t('events.form.coverImageEmptyHint')}
-              </Button>
-            ) : null}
-            {productImagePreviewSrc ? (
-              <Button
-                type="text"
-                onClick={() => setProductImageEditOpen(true)}
-                onMouseEnter={() => setProductImageHover(true)}
-                onMouseLeave={() => setProductImageHover(false)}
-                style={{
-                  padding: 0,
-                  height: 'auto',
-                  marginTop: 8,
-                  color: productImageHover ? token.colorPrimary : token.colorTextSecondary,
-                }}
-              >
-                {t('events.form.imageEdit')}
-              </Button>
-            ) : null}
-            <ImageEditModal
-              open={productImageEditOpen}
-              onClose={() => setProductImageEditOpen(false)}
-              imageUrl={productImagePreviewSrc || undefined}
-              imageAlt={tp('productImageAlt')}
-              variant="roundedRect"
-              previewFallback={<Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>}
-              labels={{
-                modalTitle: t('events.form.imageModalTitle'),
-                changePhoto: t('events.form.changeImage'),
-                uploadPhoto: t('events.form.uploadImage'),
-                removePhoto: t('events.form.removeImage'),
-                notImageFile: t('events.form.imageNotImageFile'),
-                removeModalTitle: t('events.form.removeImageModalTitle'),
-                removeModalBody: t('events.form.removeImageModalBody'),
-                removeModalOk: t('events.form.removeImageOk'),
-                cancel: t('events.tags.cancel'),
-              }}
-              performUpload={performProductImageUpload}
-              onRemove={handleRemoveProductImage}
-            />
-          </div>
-          <Form.Item
-            name="description"
-            label={tp('fieldDescription')}
-            rules={[{ required: true, message: tp('descriptionRequired') }]}
-          >
-            <Input.TextArea rows={3} />
-          </Form.Item>
-          <Form.Item name="fulfillment_type" label={tp('fieldFulfillmentType')}>
-            <Select
-              allowClear
-              placeholder={tp('fulfillmentTypePlaceholder')}
-              options={(
-                [
-                  ['DIGITAL', tp('fulfillmentTypeDigital')],
-                  ['WILL_CALL', tp('fulfillmentTypeWillCall')],
-                  ['SHIPPING', tp('fulfillmentTypeShipping')],
-                  ['PICKUP', tp('fulfillmentTypePickup')],
-                ] as const
-              ).map(([value, label]) => ({ value, label }))}
-            />
-          </Form.Item>
-          <Form.Item name="fulfillment_profile_id" label={tp('fieldFulfillmentProfile')}>
-            <Input placeholder={tp('fulfillmentProfilePlaceholder')} allowClear />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item noStyle shouldUpdate={(p, c) => p.is_free !== c.is_free}>
-                {() => {
-                  const free = form.getFieldValue('is_free') as boolean | undefined
-                  if (free) {
-                    return (
-                      <Form.Item style={productModalFieldStyle} label={tp('fieldPrice')}>
-                        <Typography.Text type="secondary">{tp('free')}</Typography.Text>
-                      </Form.Item>
-                    )
-                  }
-                  return (
+          <Tabs
+            className="event-product-form-tabs"
+            tabPlacement="top"
+            activeKey={productModalTab}
+            onChange={(k) => setProductModalTab(k as ProductModalTabKey)}
+            styles={{ content: { width: '100%' } }}
+            items={[
+              {
+                key: 'basic',
+                label: tp('modalTabBasic'),
+                children: (
+                  <>
                     <Form.Item
-                      style={productModalFieldStyle}
-                      name="price_reais"
-                      label={tp('fieldPrice')}
-                      rules={[{ required: true, message: tp('priceRequired') }]}
+                      name="name"
+                      label={tp('fieldName')}
+                      rules={[{ required: true, message: tp('nameRequired') }]}
                     >
-                      <InputNumber
-                        min={0}
-                        step={0.01}
-                        style={{ width: '100%' }}
-                        placeholder={tp('pricePlaceholder')}
+                      <Input maxLength={256} showCount />
+                    </Form.Item>
+                    <div style={{ width: '100%', marginBottom: 16 }}>
+                      <Typography.Title
+                        level={5}
+                        style={{ marginTop: 0, marginBottom: productImagePreviewSrc ? 12 : 4 }}
+                      >
+                        {tp('fieldImage')}
+                      </Typography.Title>
+                      {productImagePreviewSrc ? (
+                        <div
+                          style={{
+                            position: 'relative',
+                            width: '100%',
+                            aspectRatio: '2 / 1',
+                            borderRadius: 12,
+                            overflow: 'hidden',
+                            border: '1px solid var(--ant-color-border)',
+                            background: 'var(--ant-color-bg-elevated)',
+                          }}
+                        >
+                          <img
+                            src={productImagePreviewSrc}
+                            alt={tp('productImageAlt')}
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              display: 'block',
+                            }}
+                          />
+                        </div>
+                      ) : null}
+                      {!productImagePreviewSrc ? (
+                        <Button
+                          type="link"
+                          onClick={() => setProductImageEditOpen(true)}
+                          onMouseEnter={() => setProductImageHover(true)}
+                          onMouseLeave={() => setProductImageHover(false)}
+                          style={{
+                            padding: 0,
+                            height: 'auto',
+                            display: 'block',
+                            marginTop: 0,
+                            marginBottom: 8,
+                            textAlign: 'left',
+                            fontWeight: 700,
+                            whiteSpace: 'normal',
+                            color: productImageHover ? token.colorPrimary : token.colorTextSecondary,
+                          }}
+                        >
+                          {t('events.form.coverImageEmptyHint')}
+                        </Button>
+                      ) : null}
+                      {productImagePreviewSrc ? (
+                        <Button
+                          type="text"
+                          onClick={() => setProductImageEditOpen(true)}
+                          onMouseEnter={() => setProductImageHover(true)}
+                          onMouseLeave={() => setProductImageHover(false)}
+                          style={{
+                            padding: 0,
+                            height: 'auto',
+                            marginTop: 8,
+                            color: productImageHover ? token.colorPrimary : token.colorTextSecondary,
+                          }}
+                        >
+                          {t('events.form.imageEdit')}
+                        </Button>
+                      ) : null}
+                      <ImageEditModal
+                        open={productImageEditOpen}
+                        onClose={() => setProductImageEditOpen(false)}
+                        imageUrl={productImagePreviewSrc || undefined}
+                        imageAlt={tp('productImageAlt')}
+                        variant="roundedRect"
+                        previewFallback={
+                          <Typography.Text type="secondary">{t('events.detail.noImage')}</Typography.Text>
+                        }
+                        labels={{
+                          modalTitle: t('events.form.imageModalTitle'),
+                          changePhoto: t('events.form.changeImage'),
+                          uploadPhoto: t('events.form.uploadImage'),
+                          removePhoto: t('events.form.removeImage'),
+                          notImageFile: t('events.form.imageNotImageFile'),
+                          removeModalTitle: t('events.form.removeImageModalTitle'),
+                          removeModalBody: t('events.form.removeImageModalBody'),
+                          removeModalOk: t('events.form.removeImageOk'),
+                          cancel: t('events.tags.cancel'),
+                        }}
+                        performUpload={performProductImageUpload}
+                        onRemove={handleRemoveProductImage}
+                      />
+                    </div>
+                    <Form.Item
+                      name="description"
+                      label={tp('fieldDescription')}
+                      rules={[{ required: true, message: tp('descriptionRequired') }]}
+                    >
+                      <Input.TextArea rows={3} />
+                    </Form.Item>
+                    {ticketForceFree ? (
+                      <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+                        {tp('freeEventTicketHint')}
+                      </Typography.Paragraph>
+                    ) : null}
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        {ticketForceFree || watchedProductIsFree ? (
+                          <Form.Item style={productModalFieldStyle} label={tp('fieldPrice')}>
+                            <Typography.Text type="secondary">{tp('free')}</Typography.Text>
+                          </Form.Item>
+                        ) : (
+                          <Form.Item
+                            style={productModalFieldStyle}
+                            name="price_reais"
+                            label={tp('fieldPrice')}
+                            rules={[{ required: true, message: tp('priceRequired') }]}
+                          >
+                            <InputNumber
+                              min={0}
+                              step={0.01}
+                              style={{ width: '100%' }}
+                              placeholder={tp('pricePlaceholder')}
+                            />
+                          </Form.Item>
+                        )}
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          style={productModalFieldStyle}
+                          name="is_free"
+                          label={tp('freeProductQuestion')}
+                        >
+                          <Radio.Group
+                            optionType="button"
+                            buttonStyle="solid"
+                            disabled={ticketForceFree}
+                            options={[
+                              { label: t('events.form.yes'), value: true },
+                              { label: t('events.form.no'), value: false },
+                            ]}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          style={productModalFieldStyle}
+                          name="quantity"
+                          label={tp('fieldQuantity')}
+                          rules={[{ required: true, type: 'number', min: 1 }]}
+                        >
+                          <InputNumber min={1} step={1} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          style={productModalFieldStyle}
+                          name="max_per_user"
+                          label={tp('fieldMaxPerUser')}
+                          rules={[{ required: true, type: 'number', min: 1 }]}
+                        >
+                          <InputNumber min={1} step={1} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    {variant === 'ticket' ? (
+                      <Form.Item style={productModalFieldStyle} name="active" label={tp('activeQuestion')}>
+                        <Radio.Group
+                          optionType="button"
+                          buttonStyle="solid"
+                          options={[
+                            { label: t('events.form.yes'), value: true },
+                            { label: t('events.form.no'), value: false },
+                          ]}
+                        />
+                      </Form.Item>
+                    ) : null}
+                  </>
+                ),
+              },
+              {
+                key: 'config',
+                label: tp('modalTabConfig'),
+                children: (
+                  <>
+                    <Form.Item name="fulfillment_type" label={tp('fieldFulfillmentType')}>
+                      <Select
+                        allowClear
+                        placeholder={tp('fulfillmentTypePlaceholder')}
+                        options={(
+                          [
+                            ['DIGITAL', tp('fulfillmentTypeDigital')],
+                            ['WILL_CALL', tp('fulfillmentTypeWillCall')],
+                            ['SHIPPING', tp('fulfillmentTypeShipping')],
+                            ['PICKUP', tp('fulfillmentTypePickup')],
+                          ] as const
+                        ).map(([value, label]) => ({ value, label }))}
                       />
                     </Form.Item>
-                  )
-                }}
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item style={productModalFieldStyle} name="is_free" label={tp('freeProductQuestion')}>
-                <Radio.Group
-                  optionType="button"
-                  buttonStyle="solid"
-                  options={[
-                    { label: t('events.form.yes'), value: true },
-                    { label: t('events.form.no'), value: false },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                style={productModalFieldStyle}
-                name="quantity"
-                label={tp('fieldQuantity')}
-                rules={[{ required: true, type: 'number', min: 1 }]}
-              >
-                <InputNumber min={1} step={1} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                style={productModalFieldStyle}
-                name="max_per_user"
-                label={tp('fieldMaxPerUser')}
-                rules={[{ required: true, type: 'number', min: 1 }]}
-              >
-                <InputNumber min={1} step={1} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Typography.Title level={5} style={{ marginTop: 8, marginBottom: 8 }}>
-            {tp('sectionOptions')}
-          </Typography.Title>
-          <Divider style={{ margin: '0 0 16px' }} />
-          <Space direction="vertical" size={0} style={{ width: '100%' }}>
-            <Form.Item style={productModalFieldStyle} name="active" label={tp('activeQuestion')}>
-              <Radio.Group
-                optionType="button"
-                buttonStyle="solid"
-                options={[
-                  { label: t('events.form.yes'), value: true },
-                  { label: t('events.form.no'), value: false },
-                ]}
-              />
-            </Form.Item>
-          </Space>
-          <Form.Item label={tp('fieldTags')}>
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
-              <Form.Item name="tag_ids" noStyle>
-                <Select
-                  mode="multiple"
-                  allowClear
-                  optionFilterProp="label"
-                  options={tagOptions}
-                  placeholder={tp('tagsPlaceholder')}
-                  loading={productTagsLoading}
-                  onOpenChange={(open) => {
-                    if (open) void refetchProductTags()
-                  }}
-                />
-              </Form.Item>
-              <Button
-                type="default"
-                onClick={() => setProductTagModalOpen(true)}
-                disabled={createTagMutation.isPending}
-              >
-                {t('events.tags.createButton')}
-              </Button>
-            </Space>
-          </Form.Item>
+                    {variant === 'ticket' ? (
+                      <>
+                        <Form.Item
+                          style={productModalFieldStyle}
+                          label={tp('additionalFieldsPrompt')}
+                          required={false}
+                        >
+                          <Form.List name="additional_info_fields">
+                            {(listFields, { add, remove, move }) => (
+                              <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                                <Row gutter={8} align="middle">
+                                  <Col span={3}>
+                                    <Typography.Text type="secondary">
+                                      {tp('additionalFieldsColumnMove')}
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col span={11}>
+                                    <Typography.Text type="secondary">
+                                      {tp('additionalFieldsColumnField')}
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col span={8}>
+                                    <Typography.Text type="secondary">
+                                      {tp('additionalFieldsColumnRequired')}
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col span={2} />
+                                </Row>
+                                {listFields.map((listField, rowIndex) => (
+                                  <Row key={listField.key} gutter={8} align="middle">
+                                    <Col span={3}>
+                                      <Space size={0}>
+                                        <Tooltip title={tp('additionalFieldsMoveUp')} placement="bottom">
+                                          <span style={{ display: 'inline-flex' }}>
+                                            <Button
+                                              type="text"
+                                              size="small"
+                                              icon={<ArrowUpOutlined />}
+                                              aria-label={tp('additionalFieldsMoveUp')}
+                                              disabled={rowIndex === 0}
+                                              onClick={() => move(rowIndex, rowIndex - 1)}
+                                            />
+                                          </span>
+                                        </Tooltip>
+                                        <Tooltip title={tp('additionalFieldsMoveDown')} placement="bottom">
+                                          <span style={{ display: 'inline-flex' }}>
+                                            <Button
+                                              type="text"
+                                              size="small"
+                                              icon={<ArrowDownOutlined />}
+                                              aria-label={tp('additionalFieldsMoveDown')}
+                                              disabled={rowIndex === listFields.length - 1}
+                                              onClick={() => move(rowIndex, rowIndex + 1)}
+                                            />
+                                          </span>
+                                        </Tooltip>
+                                      </Space>
+                                    </Col>
+                                    <Col span={11}>
+                                      <Form.Item
+                                        {...listField}
+                                        name={[listField.name, 'field_id']}
+                                        rules={[{ required: true, message: tp('additionalFieldsFieldRequired') }]}
+                                        style={{ marginBottom: 0 }}
+                                      >
+                                        <Select
+                                          showSearch
+                                          optionFilterProp="label"
+                                          options={fieldDefinitionSelectOptionsForRow(
+                                            fieldDefinitionOptions,
+                                            watchedAdditionalInfoFields,
+                                            rowIndex,
+                                          )}
+                                          placeholder={tp('additionalFieldsPlaceholder')}
+                                          loading={fieldDefsQ.isLoading}
+                                          onOpenChange={(open) => {
+                                            if (open) void fieldDefsQ.refetch()
+                                          }}
+                                        />
+                                      </Form.Item>
+                                    </Col>
+                                    <Col span={8}>
+                                      <Form.Item
+                                        {...listField}
+                                        name={[listField.name, 'required']}
+                                        valuePropName="checked"
+                                        initialValue={false}
+                                        style={{ marginBottom: 0 }}
+                                      >
+                                        <Checkbox aria-label={tp('additionalFieldsColumnRequired')} />
+                                      </Form.Item>
+                                    </Col>
+                                    <Col span={2}>
+                                      <Button
+                                        type="text"
+                                        danger
+                                        icon={<MinusCircleOutlined />}
+                                        aria-label={tp('delete')}
+                                        onClick={() => remove(listField.name)}
+                                      />
+                                    </Col>
+                                  </Row>
+                                ))}
+                                <Button
+                                  type="dashed"
+                                  icon={<PlusOutlined />}
+                                  onClick={() => add({ field_id: '', required: false })}
+                                  block
+                                >
+                                  {tp('additionalFieldsAdd')}
+                                </Button>
+                              </Space>
+                            )}
+                          </Form.List>
+                        </Form.Item>
+                        {!fieldDefsQ.isLoading && fieldDefinitionOptions.length === 0 ? (
+                          <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                            {tp('additionalFieldsNoneAvailable')}
+                          </Typography.Text>
+                        ) : null}
+                      </>
+                    ) : null}
+                    {variant !== 'ticket' ? (
+                      <Form.Item style={productModalFieldStyle} name="active" label={tp('activeQuestion')}>
+                        <Radio.Group
+                          optionType="button"
+                          buttonStyle="solid"
+                          options={[
+                            { label: t('events.form.yes'), value: true },
+                            { label: t('events.form.no'), value: false },
+                          ]}
+                        />
+                      </Form.Item>
+                    ) : null}
+                    <Form.Item label={tp('fieldTags')}>
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <Form.Item name="tag_ids" noStyle>
+                          <Select
+                            mode="multiple"
+                            allowClear
+                            optionFilterProp="label"
+                            options={tagOptions}
+                            placeholder={tp('tagsPlaceholder')}
+                            loading={productTagsLoading}
+                            onOpenChange={(open) => {
+                              if (open) void refetchProductTags()
+                            }}
+                          />
+                        </Form.Item>
+                        <Button
+                          type="default"
+                          onClick={() => setProductTagModalOpen(true)}
+                          disabled={createTagMutation.isPending}
+                        >
+                          {t('events.tags.createButton')}
+                        </Button>
+                      </Space>
+                    </Form.Item>
+                  </>
+                ),
+              },
+            ]}
+          />
         </Form>
       </Modal>
       <Modal

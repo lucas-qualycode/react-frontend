@@ -9,6 +9,7 @@ import {
   deleteProduct,
   getEvent,
   listEventProducts,
+  listFieldDefinitions,
   listLocations,
   listSchedules,
   listTags,
@@ -25,7 +26,7 @@ import {
   type UpdateProductPayload,
   type UpdateSchedulePayload,
 } from './api'
-import type { Event, Product, Schedule, Tag } from '@/shared/types/api'
+import type { Event, FieldDefinition, Product, Schedule, Tag } from '@/shared/types/api'
 
 function compareByCreatedAtDesc(a: Event, b: Event): number {
   const at = a.created_at ? new Date(a.created_at).getTime() : 0
@@ -200,6 +201,15 @@ export function useProductTags() {
     queryKey: ['productTags'],
     queryFn: async (): Promise<Tag[]> =>
       listTags({ active: true, deleted: false, applies_to: 'PRODUCT' }),
+    staleTime: 60_000,
+  })
+}
+
+export function useFieldDefinitions(enabled: boolean) {
+  return useQuery({
+    queryKey: ['fieldDefinitions'],
+    queryFn: async (): Promise<FieldDefinition[]> => listFieldDefinitions(),
+    enabled,
     staleTime: 60_000,
   })
 }

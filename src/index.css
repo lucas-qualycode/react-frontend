@@ -52,6 +52,43 @@
   animation: event-form-section-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.event-product-form-tabs.ant-tabs-top {
+  width: 100%;
+}
+
+.event-product-form-tabs.ant-tabs-top .ant-tabs-nav {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.event-product-form-tabs.ant-tabs-top .ant-tabs-nav::before {
+  width: 100%;
+}
+
+.event-product-form-tabs.ant-tabs-top .ant-tabs-nav-wrap {
+  flex: 1;
+}
+
+.event-product-form-tabs.ant-tabs-top .ant-tabs-nav-list {
+  display: flex;
+  width: 100%;
+}
+
+.event-product-form-tabs.ant-tabs-top .ant-tabs-tab {
+  flex: 1;
+  justify-content: center;
+  margin: 0 !important;
+}
+
+.event-product-form-tabs.ant-tabs-top .ant-tabs-tab-btn {
+  width: 100%;
+  text-align: center;
+}
+
+.event-product-form-tabs.ant-tabs-top .ant-tabs-content-holder {
+  margin-top: 8px;
+}
+
 .event-form-compact-steps .ant-steps-item::before {
   transition:
     inset-inline-start 0.35s cubic-bezier(0.22, 1, 0.36, 1),

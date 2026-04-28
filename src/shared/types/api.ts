@@ -101,6 +101,34 @@ export type ProductKind = 'TICKET' | 'MERCH'
 
 export type FulfillmentType = 'DIGITAL' | 'WILL_CALL' | 'SHIPPING' | 'PICKUP'
 
+export interface ProductAdditionalInfoFieldRef {
+  field_id: string
+  label?: string | null
+  required?: boolean | null
+  order?: number | null
+  active?: boolean | null
+}
+
+export interface FieldDefinition {
+  id: string
+  key: string
+  label: string
+  description?: string | null
+  field_type: string
+  required_default?: boolean
+  min_length?: number | null
+  max_length?: number | null
+  minimum?: number | null
+  maximum?: number | null
+  options?: string[]
+  active?: boolean
+  deleted?: boolean
+  created_at: string
+  updated_at: string
+  created_by: string
+  last_updated_by: string
+}
+
 export interface Product {
   id: string
   name: string
@@ -110,13 +138,12 @@ export interface Product {
   parent_type?: string | null
   type?: ProductKind | null
   fulfillment_type?: FulfillmentType | null
-  fulfillment_profile_id?: string | null
   user_id: string
   is_free: boolean
   value: number
   quantity: number
   max_per_user: number
-  request_additional_info: boolean
+  additional_info_fields?: ProductAdditionalInfoFieldRef[]
   active: boolean
   deleted?: boolean
   created_at: string

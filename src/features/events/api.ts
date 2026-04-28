@@ -1,6 +1,7 @@
 import { fetchApi } from '@/shared/api/client'
 import type {
   Event,
+  FieldDefinition,
   FulfillmentType,
   Location,
   Product,
@@ -204,6 +205,12 @@ export async function updateSchedule(
   return res.json() as Promise<Schedule>
 }
 
+export type ProductAdditionalInfoFieldInput = {
+  field_id: string
+  order?: number
+  required?: boolean
+}
+
 export type CreateProductPayload = {
   name: string
   description: string
@@ -212,12 +219,11 @@ export type CreateProductPayload = {
   parent_type: string | null
   type?: ProductKind | null
   fulfillment_type?: FulfillmentType | null
-  fulfillment_profile_id?: string | null
   is_free: boolean
   value: number
   quantity: number
   max_per_user: number
-  request_additional_info: boolean
+  additional_info_fields?: ProductAdditionalInfoFieldInput[]
   active?: boolean
   metadata?: Record<string, unknown>
   tag_ids?: string[]
@@ -231,15 +237,24 @@ export type UpdateProductPayload = {
   parent_type?: string | null
   type?: ProductKind | null
   fulfillment_type?: FulfillmentType | null
-  fulfillment_profile_id?: string | null
   is_free?: boolean
   value?: number
   quantity?: number
   max_per_user?: number
-  request_additional_info?: boolean
+  additional_info_fields?: ProductAdditionalInfoFieldInput[]
   active?: boolean
   metadata?: Record<string, unknown>
   tag_ids?: string[]
+}
+
+export async function listFieldDefinitions(): Promise<FieldDefinition[]> {
+  const params = new URLSearchParams({
+    deleted: 'false',
+    active: 'true',
+  })
+  const res = await fetchApi(`field-definitions?${params.toString()}`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<FieldDefinition[]>
 }
 
 export async function listEventProducts(
@@ -259,11 +274,13 @@ export async function listEventProducts(
 }
 
 export async function createProduct(payload: CreateProductPayload): Promise<Product> {
+  const additional_info_fields = payload.additional_info_fields ?? []
   const res = await fetchApi('products', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ...payload,
+      additional_info_fields,
       tag_ids: payload.tag_ids ?? [],
       metadata: payload.metadata ?? {},
       active: payload.active ?? true,

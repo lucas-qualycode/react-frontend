@@ -118,15 +118,14 @@ function sectionFormPanelMounted(
   panel: EventFormSectionKey,
 ): boolean {
   if (mode === 'create') return true
-  return activeSection === panel
+  return activeSection === panel || panel === 'schedules' || panel === 'venue'
 }
 
 function sectionFormPanelHidden(
-  mode: 'create' | 'edit',
   activeSection: EventFormSectionKey,
   panel: EventFormSectionKey,
 ): boolean {
-  return mode === 'create' && activeSection !== panel
+  return activeSection !== panel
 }
 
 function snapshotEventFormValuesForDirty(v: EventFormValues): string {
@@ -367,7 +366,7 @@ export function EventForm({
     location_id: 'venue',
     tag_ids: 'tags',
     is_paid: 'tags',
-    is_online: 'tags',
+    is_online: 'venue',
     schedule_date: 'schedules',
     schedule_start_time: 'schedules',
     schedule_end_time: 'schedules',
@@ -769,9 +768,9 @@ export function EventForm({
       if (activeSection === 'identity') {
         await form.validateFields(['name', 'description'])
       } else if (activeSection === 'tags') {
-        await form.validateFields(['tag_ids', 'is_paid', 'is_online'])
+        await form.validateFields(['tag_ids', 'is_paid'])
       } else if (activeSection === 'venue') {
-        await form.validateFields(['location_id'])
+        await form.validateFields(['is_online', 'location_id'])
       }
       const ae = document.activeElement
       if (ae instanceof HTMLElement) {
@@ -823,7 +822,7 @@ export function EventForm({
               {sectionFormPanelMounted(mode, activeSection, 'identity') ? (
             <div
               className="event-form-section-panel"
-              hidden={sectionFormPanelHidden(mode, activeSection, 'identity')}
+              hidden={sectionFormPanelHidden(activeSection, 'identity')}
               style={{ width: '100%' }}
             >
               <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
@@ -949,7 +948,7 @@ export function EventForm({
               {sectionFormPanelMounted(mode, activeSection, 'tags') ? (
             <div
               className="event-form-section-panel"
-              hidden={sectionFormPanelHidden(mode, activeSection, 'tags')}
+              hidden={sectionFormPanelHidden(activeSection, 'tags')}
               style={{ width: '100%' }}
             >
               <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -1017,17 +1016,6 @@ export function EventForm({
                       ]}
                     />
                   </Form.Item>
-
-                  <Form.Item style={fieldItemStyle} name="is_online" label={t('events.form.onlineLabel')}>
-                    <Radio.Group
-                      optionType="button"
-                      buttonStyle="solid"
-                      options={[
-                        { label: t('events.form.onlineOptionOnline'), value: true },
-                        { label: t('events.form.onlineOptionInPerson'), value: false },
-                      ]}
-                    />
-                  </Form.Item>
                 </Space>
                 </div>
               </Space>
@@ -1037,62 +1025,72 @@ export function EventForm({
               {sectionFormPanelMounted(mode, activeSection, 'venue') ? (
             <div
               className="event-form-section-panel"
-              hidden={sectionFormPanelHidden(mode, activeSection, 'venue')}
+              hidden={sectionFormPanelHidden(activeSection, 'venue')}
               style={{ width: '100%' }}
             >
               <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
                 {t('events.form.sectionVenue')}
               </Typography.Title>
               <Divider style={{ margin: '0 0 16px' }} />
+              <Form.Item style={fieldItemStyle} name="is_online" label={t('events.form.onlineLabel')}>
+                <Radio.Group
+                  optionType="button"
+                  buttonStyle="solid"
+                  options={[
+                    { label: t('events.form.onlineOptionOnline'), value: true },
+                    { label: t('events.form.onlineOptionInPerson'), value: false },
+                  ]}
+                />
+              </Form.Item>
               {isOnlineWatched === true ? (
                 <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
                   {t('events.form.venueOnlineHint')}
                 </Typography.Text>
               ) : null}
-              <Form.Item
-                style={fieldItemStyle}
-                name="location_id"
-                hidden={isOnlineWatched === true}
-                label={isOnlineWatched === true ? undefined : t('events.form.savedVenueLabel')}
-                rules={[
-                  {
-                    validator: async (_: unknown, value: string | undefined) => {
-                      if (form.getFieldValue('is_online')) return
-                      const v = typeof value === 'string' ? value.trim() : ''
-                      if (!v) throw new Error(t('events.form.savedVenueRequired'))
-                    },
-                  },
-                ]}
-              >
-                <Select
-                  showSearch
-                  allowClear
-                  loading={locationsLoading}
-                  placeholder={t('events.form.savedVenuePlaceholder')}
-                  options={locations.map((loc) => ({
-                    value: loc.id,
-                    label: selectLabelForLocation(loc),
-                  }))}
-                  filterOption={(input, option) =>
-                    String(option?.label ?? '')
-                      .toLowerCase()
-                      .includes(input.trim().toLowerCase())
-                  }
-                  onDropdownVisibleChange={(open) => {
-                    if (open) void refetchLocations()
-                  }}
-                  disabled={isOnlineWatched === true}
-                />
-              </Form.Item>
               {isOnlineWatched !== true ? (
-                <Button
-                  type="default"
-                  onClick={() => setVenueModalOpen(true)}
-                  disabled={createLocationMutation.isPending}
-                  style={{ marginBottom: 10 }}
-                >
-                  {t('events.form.addVenueButton')}
-                </Button>
+                <>
+                  <Form.Item
+                    style={fieldItemStyle}
+                    name="location_id"
+                    label={t('events.form.savedVenueLabel')}
+                    rules={[
+                      {
+                        validator: async (_: unknown, value: string | undefined) => {
+                          if (form.getFieldValue('is_online')) return
+                          const v = typeof value === 'string' ? value.trim() : ''
+                          if (!v) throw new Error(t('events.form.savedVenueRequired'))
+                        },
+                      },
+                    ]}
+                  >
+                    <Select
+                      showSearch
+                      allowClear
+                      loading={locationsLoading}
+                      placeholder={t('events.form.savedVenuePlaceholder')}
+                      options={locations.map((loc) => ({
+                        value: loc.id,
+                        label: selectLabelForLocation(loc),
+                      }))}
+                      filterOption={(input, option) =>
+                        String(option?.label ?? '')
+                          .toLowerCase()
+                          .includes(input.trim().toLowerCase())
+                      }
+                      onDropdownVisibleChange={(open) => {
+                        if (open) void refetchLocations()
+                      }}
+                    />
+                  </Form.Item>
+                  <Button
+                    type="default"
+                    onClick={() => setVenueModalOpen(true)}
+                    disabled={createLocationMutation.isPending}
+                    style={{ marginBottom: 10 }}
+                  >
+                    {t('events.form.addVenueButton')}
+                  </Button>
+                </>
               ) : null}
             </div>
               ) : null}
@@ -1100,7 +1098,7 @@ export function EventForm({
               {sectionFormPanelMounted(mode, activeSection, 'schedules') ? (
                 <div
                   className="event-form-section-panel"
-                  hidden={sectionFormPanelHidden(mode, activeSection, 'schedules')}
+                  hidden={sectionFormPanelHidden(activeSection, 'schedules')}
                   style={{ width: '100%' }}
                 >
                   <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
@@ -1205,7 +1203,7 @@ export function EventForm({
               {sectionFormPanelMounted(mode, activeSection, 'products') ? (
                 <div
                   className="event-form-section-panel"
-                  hidden={sectionFormPanelHidden(mode, activeSection, 'products')}
+                  hidden={sectionFormPanelHidden(activeSection, 'products')}
                   style={{ width: '100%' }}
                 >
                   {mode === 'edit' && eventId ? (
@@ -1221,7 +1219,7 @@ export function EventForm({
               {sectionFormPanelMounted(mode, activeSection, 'tickets') ? (
                 <div
                   className="event-form-section-panel"
-                  hidden={sectionFormPanelHidden(mode, activeSection, 'tickets')}
+                  hidden={sectionFormPanelHidden(activeSection, 'tickets')}
                   style={{ width: '100%' }}
                 >
                   {mode === 'edit' && eventId ? (

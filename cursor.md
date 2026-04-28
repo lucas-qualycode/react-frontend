@@ -133,7 +133,7 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 ### Event products and tickets (`EventProductsSection`)
 
 - **`Product.type`**: `TICKET` \| `MERCH` (see `shared/types/api.ts`). New creates send an explicit kind; ticket listings use **`listEventProducts(..., { type: 'TICKET' })`**. Merchandise still loads all products for the event and **filters client-side** (`type !== 'TICKET'`) so older API rows without `type` stay visible as non-tickets.
-- **`fulfillment_type`** / **`fulfillment_profile_id`**: optional on create/update; labels live under **`events.products.*`** and **`events.tickets.*`** (en + pt-BR).
+- **`fulfillment_type`**: optional on create/update; labels live under **`events.products.*`** and **`events.tickets.*`** (en + pt-BR).
 
 ---
 

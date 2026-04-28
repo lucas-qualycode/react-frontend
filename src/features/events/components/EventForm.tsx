@@ -5,7 +5,6 @@ import {
   EnvironmentOutlined,
   FileTextOutlined,
   ShoppingOutlined,
-  TagsOutlined,
 } from '@ant-design/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -19,7 +18,6 @@ import {
   Modal,
   Radio,
   Select,
-  Space,
   Spin,
   TimePicker,
   TreeSelect,
@@ -38,6 +36,11 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import tzPlugin from 'dayjs/plugin/timezone'
+
+dayjs.extend(utc)
+dayjs.extend(tzPlugin)
 import {
   useCreateSchedule,
   useCreateTag,
@@ -60,6 +63,7 @@ type EventFormValues = {
   is_paid: boolean
   is_online: boolean
   schedule_date?: Dayjs
+  schedule_end_date?: Dayjs
   schedule_start_time?: Dayjs
   schedule_end_time?: Dayjs
   schedule_timezone?: string
@@ -76,13 +80,12 @@ type EventFormProps = {
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
 
-type EventFormSectionKey = 'identity' | 'venue' | 'tags' | 'schedules' | 'products' | 'tickets'
+type EventFormSectionKey = 'identity' | 'venue' | 'schedules' | 'products' | 'tickets'
 
 const SECTION_QUERY_PARAM = 'section'
 
 const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
   details: 'identity',
-  tags: 'tags',
   venue: 'venue',
   schedule: 'schedules',
   products: 'products',
@@ -91,7 +94,6 @@ const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
 
 const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
   identity: 'details',
-  tags: 'tags',
   venue: 'venue',
   schedules: 'schedule',
   products: 'products',
@@ -100,7 +102,6 @@ const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
 
 const CREATE_SECTION_ORDER: EventFormSectionKey[] = [
   'identity',
-  'tags',
   'venue',
   'schedules',
   'products',
@@ -153,15 +154,15 @@ function snapshotFromInitialForDirty(iv: Partial<EventFormValues> & { active?: b
 
 function snapshotScheduleForDirty(v: EventFormValues): string {
   const d = v.schedule_date
+  const dEnd = v.schedule_end_date
   const st = v.schedule_start_time
   const et = v.schedule_end_time
   const tz = v.schedule_timezone?.trim() ?? ''
-  if (!d || !st || !et || !tz) return ''
-  if (!d.isValid() || !st.isValid() || !et.isValid()) return ''
-  const ymd = d.format('YYYY-MM-DD')
+  if (!d || !dEnd || !st || !et || !tz) return ''
+  if (!d.isValid() || !dEnd.isValid() || !st.isValid() || !et.isValid()) return ''
   return JSON.stringify({
-    start_date: ymd,
-    end_date: ymd,
+    start_date: d.format('YYYY-MM-DD'),
+    end_date: dEnd.format('YYYY-MM-DD'),
     start_time: st.format('HH:mm'),
     end_time: et.format('HH:mm'),
     timezone: tz,
@@ -170,10 +171,9 @@ function snapshotScheduleForDirty(v: EventFormValues): string {
 
 function snapshotScheduleFromLoaded(primary: Schedule | undefined): string {
   if (!primary) return ''
-  const day = primary.start_date
   return JSON.stringify({
-    start_date: day,
-    end_date: day,
+    start_date: primary.start_date,
+    end_date: primary.end_date,
     start_time: primary.start_time,
     end_time: primary.end_time,
     timezone: primary.timezone,
@@ -185,6 +185,86 @@ function isScheduleDirty(schedSnap: string, baseline: string): boolean {
     return schedSnap !== ''
   }
   return schedSnap !== baseline
+}
+
+function scheduleStartKeyFromParts(dateYmd: string, timeRaw: string, tz: string): string {
+  const tnorm = dayjs(timeRaw, ['HH:mm', 'H:mm'], true)
+  const tf = tnorm.isValid() ? tnorm.format('HH:mm') : timeRaw
+  return `${dateYmd}|${tf}|${tz.trim()}`
+}
+
+function parseBaselineStartKey(baselineJson: string): string | null {
+  if (!baselineJson) return null
+  try {
+    const o = JSON.parse(baselineJson) as {
+      start_date?: string
+      start_time?: string
+      timezone?: string
+    }
+    const tz = o.timezone?.trim() ?? ''
+    if (!o.start_date || !o.start_time || !tz) return null
+    return scheduleStartKeyFromParts(o.start_date, o.start_time, tz)
+  } catch {
+    return null
+  }
+}
+
+function scheduleStartKeyFromForm(d: Dayjs, st: Dayjs, tz: string): string | null {
+  if (!d?.isValid() || !st?.isValid() || !tz?.trim()) return null
+  return scheduleStartKeyFromParts(d.format('YYYY-MM-DD'), st.format('HH:mm'), tz.trim())
+}
+
+function assertScheduleStartInFutureIfChanged(
+  d: Dayjs | undefined,
+  st: Dayjs | undefined,
+  tz: string | undefined,
+  baselineJson: string,
+  t: (key: string) => string,
+): void {
+  if (!d?.isValid() || !st?.isValid() || !tz?.trim()) return
+  const curKey = scheduleStartKeyFromForm(d, st, tz)
+  if (!curKey) return
+  const baseKey = parseBaselineStartKey(baselineJson)
+  if (curKey === baseKey) return
+  const inst = dayjs.tz(
+    `${d.format('YYYY-MM-DD')} ${st.format('HH:mm')}`,
+    'YYYY-MM-DD HH:mm',
+    tz.trim(),
+  )
+  if (!inst.isValid()) return
+  if (!inst.isAfter(dayjs())) {
+    throw new Error(t('events.schedule.startMustBeFuture'))
+  }
+}
+
+function assertScheduleEndNotBeforeStart(
+  startD: Dayjs | undefined,
+  startT: Dayjs | undefined,
+  endD: Dayjs | undefined,
+  endT: Dayjs | undefined,
+  tz: string | undefined,
+  t: (key: string) => string,
+): void {
+  if (!startD?.isValid() || !startT?.isValid() || !endD?.isValid() || !endT?.isValid() || !tz?.trim()) return
+  const s = dayjs.tz(
+    `${startD.format('YYYY-MM-DD')} ${startT.format('HH:mm')}`,
+    'YYYY-MM-DD HH:mm',
+    tz.trim(),
+  )
+  const e = dayjs.tz(
+    `${endD.format('YYYY-MM-DD')} ${endT.format('HH:mm')}`,
+    'YYYY-MM-DD HH:mm',
+    tz.trim(),
+  )
+  if (!s.isValid() || !e.isValid()) return
+  const sameDay = startD.format('YYYY-MM-DD') === endD.format('YYYY-MM-DD')
+  if (sameDay) {
+    if (!e.isAfter(s)) {
+      throw new Error(t('events.schedule.sameDayEndMustBeAfterStart'))
+    }
+  } else if (e.isBefore(s)) {
+    throw new Error(t('events.schedule.endTimeBeforeStart'))
+  }
 }
 
 function listTimeZones(): string[] {
@@ -324,6 +404,7 @@ export function EventForm({
     }
     return {
       date: t('events.schedule.datePlaceholder', { example: dateExample }),
+      endDate: t('events.schedule.endDatePlaceholder', { example: dateExample }),
       startTime: t('events.schedule.startTimePlaceholder', { example: startExample }),
       endTime: t('events.schedule.endTimePlaceholder', { example: endExample }),
       timezone: t('events.schedule.timezonePlaceholder', { example: tzExample }),
@@ -364,10 +445,11 @@ export function EventForm({
     description: 'identity',
     imageURL: 'identity',
     location_id: 'venue',
-    tag_ids: 'tags',
-    is_paid: 'tags',
+    tag_ids: 'identity',
+    is_paid: 'tickets',
     is_online: 'venue',
     schedule_date: 'schedules',
+    schedule_end_date: 'schedules',
     schedule_start_time: 'schedules',
     schedule_end_time: 'schedules',
     schedule_timezone: 'schedules',
@@ -428,6 +510,7 @@ export function EventForm({
     if (mode === 'edit') {
       form.setFieldsValue({
         schedule_date: undefined,
+        schedule_end_date: undefined,
         schedule_start_time: undefined,
         schedule_end_time: undefined,
         schedule_timezone: undefined,
@@ -444,6 +527,7 @@ export function EventForm({
     if (primarySchedule) {
       form.setFieldsValue({
         schedule_date: dayjs(primarySchedule.start_date),
+        schedule_end_date: dayjs(primarySchedule.end_date),
         schedule_start_time: dayjs(primarySchedule.start_time, 'HH:mm'),
         schedule_end_time: dayjs(primarySchedule.end_time, 'HH:mm'),
         schedule_timezone: primarySchedule.timezone,
@@ -591,23 +675,41 @@ export function EventForm({
     try {
       if (scheduleDirty) {
         const d = values.schedule_date
+        const dEnd = values.schedule_end_date
         const st = values.schedule_start_time
         const et = values.schedule_end_time
         const tz = values.schedule_timezone
-        if (!d || !st || !et || !tz || !d.isValid() || !st.isValid() || !et.isValid()) {
+        if (
+          !d ||
+          !dEnd ||
+          !st ||
+          !et ||
+          !tz ||
+          !d.isValid() ||
+          !dEnd.isValid() ||
+          !st.isValid() ||
+          !et.isValid()
+        ) {
           message.error(t('events.schedule.saveError'))
           goToFormSection('schedules')
           return
         }
-        const startMin = st.hour() * 60 + st.minute()
-        const endMin = et.hour() * 60 + et.minute()
-        if (endMin < startMin) {
-          message.error(t('events.schedule.endTimeBeforeStart'))
+        try {
+          assertScheduleEndNotBeforeStart(d, st, dEnd, et, tz, t)
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t('events.schedule.endTimeBeforeStart'))
+          goToFormSection('schedules')
+          return
+        }
+        try {
+          assertScheduleStartInFutureIfChanged(d, st, tz, scheduleBaselineRef.current, t)
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t('events.schedule.startMustBeFuture'))
           goToFormSection('schedules')
           return
         }
         const start_date = d.format('YYYY-MM-DD')
-        const end_date = start_date
+        const end_date = dEnd.format('YYYY-MM-DD')
         const start_time = st.format('HH:mm')
         const end_time = et.format('HH:mm')
         if (primarySchedule) {
@@ -710,11 +812,6 @@ export function EventForm({
         label: t('events.form.menuIdentity'),
       },
       {
-        key: 'tags' as const,
-        icon: <TagsOutlined />,
-        label: t('events.form.menuTagsVisibility'),
-      },
-      {
         key: 'venue' as const,
         icon: <EnvironmentOutlined />,
         label: t('events.form.menuVenue'),
@@ -766,9 +863,7 @@ export function EventForm({
     if (idx < 0 || idx >= CREATE_SECTION_ORDER.length - 1) return
     try {
       if (activeSection === 'identity') {
-        await form.validateFields(['name', 'description'])
-      } else if (activeSection === 'tags') {
-        await form.validateFields(['tag_ids', 'is_paid'])
+        await form.validateFields(['name', 'description', 'tag_ids'])
       } else if (activeSection === 'venue') {
         await form.validateFields(['is_online', 'location_id'])
       }
@@ -844,6 +939,53 @@ export function EventForm({
               <Form.Item style={fieldItemStyle} name="description" label={t('events.form.descriptionLabel')}>
                 <Input.TextArea rows={4} placeholder={t('events.form.descriptionPlaceholder')} />
               </Form.Item>
+
+              <Typography.Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+                {t('events.form.sectionTags')}
+              </Typography.Title>
+              <Divider style={{ margin: '0 0 16px' }} />
+              <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                {t('events.tags.helpText')}
+              </Typography.Text>
+              <Form.Item
+                style={fieldItemStyle}
+                name="tag_ids"
+                getValueProps={tagIdsFormValueProps}
+                getValueFromEvent={tagIdsFromTreeSelectEvent}
+                rules={[
+                  {
+                    validator: async (_: unknown, value: string[] | undefined) => {
+                      if (value && value.length > 0) return
+                      throw new Error(t('events.form.tagIdsRequired'))
+                    },
+                  },
+                ]}
+              >
+                <TreeSelect
+                  style={{ width: '100%' }}
+                  treeData={tagTreeData}
+                  treeCheckable
+                  treeCheckStrictly
+                  showCheckedStrategy={TreeSelect.SHOW_ALL}
+                  allowClear
+                  showSearch
+                  treeDefaultExpandAll
+                  loading={tagsLoading}
+                  placeholder={t('events.tags.pickerPlaceholder')}
+                  filterTreeNode={filterTagTreeNode}
+                  onOpenChange={(open) => {
+                    if (open) void refetchTags()
+                  }}
+                />
+              </Form.Item>
+              <Button
+                type="default"
+                onClick={() => setTagModalOpen(true)}
+                disabled={createTagMutation.isPending}
+                style={{ marginBottom: 10 }}
+              >
+                {t('events.tags.createButton')}
+              </Button>
 
               {mode === 'edit' ? (
                 <div style={{ width: '100%' }}>
@@ -945,83 +1087,6 @@ export function EventForm({
             </div>
               ) : null}
 
-              {sectionFormPanelMounted(mode, activeSection, 'tags') ? (
-            <div
-              className="event-form-section-panel"
-              hidden={sectionFormPanelHidden(activeSection, 'tags')}
-              style={{ width: '100%' }}
-            >
-              <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                <div style={{ width: '100%' }}>
-                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
-                    {t('events.form.sectionTags')}
-                  </Typography.Title>
-                  <Divider style={{ margin: '0 0 16px' }} />
-                  <Form.Item style={fieldItemStyle}>
-                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                      <Typography.Text type="secondary" style={{ display: 'block' }}>
-                        {t('events.tags.helpText')}
-                      </Typography.Text>
-                    <Form.Item
-                      name="tag_ids"
-                      noStyle
-                      getValueProps={tagIdsFormValueProps}
-                      getValueFromEvent={tagIdsFromTreeSelectEvent}
-                      rules={[
-                        {
-                          validator: async (_: unknown, value: string[] | undefined) => {
-                            if (value && value.length > 0) return
-                            throw new Error(t('events.form.tagIdsRequired'))
-                          },
-                        },
-                      ]}
-                    >
-                      <TreeSelect
-                        style={{ width: '100%' }}
-                        treeData={tagTreeData}
-                        treeCheckable
-                        treeCheckStrictly
-                        showCheckedStrategy={TreeSelect.SHOW_ALL}
-                        allowClear
-                        showSearch
-                        treeDefaultExpandAll
-                        loading={tagsLoading}
-                        placeholder={t('events.tags.pickerPlaceholder')}
-                        filterTreeNode={filterTagTreeNode}
-                        onOpenChange={(open) => {
-                          if (open) void refetchTags()
-                        }}
-                      />
-                    </Form.Item>
-                    <Button type="default" onClick={() => setTagModalOpen(true)} disabled={createTagMutation.isPending}>
-                      {t('events.tags.createButton')}
-                    </Button>
-                  </Space>
-                </Form.Item>
-                </div>
-
-                <div style={{ width: '100%' }}>
-                  <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
-                    {t('events.form.sectionVisibility')}
-                  </Typography.Title>
-                  <Divider style={{ margin: '0 0 16px' }} />
-                  <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                  <Form.Item style={fieldItemStyle} name="is_paid" label={t('events.form.paidLabel')}>
-                    <Radio.Group
-                      optionType="button"
-                      buttonStyle="solid"
-                      options={[
-                        { label: t('events.form.yes'), value: true },
-                        { label: t('events.form.no'), value: false },
-                      ]}
-                    />
-                  </Form.Item>
-                </Space>
-                </div>
-              </Space>
-            </div>
-              ) : null}
-
               {sectionFormPanelMounted(mode, activeSection, 'venue') ? (
             <div
               className="event-form-section-panel"
@@ -1115,28 +1180,103 @@ export function EventForm({
                             {t('events.schedule.multipleHint')}
                           </Typography.Paragraph>
                         ) : null}
-                        <Form.Item style={fieldItemStyle} name="schedule_date" label={t('events.schedule.dateLabel')}>
+                        <Form.Item
+                          style={fieldItemStyle}
+                          name="schedule_date"
+                          label={t('events.form.scheduleStartDateLabel')}
+                          dependencies={['schedule_start_time', 'schedule_timezone']}
+                          rules={[
+                            {
+                              validator: async (_: unknown, value: Dayjs | undefined) => {
+                                if (!value?.isValid()) return
+                                const st = form.getFieldValue('schedule_start_time') as Dayjs | undefined
+                                const tz = form.getFieldValue('schedule_timezone') as string | undefined
+                                assertScheduleStartInFutureIfChanged(
+                                  value,
+                                  st,
+                                  tz,
+                                  scheduleBaselineRef.current,
+                                  t,
+                                )
+                              },
+                            },
+                          ]}
+                        >
                           <DatePicker
                             style={{ width: '100%' }}
                             format="YYYY-MM-DD"
                             placeholder={scheduleFieldPlaceholders.date}
+                            onChange={(v) => {
+                              if (v?.isValid()) {
+                                const end = form.getFieldValue('schedule_end_date') as Dayjs | undefined
+                                if (!end?.isValid()) {
+                                  form.setFieldsValue({ schedule_end_date: v })
+                                }
+                              }
+                            }}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          style={fieldItemStyle}
+                          name="schedule_end_date"
+                          label={t('events.form.scheduleEndDateLabel')}
+                          dependencies={[
+                            'schedule_date',
+                            'schedule_start_time',
+                            'schedule_end_time',
+                            'schedule_timezone',
+                          ]}
+                          rules={[
+                            {
+                              validator: async (_: unknown, value: Dayjs | undefined) => {
+                                if (!value?.isValid()) return
+                                const d = form.getFieldValue('schedule_date') as Dayjs | undefined
+                                const st = form.getFieldValue('schedule_start_time') as Dayjs | undefined
+                                const et = form.getFieldValue('schedule_end_time') as Dayjs | undefined
+                                const tz = form.getFieldValue('schedule_timezone') as string | undefined
+                                assertScheduleEndNotBeforeStart(d, st, value, et, tz, t)
+                              },
+                            },
+                          ]}
+                        >
+                          <DatePicker
+                            style={{ width: '100%' }}
+                            format="YYYY-MM-DD"
+                            placeholder={scheduleFieldPlaceholders.endDate}
+                            disabledDate={(current) => {
+                              if (!current?.isValid()) return false
+                              const sd = form.getFieldValue('schedule_date') as Dayjs | undefined
+                              if (!sd?.isValid()) return false
+                              return current.isBefore(sd.startOf('day'))
+                            }}
                           />
                         </Form.Item>
                         <Form.Item
                           style={fieldItemStyle}
                           name="schedule_start_time"
                           label={t('events.schedule.startTimeLabel')}
-                          dependencies={['schedule_end_time']}
+                          dependencies={[
+                            'schedule_end_time',
+                            'schedule_date',
+                            'schedule_end_date',
+                            'schedule_timezone',
+                          ]}
                           rules={[
                             {
                               validator: async (_: unknown, value: Dayjs | undefined) => {
                                 const et = form.getFieldValue('schedule_end_time') as Dayjs | undefined
+                                const d = form.getFieldValue('schedule_date') as Dayjs | undefined
+                                const dEnd = form.getFieldValue('schedule_end_date') as Dayjs | undefined
+                                const tz = form.getFieldValue('schedule_timezone') as string | undefined
                                 if (!value?.isValid() || !et?.isValid()) return
-                                const a = value.hour() * 60 + value.minute()
-                                const b = et.hour() * 60 + et.minute()
-                                if (b < a) {
-                                  throw new Error(t('events.schedule.endTimeBeforeStart'))
-                                }
+                                assertScheduleEndNotBeforeStart(d, value, dEnd, et, tz, t)
+                                assertScheduleStartInFutureIfChanged(
+                                  d,
+                                  value,
+                                  tz,
+                                  scheduleBaselineRef.current,
+                                  t,
+                                )
                               },
                             },
                           ]}
@@ -1153,17 +1293,21 @@ export function EventForm({
                           style={fieldItemStyle}
                           name="schedule_end_time"
                           label={t('events.schedule.endTimeLabel')}
-                          dependencies={['schedule_start_time']}
+                          dependencies={[
+                            'schedule_start_time',
+                            'schedule_date',
+                            'schedule_end_date',
+                            'schedule_timezone',
+                          ]}
                           rules={[
                             {
                               validator: async (_: unknown, value: Dayjs | undefined) => {
                                 const st = form.getFieldValue('schedule_start_time') as Dayjs | undefined
+                                const d = form.getFieldValue('schedule_date') as Dayjs | undefined
+                                const dEnd = form.getFieldValue('schedule_end_date') as Dayjs | undefined
+                                const tz = form.getFieldValue('schedule_timezone') as string | undefined
                                 if (!st?.isValid() || !value?.isValid()) return
-                                const a = st.hour() * 60 + st.minute()
-                                const b = value.hour() * 60 + value.minute()
-                                if (b < a) {
-                                  throw new Error(t('events.schedule.endTimeBeforeStart'))
-                                }
+                                assertScheduleEndNotBeforeStart(d, st, dEnd, value, tz, t)
                               },
                             },
                           ]}
@@ -1222,6 +1366,16 @@ export function EventForm({
                   hidden={sectionFormPanelHidden(activeSection, 'tickets')}
                   style={{ width: '100%' }}
                 >
+                  <Form.Item style={fieldItemStyle} name="is_paid" label={t('events.form.paidLabel')}>
+                    <Radio.Group
+                      optionType="button"
+                      buttonStyle="solid"
+                      options={[
+                        { label: t('events.form.yes'), value: true },
+                        { label: t('events.form.no'), value: false },
+                      ]}
+                    />
+                  </Form.Item>
                   {mode === 'edit' && eventId ? (
                     <EventProductsSection eventId={eventId} variant="ticket" />
                   ) : (

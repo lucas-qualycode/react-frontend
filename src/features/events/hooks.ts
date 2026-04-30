@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createEvent,
+  createInvitation,
   createLocation,
   createProduct,
   createSchedule,
@@ -8,8 +9,10 @@ import {
   deleteEvent,
   deleteProduct,
   getEvent,
+  getInvitation,
   listEventProducts,
   listFieldDefinitions,
+  listInvitations,
   listLocations,
   listSchedules,
   listTags,
@@ -17,16 +20,26 @@ import {
   updateEvent,
   updateProduct,
   updateSchedule,
+  updateInvitation,
   type CreateEventPayload,
+  type CreateInvitationPayload,
   type CreateLocationPayload,
   type CreateProductPayload,
   type CreateSchedulePayload,
   type CreateTagPayload,
   type UpdateEventPayload,
+  type UpdateInvitationPayload,
   type UpdateProductPayload,
   type UpdateSchedulePayload,
 } from './api'
-import type { Event, FieldDefinition, Product, Schedule, Tag } from '@/shared/types/api'
+import type {
+  Event,
+  FieldDefinition,
+  Invitation,
+  Product,
+  Schedule,
+  Tag,
+} from '@/shared/types/api'
 
 function compareByCreatedAtDesc(a: Event, b: Event): number {
   const at = a.created_at ? new Date(a.created_at).getTime() : 0
@@ -137,6 +150,62 @@ export function useEventSchedules(eventId: string | undefined) {
     queryFn: async (): Promise<Schedule[]> => listSchedules(eventId!),
     enabled: !!eventId,
     select: (list) => list.slice().sort(compareScheduleByCreatedAtAsc),
+  })
+}
+
+export function useEventInvitations(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['invitations', eventId],
+    queryFn: async (): Promise<Invitation[]> => listInvitations(eventId!),
+    enabled: !!eventId,
+    staleTime: 30_000,
+  })
+}
+
+export function useInvitation(invitationId: string | undefined) {
+  return useQuery({
+    queryKey: ['invitation', invitationId],
+    queryFn: async (): Promise<Invitation> => getInvitation(invitationId!),
+    enabled: !!invitationId,
+    staleTime: 30_000,
+  })
+}
+
+export function useInvitationTags() {
+  return useQuery({
+    queryKey: ['invitationTags'],
+    queryFn: async (): Promise<Tag[]> =>
+      listTags({ active: true, deleted: false, applies_to: 'INVITATION' }),
+    staleTime: 60_000,
+  })
+}
+
+export function useCreateInvitation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateInvitationPayload) => createInvitation(payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['invitations', variables.event_id] })
+      queryClient.invalidateQueries({ queryKey: ['invitation'] })
+    },
+  })
+}
+
+export function useUpdateInvitation(eventId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      invitationId,
+      payload,
+    }: {
+      invitationId: string
+      payload: UpdateInvitationPayload
+    }) => updateInvitation(invitationId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['invitations', eventId] })
+      queryClient.invalidateQueries({ queryKey: ['invitation', variables.invitationId] })
+      queryClient.invalidateQueries({ queryKey: ['invitation'] })
+    },
   })
 }
 

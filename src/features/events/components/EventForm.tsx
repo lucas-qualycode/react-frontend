@@ -4,9 +4,10 @@ import {
   CreditCardOutlined,
   EnvironmentOutlined,
   FileTextOutlined,
+  MailOutlined,
   ShoppingOutlined,
 } from '@ant-design/icons'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
   Card,
@@ -30,7 +31,10 @@ import { useAuth } from '@/app/auth/AuthContext'
 import { settingsStorage } from '@/features/settings/storage'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
 import { SectionStepsNavLayout } from '@/shared/components/SectionStepsNavLayout'
+import { EventInvitationCreateSection } from './EventInvitationCreateSection'
+import { EventInvitationsSection } from './EventInvitationsSection'
 import { EventProductsSection } from './EventProductsSection'
+import type { RadioChangeEvent } from 'antd/es/radio'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -80,7 +84,15 @@ type EventFormProps = {
 
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
 
-type EventFormSectionKey = 'identity' | 'venue' | 'schedules' | 'products' | 'tickets'
+type EventFormSectionKey =
+  | 'identity'
+  | 'venue'
+  | 'schedules'
+  | 'products'
+  | 'tickets'
+  | 'invitations'
+  | 'invitation_create'
+  | 'invitation_edit'
 
 const SECTION_QUERY_PARAM = 'section'
 
@@ -90,6 +102,9 @@ const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
   schedule: 'schedules',
   products: 'products',
   tickets: 'tickets',
+  invitations: 'invitations',
+  'invitation-new': 'invitation_create',
+  'invitation-edit': 'invitation_edit',
 }
 
 const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
@@ -98,6 +113,9 @@ const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
   schedules: 'schedule',
   products: 'products',
   tickets: 'tickets',
+  invitations: 'invitations',
+  invitation_create: 'invitation-new',
+  invitation_edit: 'invitation-edit',
 }
 
 const CREATE_SECTION_ORDER: EventFormSectionKey[] = [
@@ -106,6 +124,7 @@ const CREATE_SECTION_ORDER: EventFormSectionKey[] = [
   'schedules',
   'products',
   'tickets',
+  'invitations',
 ]
 
 function slugToSection(slug: string | null): EventFormSectionKey | null {
@@ -150,6 +169,15 @@ function snapshotFromInitialForDirty(iv: Partial<EventFormValues> & { active?: b
     is_paid: iv.is_paid ?? false,
     is_online: iv.is_online ?? false,
   })
+}
+
+function isPaidFromEventBaseline(snapshot: string): boolean {
+  try {
+    const o = JSON.parse(snapshot) as { is_paid?: boolean }
+    return Boolean(o?.is_paid)
+  } catch {
+    return false
+  }
 }
 
 function snapshotScheduleForDirty(v: EventFormValues): string {
@@ -345,7 +373,7 @@ function normalizePayload(
   return update
 }
 
-export function EventForm({
+function EventForm({
   mode,
   eventId,
   initialValues,
@@ -361,6 +389,8 @@ export function EventForm({
   const allFormValues = Form.useWatch([], form) as EventFormValues | undefined
   const editBaselineRef = useRef<string>('')
   const [isDirty, setIsDirty] = useState(false)
+  const [isPaidSaving, setIsPaidSaving] = useState(false)
+  const isPaidAutoSavingRef = useRef(false)
   const [imageEditOpen, setImageEditOpen] = useState(false)
   const [editImageHover, setEditImageHover] = useState(false)
   const watchedImageUrl = Form.useWatch('imageURL', form) as string | undefined
@@ -390,6 +420,12 @@ export function EventForm({
     mode === 'create'
       ? createSection
       : slugToSection(searchParams.get(SECTION_QUERY_PARAM)) ?? 'identity'
+  const layoutActiveSection: EventFormSectionKey =
+    mode === 'edit' &&
+    (activeSection === 'invitation_create' || activeSection === 'invitation_edit')
+      ? 'invitations'
+      : activeSection
+  const invitationRouteId = searchParams.get('invitation') ?? undefined
   const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
 
   const scheduleFieldPlaceholders = useMemo(() => {
@@ -558,6 +594,38 @@ export function EventForm({
     setIsDirty(next)
     onDirtyChange(next)
   }, [mode, onDirtyChange, allFormValues, eventId, initialValues, form, schedulesLoading])
+
+  const handleIsPaidAutoSave = useCallback(
+    async (e: RadioChangeEvent) => {
+      const next = Boolean(e.target.value)
+      if (mode !== 'edit' || !eventId) return
+      if (isPaidAutoSavingRef.current) return
+      const previous = isPaidFromEventBaseline(editBaselineRef.current)
+      if (next === previous) return
+      isPaidAutoSavingRef.current = true
+      setIsPaidSaving(true)
+      try {
+        const updated = await updateEvent(eventId, { is_paid: next })
+        queryClient.setQueryData(['event', eventId], updated)
+        queryClient.invalidateQueries({ queryKey: ['userEvents'] })
+        const raw = form.getFieldsValue(true) as EventFormValues
+        editBaselineRef.current = snapshotEventFormValuesForDirty(raw)
+        const schedSnap = snapshotScheduleForDirty(raw)
+        const scheduleDirty = isScheduleDirty(schedSnap, scheduleBaselineRef.current)
+        setIsDirty(scheduleDirty)
+        onDirtyChange?.(scheduleDirty)
+        message.success(t('events.edit.saveSuccess'))
+      } catch (err) {
+        form.setFieldsValue({ is_paid: previous })
+        const text = err instanceof Error ? err.message : t('events.form.submitError')
+        message.error(text)
+      } finally {
+        isPaidAutoSavingRef.current = false
+        setIsPaidSaving(false)
+      }
+    },
+    [mode, eventId, form, queryClient, onDirtyChange, t],
+  )
 
   const tagTreeData: TreeSelectProps['treeData'] = useMemo(() => {
     if (!tags?.length) return []
@@ -831,6 +899,11 @@ export function EventForm({
         icon: <CreditCardOutlined />,
         label: t('events.form.menuTickets'),
       },
+      {
+        key: 'invitations' as const,
+        icon: <MailOutlined />,
+        label: t('events.form.menuInvitations'),
+      },
     ],
     [t],
   )
@@ -844,11 +917,29 @@ export function EventForm({
       (prev) => {
         const next = new URLSearchParams(prev)
         next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG[sectionKey])
+        if (sectionKey !== 'invitation_edit') {
+          next.delete('invitation')
+        }
         return next
       },
       { replace: true },
     )
   }
+
+  useEffect(() => {
+    if (mode !== 'edit') return
+    if (activeSection !== 'invitation_edit') return
+    if (invitationRouteId) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG.invitations)
+        next.delete('invitation')
+        return next
+      },
+      { replace: true },
+    )
+  }, [activeSection, invitationRouteId, mode, setSearchParams])
 
   function goToPrevCreateSection() {
     if (mode !== 'create') return
@@ -879,37 +970,46 @@ export function EventForm({
 
   return (
     <>
-      <Form
-        form={form}
-        layout="vertical"
-        preserve
-        onFinish={onFinish}
-        onFinishFailed={(errorInfo) => {
-          const raw = errorInfo?.errorFields?.[0]?.name
-          const first =
-            Array.isArray(raw) && raw.length > 0
-              ? raw[0]
-              : typeof raw === 'string'
-                ? raw
-                : null
-          if (typeof first === 'string' && sectionKeyByField[first]) {
-            goToFormSection(sectionKeyByField[first])
-          }
-        }}
-        initialValues={{
-          is_paid: false,
-          is_online: false,
-          ...formInitialRest,
-        }}
+      <SectionStepsNavLayout
+        sectionOrder={CREATE_SECTION_ORDER}
+        items={eventFormMenuItems}
+        activeKey={layoutActiveSection}
+        onActiveKeyChange={goToFormSection}
+        menuDropdownAriaLabel={t('events.form.sectionNavAria')}
       >
-        <SectionStepsNavLayout
-          sectionOrder={CREATE_SECTION_ORDER}
-          items={eventFormMenuItems}
-          activeKey={activeSection}
-          onActiveKeyChange={goToFormSection}
-          menuDropdownAriaLabel={t('events.form.sectionNavAria')}
-        >
-            <Card style={{ flex: 1, minWidth: 0 }}>
+        <Card style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={
+              mode === 'edit' &&
+              eventId &&
+              (activeSection === 'invitation_create' || activeSection === 'invitation_edit')
+                ? { display: 'none', width: '100%' }
+                : { width: '100%' }
+            }
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              preserve
+              onFinish={onFinish}
+              onFinishFailed={(errorInfo) => {
+                const raw = errorInfo?.errorFields?.[0]?.name
+                const first =
+                  Array.isArray(raw) && raw.length > 0
+                    ? raw[0]
+                    : typeof raw === 'string'
+                      ? raw
+                      : null
+                if (typeof first === 'string' && sectionKeyByField[first]) {
+                  goToFormSection(sectionKeyByField[first])
+                }
+              }}
+              initialValues={{
+                is_paid: false,
+                is_online: false,
+                ...formInitialRest,
+              }}
+            >
               <Form.Item name="imageURL" hidden rules={[urlRule]}>
                 <Input />
               </Form.Item>
@@ -1370,10 +1470,12 @@ export function EventForm({
                     <Radio.Group
                       optionType="button"
                       buttonStyle="solid"
+                      disabled={mode === 'edit' && !!eventId && isPaidSaving}
                       options={[
                         { label: t('events.form.yes'), value: true },
                         { label: t('events.form.no'), value: false },
                       ]}
+                      onChange={mode === 'edit' && eventId ? handleIsPaidAutoSave : undefined}
                     />
                   </Form.Item>
                   {mode === 'edit' && eventId ? (
@@ -1386,8 +1488,22 @@ export function EventForm({
                 </div>
               ) : null}
 
+              {sectionFormPanelMounted(mode, activeSection, 'invitations') ? (
+                <div
+                  className="event-form-section-panel"
+                  hidden={sectionFormPanelHidden(activeSection, 'invitations')}
+                  style={{ width: '100%' }}
+                >
+                  <EventInvitationsSection eventId={eventId} mode={mode} />
+                </div>
+              ) : null}
+
               {mode === 'create' ||
-              (activeSection !== 'products' && activeSection !== 'tickets') ? (
+              (activeSection !== 'products' &&
+                activeSection !== 'tickets' &&
+                activeSection !== 'invitations' &&
+                activeSection !== 'invitation_create' &&
+                activeSection !== 'invitation_edit') ? (
                 <Form.Item style={{ marginBottom: 0 }}>
                   {mode === 'create' ? (
                     <Flex justify="flex-end" gap={8} wrap="wrap" style={{ width: '100%' }}>
@@ -1396,7 +1512,7 @@ export function EventForm({
                           {t('events.create.back')}
                         </Button>
                       ) : null}
-                      {activeSection !== 'tickets' ? (
+                      {activeSection !== 'invitations' ? (
                         <Button
                           type="primary"
                           htmlType="button"
@@ -1433,9 +1549,22 @@ export function EventForm({
                   )}
                 </Form.Item>
               ) : null}
-            </Card>
-        </SectionStepsNavLayout>
-      </Form>
+            </Form>
+          </div>
+          {mode === 'edit' &&
+          eventId &&
+          (activeSection === 'invitation_create' ||
+            (activeSection === 'invitation_edit' && invitationRouteId)) ? (
+            <EventInvitationCreateSection
+              eventId={eventId}
+              invitationId={
+                activeSection === 'invitation_edit' ? invitationRouteId : undefined
+              }
+              onNavigateBack={() => goToFormSection('invitations')}
+            />
+          ) : null}
+        </Card>
+      </SectionStepsNavLayout>
 
       <Modal
         title={t('events.form.venueModalTitle')}
@@ -1513,3 +1642,4 @@ export function EventForm({
   )
 }
 
+export { EventForm }

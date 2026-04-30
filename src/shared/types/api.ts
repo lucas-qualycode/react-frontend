@@ -85,9 +85,60 @@ export interface Tag {
   last_updated_by?: string
 }
 
+export type InvitationStatus =
+  | 'CREATED'
+  | 'SENT'
+  | 'ACCEPTED'
+  | 'DECLINED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+
+export const INVITATION_STATUSES: InvitationStatus[] = [
+  'CREATED',
+  'SENT',
+  'ACCEPTED',
+  'DECLINED',
+  'EXPIRED',
+  'CANCELLED',
+]
+
+export type InvitationDestinationType = 'EMAIL' | 'SMS' | 'WHATSAPP' | 'USER_ID'
+
+export const INVITATION_DESTINATION_TYPES: InvitationDestinationType[] = [
+  'EMAIL',
+  'SMS',
+  'WHATSAPP',
+  'USER_ID',
+]
+
+export type InvitationGuestSlotStatus = 'PENDING' | 'COMPLETED'
+
+export interface InvitationGuestSlot {
+  id: string
+  invitation_id: string
+  first_name: string
+  required_field_ids: string[]
+  status: InvitationGuestSlotStatus
+  created_at: string
+  updated_at: string
+}
+
 export interface Invitation {
   id: string
-  [key: string]: unknown
+  event_id: string
+  inviter_id: string
+  name: string
+  ticket_id?: string | null
+  destination: string
+  destination_type: InvitationDestinationType
+  status: InvitationStatus
+  expires_at: string
+  created_at: string
+  updated_at: string
+  guest_slot_count?: number
+  guest_slots?: InvitationGuestSlot[]
+  metadata?: Record<string, unknown>
+  tags?: EventTagEmbed[]
 }
 
 export interface ProductInventoryEmbed {

@@ -3,6 +3,8 @@ import type {
   Event,
   FieldDefinition,
   FulfillmentType,
+  Invitation,
+  InvitationDestinationType,
   Location,
   Product,
   ProductKind,
@@ -306,4 +308,103 @@ export async function updateProduct(
 export async function deleteProduct(productId: string): Promise<void> {
   const res = await fetchApi(`products/${productId}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(await apiErrorMessage(res))
+}
+
+export async function listInvitations(eventId: string): Promise<Invitation[]> {
+  const params = new URLSearchParams({ event_id: eventId })
+  const res = await fetchApi(`invitations?${params.toString()}`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Invitation[]>
+}
+
+export type CreateInvitationPayload = {
+  event_id: string
+  inviter_id: string
+  name: string
+  destination: string
+  destination_type: InvitationDestinationType
+  expires_at: string
+  ticket_id?: string | null
+  metadata?: Record<string, unknown>
+  tag_ids?: string[]
+  guest_slot_count?: number
+  guests?: { first_name: string; required_field_ids: string[] }[]
+}
+
+export async function createInvitation(payload: CreateInvitationPayload): Promise<Invitation> {
+  const body: Record<string, unknown> = {
+    event_id: payload.event_id,
+    inviter_id: payload.inviter_id,
+    name: payload.name.trim(),
+    destination: payload.destination.trim(),
+    destination_type: payload.destination_type,
+    expires_at: payload.expires_at,
+    metadata: payload.metadata ?? {},
+    tag_ids: payload.tag_ids ?? [],
+    guest_slot_count: payload.guest_slot_count ?? 0,
+  }
+  const tid = payload.ticket_id?.trim()
+  if (tid) body.ticket_id = tid
+  if (payload.guests !== undefined) {
+    body.guests = payload.guests.map((g) => ({
+      first_name: (g.first_name ?? '').trim(),
+      required_field_ids: g.required_field_ids ?? [],
+    }))
+  }
+  const res = await fetchApi('invitations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Invitation>
+}
+
+export async function getInvitation(invitationId: string): Promise<Invitation> {
+  const res = await fetchApi(`invitations/${invitationId}`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Invitation>
+}
+
+export type UpdateInvitationPayload = {
+  name?: string
+  destination?: string
+  destination_type?: InvitationDestinationType
+  expires_at?: string
+  ticket_id?: string | null
+  metadata?: Record<string, unknown>
+  tag_ids?: string[]
+  guest_slot_count?: number
+  guests?: { first_name: string; required_field_ids: string[] }[]
+}
+
+export async function updateInvitation(
+  invitationId: string,
+  payload: UpdateInvitationPayload,
+): Promise<Invitation> {
+  const body: Record<string, unknown> = {}
+  if (payload.name !== undefined) body.name = payload.name.trim()
+  if (payload.destination !== undefined) body.destination = payload.destination.trim()
+  if (payload.destination_type !== undefined) body.destination_type = payload.destination_type
+  if (payload.expires_at !== undefined) body.expires_at = payload.expires_at
+  if (payload.metadata !== undefined) body.metadata = payload.metadata
+  if (payload.tag_ids !== undefined) body.tag_ids = payload.tag_ids
+  if (payload.guest_slot_count !== undefined) body.guest_slot_count = payload.guest_slot_count
+  if (payload.ticket_id !== undefined) {
+    const tid = payload.ticket_id?.trim()
+    body.ticket_id = tid || null
+  }
+  if (payload.guests !== undefined) {
+    body.guests = payload.guests.map((g) => ({
+      first_name: (g.first_name ?? '').trim(),
+      required_field_ids: g.required_field_ids ?? [],
+    }))
+  }
+  const res = await fetchApi(`invitations/${invitationId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Invitation>
 }

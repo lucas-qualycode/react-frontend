@@ -3,7 +3,7 @@ import { App, Button, Flex, Grid, Spin, Typography } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { EditorPageColumn } from '@/shared/components/EditorPageColumn'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 import { PageHeaderRow } from '@/shared/components/PageHeaderRow'
@@ -19,6 +19,8 @@ export function EventEditPage() {
   const { modal, message } = App.useApp()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const editSectionSlug = searchParams.get('section')
   const updateMutation = useUpdateEvent()
   const { data: event, isLoading, isError, refetch } = useEvent(id)
   const screens = Grid.useBreakpoint()
@@ -94,6 +96,37 @@ export function EventEditPage() {
     [id, message, t, updateMutation]
   )
 
+  const breadcrumbItems = useMemo(() => {
+    if (!id || !event) return []
+    const base = [
+      { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
+      { title: <Link to={`/events/${id}`}>{event.name}</Link> },
+    ]
+    if (editSectionSlug === 'invitation-new') {
+      return [
+        ...base,
+        {
+          title: (
+            <Link to={`/events/${id}/edit?section=invitations`}>{t('events.form.menuInvitations')}</Link>
+          ),
+        },
+        { title: t('events.invitations.breadcrumbNew') },
+      ]
+    }
+    if (editSectionSlug === 'invitation-edit') {
+      return [
+        ...base,
+        {
+          title: (
+            <Link to={`/events/${id}/edit?section=invitations`}>{t('events.form.menuInvitations')}</Link>
+          ),
+        },
+        { title: t('events.invitations.breadcrumbEdit') },
+      ]
+    }
+    return [...base, { title: t('events.detail.edit') }]
+  }, [editSectionSlug, event, id, t])
+
   return (
     <EditorPageColumn>
       {isLoading ? (
@@ -111,13 +144,7 @@ export function EventEditPage() {
 
       {!isLoading && !isError && event && id && initialValues ? (
         <>
-          <PageBreadcrumbBar
-            items={[
-              { title: <Link to="/user-events">{t('userEvents.title')}</Link> },
-              { title: <Link to={`/events/${id}`}>{event.name}</Link> },
-              { title: t('events.detail.edit') },
-            ]}
-          />
+          <PageBreadcrumbBar items={breadcrumbItems} />
           <PageHeaderRow
             title={
               <Title level={2} style={{ marginBottom: 0 }}>

@@ -743,51 +743,59 @@ export function EventProductsSection({
                     >
                       <Input.TextArea rows={3} />
                     </Form.Item>
-                    {ticketForceFree ? (
-                      <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-                        {tp('freeEventTicketHint')}
-                      </Typography.Paragraph>
-                    ) : null}
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        {ticketForceFree || watchedProductIsFree ? (
-                          <Form.Item style={productModalFieldStyle} label={tp('fieldPrice')}>
-                            <Typography.Text type="secondary">{tp('free')}</Typography.Text>
-                          </Form.Item>
-                        ) : (
+                    {variant === 'ticket' && ticketForceFree ? (
+                      <>
+                        <Form.Item label={tp('fieldPrice')} style={productModalFieldStyle}>
+                          <Typography.Text type="secondary">{tp('freeEventTicketHint')}</Typography.Text>
+                        </Form.Item>
+                        <Form.Item name="is_free" hidden initialValue={true}>
+                          <Input type="hidden" />
+                        </Form.Item>
+                        <Form.Item name="price_reais" hidden initialValue={null}>
+                          <Input type="hidden" />
+                        </Form.Item>
+                      </>
+                    ) : (
+                      <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                          {watchedProductIsFree ? (
+                            <Form.Item style={productModalFieldStyle} label={tp('fieldPrice')}>
+                              <Typography.Text type="secondary">{tp('free')}</Typography.Text>
+                            </Form.Item>
+                          ) : (
+                            <Form.Item
+                              style={productModalFieldStyle}
+                              name="price_reais"
+                              label={tp('fieldPrice')}
+                              rules={[{ required: true, message: tp('priceRequired') }]}
+                            >
+                              <InputNumber
+                                min={0}
+                                step={0.01}
+                                style={{ width: '100%' }}
+                                placeholder={tp('pricePlaceholder')}
+                              />
+                            </Form.Item>
+                          )}
+                        </Col>
+                        <Col xs={24} sm={12}>
                           <Form.Item
                             style={productModalFieldStyle}
-                            name="price_reais"
-                            label={tp('fieldPrice')}
-                            rules={[{ required: true, message: tp('priceRequired') }]}
+                            name="is_free"
+                            label={tp('freeProductQuestion')}
                           >
-                            <InputNumber
-                              min={0}
-                              step={0.01}
-                              style={{ width: '100%' }}
-                              placeholder={tp('pricePlaceholder')}
+                            <Radio.Group
+                              optionType="button"
+                              buttonStyle="solid"
+                              options={[
+                                { label: t('events.form.yes'), value: true },
+                                { label: t('events.form.no'), value: false },
+                              ]}
                             />
                           </Form.Item>
-                        )}
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          style={productModalFieldStyle}
-                          name="is_free"
-                          label={tp('freeProductQuestion')}
-                        >
-                          <Radio.Group
-                            optionType="button"
-                            buttonStyle="solid"
-                            disabled={ticketForceFree}
-                            options={[
-                              { label: t('events.form.yes'), value: true },
-                              { label: t('events.form.no'), value: false },
-                            ]}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
+                        </Col>
+                      </Row>
+                    )}
                     <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item

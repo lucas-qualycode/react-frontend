@@ -6,28 +6,22 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { ListItemMediaCard } from '@/shared/components/ListItemMediaCard'
 import type { Invitation, InvitationStatus } from '@/shared/types/api'
-import { useEventInvitations, useInvitation } from '../hooks'
+import { useEventInvitations, useFieldDefinitions } from '../hooks'
 
-function InvitationSlotsExpand({ invitationId }: { invitationId: string }) {
-  const { t } = useTranslation()
-  const { data, isLoading } = useInvitation(invitationId)
-  if (isLoading) return <Spin size="small" />
-  const slots = data?.guest_slots ?? []
-  if (slots.length === 0) {
-    return <Typography.Text type="secondary">{t('events.invitations.noGuestSlots')}</Typography.Text>
-  }
-  return (
-    <ul style={{ margin: 0, paddingLeft: 20 }}>
-      {slots.map((s) => (
-        <li key={s.id}>
-          <Typography.Text>
-            {s.first_name}
-            {s.required_field_ids.length > 0 ? ` — ${s.required_field_ids.join(', ')}` : ''}
-          </Typography.Text>
-        </li>
-      ))}
-    </ul>
-  )
+type GuestSlotTableRow = {
+  id: string
+  isGuestSlot: true
+  parentInvitationId: string
+  first_name: string
+  fieldsDisplay: string
+}
+
+type InvitationTreeRow = Invitation & {
+  children?: GuestSlotTableRow[]
+}
+
+function isGuestSlotRow(r: InvitationTreeRow | GuestSlotTableRow): r is GuestSlotTableRow {
+  return 'isGuestSlot' in r && r.isGuestSlot === true
 }
 
 type EventInvitationsSectionProps = {
@@ -69,6 +63,22 @@ function statusTagColor(status: InvitationStatus): string {
   }
 }
 
+function guestSlotSummaryLines(inv: Invitation, labelByFieldId: Map<string, string>) {
+  const slots = inv.guest_slots ?? []
+  return slots.map((s) => {
+    const name = (s.first_name ?? '').trim()
+    const labels = (s.required_field_ids ?? []).map(
+      (id) => labelByFieldId.get(id)?.trim() || id,
+    )
+    const fields = labels.length > 0 ? labels.join(', ') : ''
+    let line = ''
+    if (name && fields) line = `${name} — ${fields}`
+    else if (name) line = name
+    else if (fields) line = fields
+    return { key: s.id, line }
+  })
+}
+
 export function EventInvitationsSection({ eventId, mode }: EventInvitationsSectionProps) {
   const { t } = useTranslation()
   const [, setSearchParams] = useSearchParams()
@@ -78,6 +88,34 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
   const { data: invitations = [], isLoading } = useEventInvitations(
     mode === 'edit' ? eventId : undefined,
   )
+  const { data: fieldDefinitions = [], isLoading: definitionsLoading } = useFieldDefinitions(true)
+
+  const labelByFieldId = useMemo(
+    () => new Map(fieldDefinitions.map((d) => [d.id, d.label])),
+    [fieldDefinitions],
+  )
+
+  const invitationTableData = useMemo((): InvitationTreeRow[] => {
+    return invitations.map((inv): InvitationTreeRow => {
+      const slots = inv.guest_slots ?? []
+      const children: GuestSlotTableRow[] | undefined =
+        slots.length > 0
+          ? slots.map((s) => ({
+              id: s.id,
+              isGuestSlot: true as const,
+              parentInvitationId: inv.id,
+              first_name: (s.first_name ?? '').trim(),
+              fieldsDisplay: (s.required_field_ids ?? [])
+                .map((id) => labelByFieldId.get(id)?.trim() || id)
+                .join(', '),
+            }))
+          : undefined
+      return {
+        ...inv,
+        children: children && children.length > 0 ? children : undefined,
+      }
+    })
+  }, [invitations, labelByFieldId])
 
   const goToEditInvitation = useCallback(
     (invitationId: string) => {
@@ -105,35 +143,42 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
     )
   }, [setSearchParams])
 
-  const columns: ColumnsType<Invitation> = useMemo(
+  const columns: ColumnsType<InvitationTreeRow | GuestSlotTableRow> = useMemo(
     () => [
       {
         title: t('events.invitations.colName'),
         key: 'name',
         ellipsis: true,
-        render: (_, inv) => invitationTitle(inv),
+        render: (_, record) =>
+          isGuestSlotRow(record) ? record.first_name || null : invitationTitle(record),
       },
       {
         title: t('events.invitations.colGuestSlots'),
         key: 'guest_slot_count',
-        width: 96,
-        render: (_, inv) => {
-          const n = inv.guest_slot_count ?? 0
-          return n > 0 ? String(n) : '—'
-        },
+        width: 140,
+        render: (_, record) =>
+          isGuestSlotRow(record)
+            ? record.fieldsDisplay || null
+            : (record.guest_slot_count ?? 0) > 0
+              ? String(record.guest_slot_count)
+              : '—',
       },
       {
         title: t('events.invitations.colStatus'),
         key: 'status',
         width: 130,
-        render: (_, inv) => <Tag color={statusTagColor(inv.status)}>{inv.status}</Tag>,
+        render: (_, record) =>
+          isGuestSlotRow(record) ? null : (
+            <Tag color={statusTagColor(record.status)}>{record.status}</Tag>
+          ),
       },
       {
         title: t('events.invitations.colExpiresAt'),
         key: 'expires_at',
         width: 180,
         ellipsis: true,
-        render: (_, inv) => formatExpiresAt(inv.expires_at),
+        render: (_, record) =>
+          isGuestSlotRow(record) ? null : formatExpiresAt(record.expires_at),
       },
     ],
     [t],
@@ -146,6 +191,8 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
       </Typography.Text>
     )
   }
+
+  const listBusy = isLoading || definitionsLoading
 
   return (
     <div className="event-form-section-panel" style={{ width: '100%' }}>
@@ -166,7 +213,7 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
       <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
         {t('events.invitations.sectionIntro')}
       </Typography.Paragraph>
-      {isLoading ? (
+      {listBusy ? (
         <Spin />
       ) : useCardLayout ? (
         invitations.length === 0 ? (
@@ -177,6 +224,7 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
               const title = invitationTitle(inv)
               const imageHeight = xs ? 140 : 160
               const expiresLabel = formatExpiresAt(inv.expires_at)
+              const slotLines = guestSlotSummaryLines(inv, labelByFieldId)
               return (
                 <Col key={inv.id} span={24}>
                   <ListItemMediaCard
@@ -196,6 +244,17 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
                             {t('events.invitations.colGuestSlots')}: {inv.guest_slot_count}
                           </Typography.Text>
                         ) : null}
+                        {slotLines.some((x) => x.line) ? (
+                          <Flex vertical gap={2}>
+                            {slotLines
+                              .filter((x) => x.line)
+                              .map(({ key, line }) => (
+                                <Typography.Text key={key} type="secondary" style={{ fontSize: 12 }}>
+                                  {line}
+                                </Typography.Text>
+                              ))}
+                          </Flex>
+                        ) : null}
                         <Typography.Text type="secondary" ellipsis>
                           {t('events.invitations.colExpiresAt')}: {expiresLabel}
                         </Typography.Text>
@@ -208,24 +267,19 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
           </Row>
         )
       ) : (
-        <Table<Invitation>
-          rowKey="id"
+        <Table<InvitationTreeRow | GuestSlotTableRow>
+          rowKey={(r) => (isGuestSlotRow(r) ? `guest-${r.id}` : r.id)}
           size="small"
           columns={columns}
-          dataSource={invitations}
+          dataSource={invitationTableData}
           pagination={false}
           scroll={{ x: 'max-content' }}
           locale={{ emptyText: t('events.invitations.tableEmpty') }}
-          expandable={{
-            rowExpandable: (record) => (record.guest_slot_count ?? 0) > 0,
-            expandedRowRender: (record) => (
-              <div style={{ padding: '4px 0 8px' }}>
-                <InvitationSlotsExpand invitationId={record.id} />
-              </div>
-            ),
-          }}
           onRow={(record) => ({
-            onClick: () => goToEditInvitation(record.id),
+            onClick: () =>
+              goToEditInvitation(
+                isGuestSlotRow(record) ? record.parentInvitationId : record.id,
+              ),
             style: { cursor: 'pointer' },
           })}
         />

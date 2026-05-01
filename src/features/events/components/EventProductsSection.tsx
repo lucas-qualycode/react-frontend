@@ -19,7 +19,6 @@ import {
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Radio,
   Row,
   Select,
@@ -41,7 +40,7 @@ import { ListItemMediaCard } from '@/shared/components/ListItemMediaCard'
 import type { ColumnsType } from 'antd/es/table'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
-import type { FulfillmentType, Product, Tag as ProductTagType } from '@/shared/types/api'
+import type { Product, Tag as ProductTagType } from '@/shared/types/api'
 import {
   useCreateProduct,
   useCreateTag,
@@ -53,60 +52,17 @@ import {
   useProductTags,
   useUpdateProduct,
 } from '../hooks'
-
-const URL_REGEX = /^https?:\/\/[^\s]+$/i
-
-type AdditionalInfoFieldFormItem = {
-  field_id: string
-  required: boolean
-}
-
-function fieldDefinitionSelectOptionsForRow(
-  base: { value: string; label: string }[],
-  allRows: AdditionalInfoFieldFormItem[] | undefined,
-  rowIndex: number,
-) {
-  const rows = allRows ?? []
-  const taken = new Set<string>()
-  rows.forEach((row, i) => {
-    if (i === rowIndex) return
-    const id = typeof row?.field_id === 'string' ? row.field_id.trim() : ''
-    if (id) taken.add(id)
-  })
-  const current = typeof rows[rowIndex]?.field_id === 'string' ? rows[rowIndex].field_id.trim() : ''
-  return base.filter((o) => !taken.has(o.value) || o.value === current)
-}
-
-function orderedAdditionalInfoFieldsFromRefs(
-  refs: Product['additional_info_fields'] | undefined,
-): AdditionalInfoFieldFormItem[] {
-  if (!refs?.length) return []
-  return [...refs]
-    .filter((r) => r.active !== false)
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((r) => ({
-      field_id: r.field_id,
-      required: r.required ?? false,
-    }))
-}
-
-type ProductFormValues = {
-  name: string
-  description: string
-  imageURL: string
-  is_free: boolean
-  price_reais: number | null
-  quantity: number
-  max_per_user: number
-  active: boolean
-  tag_ids: string[]
-  fulfillment_type?: FulfillmentType | null
-  additional_info_fields?: AdditionalInfoFieldFormItem[]
-}
+import { handleProductDeleteFailure } from '../handleProductDeleteFailure'
+import {
+  PRODUCT_EDITOR_URL_REGEX,
+  TICKET_PRODUCT_FIELD_STYLE,
+  type AdditionalInfoFieldFormItem,
+  type ProductEditorFormValues,
+  fieldDefinitionSelectOptionsForRow,
+  orderedAdditionalInfoFieldsFromRefs,
+} from './ticketProductFormShared'
 
 const brl = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'BRL' })
-
-const productModalFieldStyle = { marginBottom: 10 } as const
 
 type ProductModalTabKey = 'basic' | 'config'
 
@@ -128,11 +84,17 @@ function productStockLabel(row: Product): string {
 export type EventProductsSectionProps = {
   eventId: string
   variant?: 'merchandise' | 'ticket'
+  ticketListMode?: boolean
+  onTicketCreate?: () => void
+  onTicketEdit?: (productId: string) => void
 }
 
 export function EventProductsSection({
   eventId,
   variant = 'merchandise',
+  ticketListMode = false,
+  onTicketCreate,
+  onTicketEdit,
 }: EventProductsSectionProps) {
   const { t } = useTranslation()
   const ns = variant === 'ticket' ? 'events.tickets' : 'events.products'
@@ -156,18 +118,20 @@ export function EventProductsSection({
   const createTagMutation = useCreateTag()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
-  const [form] = Form.useForm<ProductFormValues>()
+  const [form] = Form.useForm<ProductEditorFormValues>()
+  const showProductModal = variant === 'merchandise' || (variant === 'ticket' && !ticketListMode)
   const [productTagModalOpen, setProductTagModalOpen] = useState(false)
   const [productTagForm] = Form.useForm<{ name: string; description?: string; parent_tag_id?: string }>()
   const [productImageEditOpen, setProductImageEditOpen] = useState(false)
   const [productImageHover, setProductImageHover] = useState(false)
   const [productModalTab, setProductModalTab] = useState<ProductModalTabKey>('basic')
+  const [pendingDeleteProductId, setPendingDeleteProductId] = useState<string | null>(null)
   const watchedProductImageUrl = Form.useWatch('imageURL', form) as string | undefined
   const watchedProductIsFree = Form.useWatch('is_free', form) as boolean | undefined
   const watchedAdditionalInfoFields = Form.useWatch('additional_info_fields', form) as
     | AdditionalInfoFieldFormItem[]
     | undefined
-  const fieldDefsQ = useFieldDefinitions(variant === 'ticket' && modalOpen)
+  const fieldDefsQ = useFieldDefinitions(variant === 'ticket' && modalOpen && showProductModal)
 
   const tagOptions = useMemo(
     () => productTags.map((x) => ({ value: x.id, label: x.name })),
@@ -218,7 +182,7 @@ export function EventProductsSection({
       validator: async (_: unknown, value: string) => {
         const v = value?.trim() ?? ''
         if (!v) return
-        if (!URL_REGEX.test(v)) throw new Error(t('events.form.urlInvalid'))
+        if (!PRODUCT_EDITOR_URL_REGEX.test(v)) throw new Error(t('events.form.urlInvalid'))
       },
     }),
     [t],
@@ -246,12 +210,13 @@ export function EventProductsSection({
   }
 
   useEffect(() => {
-    if (modalOpen) {
+    if (modalOpen && showProductModal) {
       setProductModalTab('basic')
     }
-  }, [modalOpen])
+  }, [modalOpen, showProductModal])
 
   useEffect(() => {
+    if (!showProductModal) return
     if (!modalOpen) {
       form.resetFields()
       return
@@ -290,10 +255,10 @@ export function EventProductsSection({
         ...(variant === 'ticket' ? { additional_info_fields: [] } : {}),
       })
     }
-  }, [modalOpen, editing, form, variant, eventForTickets?.is_paid])
+  }, [modalOpen, showProductModal, editing, form, variant, eventForTickets?.is_paid])
 
   useEffect(() => {
-    if (!modalOpen || variant !== 'ticket') return
+    if (!showProductModal || !modalOpen || variant !== 'ticket') return
     if (eventForTickets?.is_paid !== false) return
     form.setFieldsValue({ is_free: true, price_reais: null })
   }, [modalOpen, variant, eventForTickets?.is_paid, form])
@@ -329,14 +294,25 @@ export function EventProductsSection({
   }
 
   const openCreate = useCallback(() => {
+    if (variant === 'ticket' && ticketListMode && onTicketCreate) {
+      onTicketCreate()
+      return
+    }
     setEditing(null)
     setModalOpen(true)
-  }, [])
+  }, [variant, ticketListMode, onTicketCreate])
 
-  const openEdit = useCallback((p: Product) => {
-    setEditing(p)
-    setModalOpen(true)
-  }, [])
+  const openEdit = useCallback(
+    (p: Product) => {
+      if (variant === 'ticket' && ticketListMode && onTicketEdit) {
+        onTicketEdit(p.id)
+        return
+      }
+      setEditing(p)
+      setModalOpen(true)
+    },
+    [variant, ticketListMode, onTicketEdit],
+  )
 
   async function handleModalOk() {
     try {
@@ -491,35 +467,21 @@ export function EventProductsSection({
                                 }}
                               />
                             </Tooltip>
-                            <Popconfirm
-                              title={tp('deleteConfirmTitle')}
-                              description={tp('deleteConfirmBody')}
-                              okText={tp('deleteOk')}
-                              cancelText={t('events.tags.cancel')}
-                              onConfirm={async () => {
-                                try {
-                                  await deleteMutation.mutateAsync({ productId: row.id, eventId })
-                                  message.success(tp('deleteSuccess'))
-                                } catch (e) {
-                                  if (e instanceof Error && e.message) message.error(e.message)
-                                }
-                              }}
-                            >
-                              <Tooltip title={tp('delete')} placement="bottom">
-                                <span>
-                                  <Button
-                                    type="text"
-                                    danger
-                                    icon={<DeleteOutlined />}
-                                    aria-label={tp('delete')}
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                    }}
-                                  />
-                                </span>
-                              </Tooltip>
-                            </Popconfirm>
+                            <Tooltip title={tp('delete')} placement="bottom">
+                              <span>
+                                <Button
+                                  type="text"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  aria-label={tp('delete')}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    setPendingDeleteProductId(row.id)
+                                  }}
+                                />
+                              </span>
+                            </Tooltip>
                           </Space>
                         </span>
                       </>
@@ -564,6 +526,8 @@ export function EventProductsSection({
           })}
         />
       )}
+      {showProductModal ? (
+        <>
       <Modal
         title={editing ? tp('modalEditTitle') : tp('modalCreateTitle')}
         open={modalOpen}
@@ -577,26 +541,13 @@ export function EventProductsSection({
           <Flex justify="space-between" align="center" gap={16} wrap="wrap" style={{ width: '100%' }}>
             <div>
               {editing ? (
-                <Popconfirm
-                  title={tp('deleteConfirmTitle')}
-                  description={tp('deleteConfirmBody')}
-                  okText={tp('deleteOk')}
-                  cancelText={t('events.tags.cancel')}
-                  onConfirm={async () => {
-                    try {
-                      await deleteMutation.mutateAsync({ productId: editing.id, eventId })
-                      message.success(tp('deleteSuccess'))
-                      setModalOpen(false)
-                      setEditing(null)
-                    } catch (e) {
-                      if (e instanceof Error && e.message) message.error(e.message)
-                    }
-                  }}
+                <Button
+                  danger
+                  disabled={deleteMutation.isPending}
+                  onClick={() => setPendingDeleteProductId(editing.id)}
                 >
-                  <Button danger disabled={deleteMutation.isPending}>
-                    {tp('delete')}
-                  </Button>
-                </Popconfirm>
+                  {tp('delete')}
+                </Button>
               ) : null}
             </div>
             <Space>
@@ -745,7 +696,7 @@ export function EventProductsSection({
                     </Form.Item>
                     {variant === 'ticket' && ticketForceFree ? (
                       <>
-                        <Form.Item label={tp('fieldPrice')} style={productModalFieldStyle}>
+                        <Form.Item label={tp('fieldPrice')} style={TICKET_PRODUCT_FIELD_STYLE}>
                           <Typography.Text type="secondary">{tp('freeEventTicketHint')}</Typography.Text>
                         </Form.Item>
                         <Form.Item name="is_free" hidden initialValue={true}>
@@ -759,12 +710,12 @@ export function EventProductsSection({
                       <Row gutter={16}>
                         <Col xs={24} sm={12}>
                           {watchedProductIsFree ? (
-                            <Form.Item style={productModalFieldStyle} label={tp('fieldPrice')}>
+                            <Form.Item style={TICKET_PRODUCT_FIELD_STYLE} label={tp('fieldPrice')}>
                               <Typography.Text type="secondary">{tp('free')}</Typography.Text>
                             </Form.Item>
                           ) : (
                             <Form.Item
-                              style={productModalFieldStyle}
+                              style={TICKET_PRODUCT_FIELD_STYLE}
                               name="price_reais"
                               label={tp('fieldPrice')}
                               rules={[{ required: true, message: tp('priceRequired') }]}
@@ -780,7 +731,7 @@ export function EventProductsSection({
                         </Col>
                         <Col xs={24} sm={12}>
                           <Form.Item
-                            style={productModalFieldStyle}
+                            style={TICKET_PRODUCT_FIELD_STYLE}
                             name="is_free"
                             label={tp('freeProductQuestion')}
                           >
@@ -799,7 +750,7 @@ export function EventProductsSection({
                     <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
-                          style={productModalFieldStyle}
+                          style={TICKET_PRODUCT_FIELD_STYLE}
                           name="quantity"
                           label={tp('fieldQuantity')}
                           rules={[{ required: true, type: 'number', min: 1 }]}
@@ -809,7 +760,7 @@ export function EventProductsSection({
                       </Col>
                       <Col xs={24} sm={12}>
                         <Form.Item
-                          style={productModalFieldStyle}
+                          style={TICKET_PRODUCT_FIELD_STYLE}
                           name="max_per_user"
                           label={tp('fieldMaxPerUser')}
                           rules={[{ required: true, type: 'number', min: 1 }]}
@@ -819,7 +770,7 @@ export function EventProductsSection({
                       </Col>
                     </Row>
                     {variant === 'ticket' ? (
-                      <Form.Item style={productModalFieldStyle} name="active" label={tp('activeQuestion')}>
+                      <Form.Item style={TICKET_PRODUCT_FIELD_STYLE} name="active" label={tp('activeQuestion')}>
                         <Radio.Group
                           optionType="button"
                           buttonStyle="solid"
@@ -855,7 +806,7 @@ export function EventProductsSection({
                     {variant === 'ticket' ? (
                       <>
                         <Form.Item
-                          style={productModalFieldStyle}
+                          style={TICKET_PRODUCT_FIELD_STYLE}
                           label={tp('additionalFieldsPrompt')}
                           required={false}
                         >
@@ -975,7 +926,7 @@ export function EventProductsSection({
                       </>
                     ) : null}
                     {variant !== 'ticket' ? (
-                      <Form.Item style={productModalFieldStyle} name="active" label={tp('activeQuestion')}>
+                      <Form.Item style={TICKET_PRODUCT_FIELD_STYLE} name="active" label={tp('activeQuestion')}>
                         <Radio.Group
                           optionType="button"
                           buttonStyle="solid"
@@ -1058,6 +1009,36 @@ export function EventProductsSection({
             <Input.TextArea rows={3} placeholder={t('events.tags.descriptionPlaceholder')} />
           </Form.Item>
         </Form>
+      </Modal>
+        </>
+      ) : null}
+      <Modal
+        title={tp('deleteConfirmTitle')}
+        open={pendingDeleteProductId !== null}
+        okText={tp('deleteOk')}
+        cancelText={t('events.tags.cancel')}
+        okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
+        onCancel={() => setPendingDeleteProductId(null)}
+        onOk={async () => {
+          if (!pendingDeleteProductId) return
+          try {
+            await deleteMutation.mutateAsync({
+              productId: pendingDeleteProductId,
+              eventId,
+            })
+            message.success(tp('deleteSuccess'))
+            if (editing?.id === pendingDeleteProductId) {
+              setModalOpen(false)
+              setEditing(null)
+            }
+            setPendingDeleteProductId(null)
+          } catch (e) {
+            setPendingDeleteProductId(null)
+            handleProductDeleteFailure(e, t)
+          }
+        }}
+      >
+        <Typography.Paragraph style={{ marginBottom: 0 }}>{tp('deleteConfirmBody')}</Typography.Paragraph>
       </Modal>
     </div>
   )

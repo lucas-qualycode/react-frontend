@@ -7,6 +7,7 @@ import {
   createSchedule,
   createTag,
   deleteEvent,
+  deleteInvitation,
   deleteProduct,
   getEvent,
   getInvitation,
@@ -205,6 +206,17 @@ export function useUpdateInvitation(eventId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ['invitations', eventId] })
       queryClient.invalidateQueries({ queryKey: ['invitation', variables.invitationId] })
       queryClient.invalidateQueries({ queryKey: ['invitation'] })
+    },
+  })
+}
+
+export function useDeleteInvitation(eventId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invitationId: string) => deleteInvitation(invitationId),
+    onSuccess: (_data, invitationId) => {
+      queryClient.invalidateQueries({ queryKey: ['invitations', eventId] })
+      queryClient.removeQueries({ queryKey: ['invitation', invitationId] })
     },
   })
 }

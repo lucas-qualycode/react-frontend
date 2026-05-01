@@ -34,6 +34,7 @@ import { SectionStepsNavLayout } from '@/shared/components/SectionStepsNavLayout
 import { EventInvitationCreateSection } from './EventInvitationCreateSection'
 import { EventInvitationsSection } from './EventInvitationsSection'
 import { EventProductsSection } from './EventProductsSection'
+import { EventTicketEditorSection } from './EventTicketEditorSection'
 import type { RadioChangeEvent } from 'antd/es/radio'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
@@ -93,6 +94,8 @@ type EventFormSectionKey =
   | 'invitations'
   | 'invitation_create'
   | 'invitation_edit'
+  | 'ticket_create'
+  | 'ticket_edit'
 
 const SECTION_QUERY_PARAM = 'section'
 
@@ -105,6 +108,8 @@ const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
   invitations: 'invitations',
   'invitation-new': 'invitation_create',
   'invitation-edit': 'invitation_edit',
+  'ticket-new': 'ticket_create',
+  'ticket-edit': 'ticket_edit',
 }
 
 const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
@@ -116,6 +121,8 @@ const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
   invitations: 'invitations',
   invitation_create: 'invitation-new',
   invitation_edit: 'invitation-edit',
+  ticket_create: 'ticket-new',
+  ticket_edit: 'ticket-edit',
 }
 
 const CREATE_SECTION_ORDER: EventFormSectionKey[] = [
@@ -424,8 +431,12 @@ function EventForm({
     mode === 'edit' &&
     (activeSection === 'invitation_create' || activeSection === 'invitation_edit')
       ? 'invitations'
-      : activeSection
+      : mode === 'edit' &&
+          (activeSection === 'ticket_create' || activeSection === 'ticket_edit')
+        ? 'tickets'
+        : activeSection
   const invitationRouteId = searchParams.get('invitation') ?? undefined
+  const ticketRouteProductId = searchParams.get('ticket') ?? undefined
   const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
 
   const scheduleFieldPlaceholders = useMemo(() => {
@@ -920,6 +931,9 @@ function EventForm({
         if (sectionKey !== 'invitation_edit') {
           next.delete('invitation')
         }
+        if (sectionKey !== 'ticket_edit') {
+          next.delete('ticket')
+        }
         return next
       },
       { replace: true },
@@ -940,6 +954,21 @@ function EventForm({
       { replace: true },
     )
   }, [activeSection, invitationRouteId, mode, setSearchParams])
+
+  useEffect(() => {
+    if (mode !== 'edit') return
+    if (activeSection !== 'ticket_edit') return
+    if (ticketRouteProductId) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG.tickets)
+        next.delete('ticket')
+        return next
+      },
+      { replace: true },
+    )
+  }, [activeSection, ticketRouteProductId, mode, setSearchParams])
 
   function goToPrevCreateSection() {
     if (mode !== 'create') return
@@ -982,7 +1011,10 @@ function EventForm({
             style={
               mode === 'edit' &&
               eventId &&
-              (activeSection === 'invitation_create' || activeSection === 'invitation_edit')
+              (activeSection === 'invitation_create' ||
+                activeSection === 'invitation_edit' ||
+                activeSection === 'ticket_create' ||
+                activeSection === 'ticket_edit')
                 ? { display: 'none', width: '100%' }
                 : { width: '100%' }
             }
@@ -1479,7 +1511,33 @@ function EventForm({
                     />
                   </Form.Item>
                   {mode === 'edit' && eventId ? (
-                    <EventProductsSection eventId={eventId} variant="ticket" />
+                    <EventProductsSection
+                      eventId={eventId}
+                      variant="ticket"
+                      ticketListMode
+                      onTicketCreate={() => {
+                        setSearchParams(
+                          (prev) => {
+                            const next = new URLSearchParams(prev)
+                            next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG.ticket_create)
+                            next.delete('ticket')
+                            return next
+                          },
+                          { replace: true },
+                        )
+                      }}
+                      onTicketEdit={(productId) => {
+                        setSearchParams(
+                          (prev) => {
+                            const next = new URLSearchParams(prev)
+                            next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG.ticket_edit)
+                            next.set('ticket', productId)
+                            return next
+                          },
+                          { replace: true },
+                        )
+                      }}
+                    />
                   ) : (
                     <Typography.Text type="secondary" style={{ display: 'block' }}>
                       {t('events.form.ticketsAfterCreateHint')}
@@ -1503,7 +1561,9 @@ function EventForm({
                 activeSection !== 'tickets' &&
                 activeSection !== 'invitations' &&
                 activeSection !== 'invitation_create' &&
-                activeSection !== 'invitation_edit') ? (
+                activeSection !== 'invitation_edit' &&
+                activeSection !== 'ticket_create' &&
+                activeSection !== 'ticket_edit') ? (
                 <Form.Item style={{ marginBottom: 0 }}>
                   {mode === 'create' ? (
                     <Flex justify="flex-end" gap={8} wrap="wrap" style={{ width: '100%' }}>
@@ -1561,6 +1621,18 @@ function EventForm({
                 activeSection === 'invitation_edit' ? invitationRouteId : undefined
               }
               onNavigateBack={() => goToFormSection('invitations')}
+            />
+          ) : null}
+          {mode === 'edit' &&
+          eventId &&
+          (activeSection === 'ticket_create' ||
+            (activeSection === 'ticket_edit' && ticketRouteProductId)) ? (
+            <EventTicketEditorSection
+              eventId={eventId}
+              productId={
+                activeSection === 'ticket_edit' ? ticketRouteProductId : undefined
+              }
+              onNavigateBack={() => goToFormSection('tickets')}
             />
           ) : null}
         </Card>

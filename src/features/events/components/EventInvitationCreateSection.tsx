@@ -6,25 +6,32 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Select,
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
-import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from 'react'
+import tzPlugin from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import {
   INVITATION_DESTINATION_TYPES,
   type FieldDefinition,
   type InvitationDestinationType,
+  type Schedule,
 } from '@/shared/types/api'
 import {
   useCreateInvitation,
+  useDeleteInvitation,
+  useEventSchedules,
   useEventTicketProducts,
   useFieldDefinitions,
   useInvitation,
@@ -32,7 +39,33 @@ import {
   useUpdateInvitation,
 } from '../hooks'
 
+dayjs.extend(utc)
+dayjs.extend(tzPlugin)
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function scheduleEventStart(sched: Schedule | undefined): Dayjs | null {
+  if (!sched?.start_date || !sched?.start_time || !sched?.timezone?.trim()) return null
+  const dateYmd = dayjs(sched.start_date).format('YYYY-MM-DD')
+  const tnorm = dayjs(sched.start_time, ['HH:mm', 'H:mm'], true)
+  const tf = tnorm.isValid() ? tnorm.format('HH:mm') : String(sched.start_time).trim()
+  const inst = dayjs.tz(`${dateYmd} ${tf}`, 'YYYY-MM-DD HH:mm', sched.timezone.trim())
+  return inst.isValid() ? inst : null
+}
+
+function scheduleEventEnd(sched: Schedule | undefined): Dayjs | null {
+  if (!sched?.end_date || !sched?.end_time || !sched?.timezone?.trim()) return null
+  const dateYmd = dayjs(sched.end_date).format('YYYY-MM-DD')
+  const tnorm = dayjs(sched.end_time, ['HH:mm', 'H:mm'], true)
+  const tf = tnorm.isValid() ? tnorm.format('HH:mm') : String(sched.end_time).trim()
+  const inst = dayjs.tz(`${dateYmd} ${tf}`, 'YYYY-MM-DD HH:mm', sched.timezone.trim())
+  return inst.isValid() ? inst : null
+}
+
+function clampExpiryToEventEnd(d: Dayjs, eventEnd: Dayjs | null): Dayjs {
+  if (!eventEnd?.isValid()) return d
+  return d.isAfter(eventEnd) ? eventEnd : d
+}
 
 function ticketFieldIdsOrdered(
   tk: { additional_info_fields?: { field_id: string; active?: boolean | null }[] } | undefined,
@@ -114,6 +147,8 @@ export function EventInvitationCreateSection({
   const [form] = Form.useForm<InvitationCreateFormValues>()
   const createMutation = useCreateInvitation()
   const updateMutation = useUpdateInvitation(eventId)
+  const deleteMutation = useDeleteInvitation(eventId)
+  const [invitationDeleteModalOpen, setInvitationDeleteModalOpen] = useState(false)
   const isEdit = Boolean(invitationId)
   const {
     data: existingInvitation,
@@ -122,6 +157,7 @@ export function EventInvitationCreateSection({
   } = useInvitation(isEdit ? invitationId : undefined)
 
   const { data: tickets = [] } = useEventTicketProducts(eventId)
+  const { data: schedules = [] } = useEventSchedules(eventId)
   const { data: invitationTags = [], isLoading: tagsLoading } = useInvitationTags()
   const { data: fieldDefinitions = [], isLoading: fieldDefinitionsLoading } = useFieldDefinitions(true)
 
@@ -130,18 +166,30 @@ export function EventInvitationCreateSection({
     | undefined
   const ticketId = Form.useWatch('ticket_id', form) as string | undefined
 
+  const ticketsForInvitationForm = useMemo(() => {
+    const activeOnly = tickets.filter((p) => p.active)
+    const tid = existingInvitation?.ticket_id ?? undefined
+    if (typeof tid === 'string' && tid && !activeOnly.some((p) => p.id === tid)) {
+      const current = tickets.find((p) => p.id === tid)
+      if (current) return [...activeOnly, current]
+    }
+    return activeOnly
+  }, [tickets, existingInvitation?.ticket_id])
+
   const ticketOptions = useMemo(
     () =>
-      tickets.map((p) => ({
+      ticketsForInvitationForm.map((p) => ({
         value: p.id,
-        label: p.name?.trim() || p.id,
+        label: !p.active
+          ? `${p.name?.trim() || p.id}${t('events.invitations.create.ticketInactiveSuffix')}`
+          : p.name?.trim() || p.id,
       })),
-    [tickets],
+    [ticketsForInvitationForm, t],
   )
 
   const selectedTicket = useMemo(
-    () => tickets.find((p) => p.id === ticketId),
-    [tickets, ticketId],
+    () => ticketsForInvitationForm.find((p) => p.id === ticketId),
+    [ticketsForInvitationForm, ticketId],
   )
 
   const ticketFieldSelectOptions = useMemo(() => {
@@ -203,6 +251,33 @@ export function EventInvitationCreateSection({
         label: tg.name,
       })),
     [invitationTags],
+  )
+
+  const primarySchedule = schedules[0]
+  const eventStartDayjs = useMemo(() => scheduleEventStart(primarySchedule), [primarySchedule])
+  const eventEndDayjs = useMemo(() => scheduleEventEnd(primarySchedule), [primarySchedule])
+  const eventDayPresetEnabled = Boolean(eventStartDayjs?.isAfter(dayjs()))
+
+  const expiresAtRules = useMemo(
+    () => [
+      { required: true, message: t('events.invitations.create.expiresRequired') },
+      {
+        validator: async (_: unknown, v: Dayjs) => {
+          if (!v?.isValid()) throw new Error(t('events.invitations.create.expiresInvalid'))
+          if (!v.isAfter(dayjs())) {
+            throw new Error(t('events.invitations.create.expiresMustBeFuture'))
+          }
+          if (eventEndDayjs?.isValid() && v.isAfter(eventEndDayjs)) {
+            throw new Error(
+              t('events.invitations.create.expiresMustBeOnOrBeforeEventEnd', {
+                end: eventEndDayjs.format('YYYY-MM-DD HH:mm'),
+              }),
+            )
+          }
+        },
+      },
+    ],
+    [t, eventEndDayjs],
   )
 
   const tx = useMemo(
@@ -376,7 +451,7 @@ export function EventInvitationCreateSection({
         return
       }
       const tid = String(values.ticket_id ?? '').trim()
-      const submitTicket = tickets.find((p) => p.id === tid)
+      const submitTicket = ticketsForInvitationForm.find((p) => p.id === tid)
       const submitSelectableOrdered = buildGuestFieldSelectableIdsOrdered(
         submitTicket,
         fieldDefinitions,
@@ -438,7 +513,7 @@ export function EventInvitationCreateSection({
       tx.success,
       updateMutation,
       user?.uid,
-      tickets,
+      ticketsForInvitationForm,
       fieldDefinitions,
     ],
   )
@@ -544,7 +619,7 @@ export function EventInvitationCreateSection({
                   const n = typeof v === 'number' ? v : Number(v)
                   if (Number.isNaN(n) || n < 0) throw new Error(t('events.invitations.create.guestSlotCountInvalid'))
                   const tid = form.getFieldValue('ticket_id') as string | undefined
-                  const tk = tickets.find((p) => p.id === tid)
+                  const tk = ticketsForInvitationForm.find((p) => p.id === tid)
                   const max = tk?.max_per_user
                   if (max !== undefined && n > max) {
                     throw new Error(t('events.invitations.create.guestSlotCountOverMax', { max }))
@@ -660,20 +735,83 @@ export function EventInvitationCreateSection({
             </>
           )}
         </Form.List>
-        <Form.Item
-          name="expires_at"
-          label={t('events.invitations.create.expiresLabel')}
-          rules={[
-            { required: true, message: t('events.invitations.create.expiresRequired') },
-            {
-              validator: async (_: unknown, v: Dayjs) => {
-                if (!v?.isValid()) throw new Error(t('events.invitations.create.expiresInvalid'))
-                if (!v.isAfter(dayjs())) throw new Error(t('events.invitations.create.expiresMustBeFuture'))
-              },
-            },
-          ]}
-        >
-          <DatePicker showTime style={{ width: '100%' }} format="YYYY-MM-DD HH:mm" />
+        <Form.Item label={t('events.invitations.create.expiresLabel')} required>
+          <Flex
+            gap={12}
+            align="flex-start"
+            wrap="wrap"
+            justify="space-between"
+            style={{ width: '100%' }}
+          >
+            <Form.Item name="expires_at" noStyle rules={expiresAtRules}>
+              <DatePicker showTime style={{ width: 200, maxWidth: '100%' }} format="YYYY-MM-DD HH:mm" />
+            </Form.Item>
+            <Space wrap size={[8, 8]} style={{ flex: '1 1 auto', justifyContent: 'flex-end' }}>
+              <Button
+                type="default"
+                size="small"
+                onClick={() =>
+                  form.setFieldsValue({
+                    expires_at: clampExpiryToEventEnd(
+                      dayjs().add(7, 'day').endOf('day'),
+                      eventEndDayjs,
+                    ),
+                  })
+                }
+              >
+                {t('events.invitations.create.expiresPreset7Days')}
+              </Button>
+              <Button
+                type="default"
+                size="small"
+                onClick={() =>
+                  form.setFieldsValue({
+                    expires_at: clampExpiryToEventEnd(
+                      dayjs().add(15, 'day').endOf('day'),
+                      eventEndDayjs,
+                    ),
+                  })
+                }
+              >
+                {t('events.invitations.create.expiresPreset15Days')}
+              </Button>
+              <Button
+                type="default"
+                size="small"
+                onClick={() =>
+                  form.setFieldsValue({
+                    expires_at: clampExpiryToEventEnd(
+                      dayjs().add(30, 'day').endOf('day'),
+                      eventEndDayjs,
+                    ),
+                  })
+                }
+              >
+                {t('events.invitations.create.expiresPreset30Days')}
+              </Button>
+              <Tooltip
+                title={
+                  eventDayPresetEnabled
+                    ? undefined
+                    : t('events.invitations.create.expiresPresetEventDayDisabled')
+                }
+              >
+                <Button
+                  type="default"
+                  size="small"
+                  disabled={!eventDayPresetEnabled || !eventStartDayjs}
+                  onClick={() =>
+                    eventStartDayjs &&
+                    form.setFieldsValue({
+                      expires_at: clampExpiryToEventEnd(eventStartDayjs, eventEndDayjs),
+                    })
+                  }
+                >
+                  {t('events.invitations.create.expiresPresetEventDay')}
+                </Button>
+              </Tooltip>
+            </Space>
+          </Flex>
         </Form.Item>
         <Form.Item name="tag_ids" label={t('events.invitations.create.tagsLabel')}>
           <Select
@@ -686,17 +824,53 @@ export function EventInvitationCreateSection({
             placeholder={t('events.invitations.create.tagsPlaceholder')}
           />
         </Form.Item>
-        <Form.Item style={{ marginBottom: 0 }}>
-          <Flex gap={8} wrap="wrap">
+        <Flex justify="space-between" align="center" gap={16} wrap="wrap" style={{ marginTop: 24 }}>
+          <div>
+            {isEdit && invitationId ? (
+              <Button
+                danger
+                disabled={deleteMutation.isPending}
+                onClick={() => setInvitationDeleteModalOpen(true)}
+              >
+                {t('events.invitations.edit.delete')}
+              </Button>
+            ) : null}
+          </div>
+          <Space>
+            <Button htmlType="button" onClick={onNavigateBack}>
+              {t('events.tags.cancel')}
+            </Button>
             <Button type="primary" htmlType="submit" loading={submitPending}>
               {tx.submit}
             </Button>
-            <Button htmlType="button" onClick={onNavigateBack}>
-              {t('events.invitations.create.cancel')}
-            </Button>
-          </Flex>
-        </Form.Item>
+          </Space>
+        </Flex>
       </Form>
+      {isEdit && invitationId ? (
+        <Modal
+          title={t('events.invitations.edit.deleteConfirmTitle')}
+          open={invitationDeleteModalOpen}
+          okText={t('events.invitations.edit.deleteOk')}
+          cancelText={t('events.tags.cancel')}
+          okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
+          onCancel={() => setInvitationDeleteModalOpen(false)}
+          onOk={async () => {
+            try {
+              await deleteMutation.mutateAsync(invitationId)
+              message.success(t('events.invitations.edit.deleteSuccess'))
+              setInvitationDeleteModalOpen(false)
+              onNavigateBack()
+            } catch (e) {
+              setInvitationDeleteModalOpen(false)
+              if (e instanceof Error && e.message) message.error(e.message)
+            }
+          }}
+        >
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {t('events.invitations.edit.deleteConfirmBody')}
+          </Typography.Paragraph>
+        </Modal>
+      ) : null}
     </div>
   )
 }

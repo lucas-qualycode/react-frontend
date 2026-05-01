@@ -257,6 +257,13 @@
       "deleteSuccess": "Produto removido."
     },
     "tickets": {
+      "breadcrumbNew": "Novo ingresso",
+      "breadcrumbEdit": "Editar ingresso",
+      "pageBack": "Voltar aos ingressos",
+      "pageCreateTitle": "Novo ingresso",
+      "pageEditTitle": "Editar ingresso",
+      "pageCreateIntro": "Crie um ingresso para este evento.",
+      "pageEditIntro": "Atualize os detalhes e a configuração deste ingresso.",
       "sectionTitle": "Ingressos",
       "sectionIntro": "Adicione ingressos para venda neste evento.",
       "addButton": "Adicionar ingresso",
@@ -317,7 +324,9 @@
       "priceRequired": "Informe um preço maior que zero ou marque como gratuito.",
       "createSuccess": "Ingresso criado.",
       "updateSuccess": "Ingresso atualizado.",
-      "deleteSuccess": "Ingresso removido."
+      "deleteSuccess": "Ingresso removido.",
+      "deleteBlockedTitle": "Não é possível excluir o ingresso",
+      "deleteBlockedBody": "Este ingresso está vinculado a um ou mais convites. Remova ou altere esses convites antes."
     },
     "schedule": {
       "sectionTitle": "Cronograma",
@@ -380,6 +389,7 @@
         "destinationUserIdInvalid": "Informe um id de usuário válido.",
         "ticketLabel": "Ingresso",
         "ticketPlaceholder": "Selecione um ingresso",
+        "ticketInactiveSuffix": " (inativo)",
         "ticketRequired": "Selecione um ingresso.",
         "guestsHelp": "Defina o total de vagas ao lado do ingresso (opcional). Adicione linhas só se quiser nomes ou campos agora; as vagas restantes ficam vazias.",
         "guestSlotCountLabel": "Número de convidados",
@@ -401,6 +411,12 @@
         "expiresRequired": "Escolha data e hora de expiração.",
         "expiresInvalid": "Data inválida.",
         "expiresMustBeFuture": "A expiração deve ser no futuro.",
+        "expiresMustBeOnOrBeforeEventEnd": "A expiração deve ser até o fim do evento (no máximo {{end}}).",
+        "expiresPreset7Days": "7 dias",
+        "expiresPreset15Days": "15 dias",
+        "expiresPreset30Days": "30 dias",
+        "expiresPresetEventDay": "Dia do evento",
+        "expiresPresetEventDayDisabled": "Cadastre o cronograma do evento primeiro, ou o início do evento não está no futuro.",
         "tagsLabel": "Tags (opcional)",
         "tagsPlaceholder": "Selecione tags",
         "success": "Convite criado."
@@ -408,8 +424,13 @@
       "edit": {
         "title": "Editar convite",
         "intro": "Atualize este convite para este evento.",
-        "submit": "Salvar convite",
-        "success": "Convite salvo."
+        "submit": "Salvar",
+        "success": "Convite salvo.",
+        "delete": "Excluir",
+        "deleteConfirmTitle": "Excluir este convite?",
+        "deleteConfirmBody": "O convite e os dados dos convidados serão removidos. Isso não pode ser desfeito.",
+        "deleteOk": "Excluir",
+        "deleteSuccess": "Convite removido."
       }
     },
     "tags": {

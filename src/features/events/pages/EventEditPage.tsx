@@ -124,6 +124,28 @@ export function EventEditPage() {
         { title: t('events.invitations.breadcrumbEdit') },
       ]
     }
+    if (editSectionSlug === 'ticket-new') {
+      return [
+        ...base,
+        {
+          title: (
+            <Link to={`/events/${id}/edit?section=tickets`}>{t('events.form.menuTickets')}</Link>
+          ),
+        },
+        { title: t('events.tickets.breadcrumbNew') },
+      ]
+    }
+    if (editSectionSlug === 'ticket-edit') {
+      return [
+        ...base,
+        {
+          title: (
+            <Link to={`/events/${id}/edit?section=tickets`}>{t('events.form.menuTickets')}</Link>
+          ),
+        },
+        { title: t('events.tickets.breadcrumbEdit') },
+      ]
+    }
     return [...base, { title: t('events.detail.edit') }]
   }, [editSectionSlug, event, id, t])
 

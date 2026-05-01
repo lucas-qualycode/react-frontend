@@ -257,6 +257,13 @@
       "deleteSuccess": "Product removed."
     },
     "tickets": {
+      "breadcrumbNew": "New ticket",
+      "breadcrumbEdit": "Edit ticket",
+      "pageBack": "Back to tickets",
+      "pageCreateTitle": "New ticket",
+      "pageEditTitle": "Edit ticket",
+      "pageCreateIntro": "Create a ticket product for this event.",
+      "pageEditIntro": "Update this ticket’s details and configuration.",
       "sectionTitle": "Tickets",
       "sectionIntro": "Add admission tickets for sale at this event.",
       "addButton": "Add ticket",
@@ -317,7 +324,9 @@
       "priceRequired": "Enter a price greater than zero, or mark as free.",
       "createSuccess": "Ticket created.",
       "updateSuccess": "Ticket updated.",
-      "deleteSuccess": "Ticket removed."
+      "deleteSuccess": "Ticket removed.",
+      "deleteBlockedTitle": "Cannot delete ticket",
+      "deleteBlockedBody": "This ticket is linked to one or more invitations. Remove or reassign those invitations first."
     },
     "schedule": {
       "sectionTitle": "Schedule",
@@ -380,6 +389,7 @@
         "destinationUserIdInvalid": "Enter a valid user id.",
         "ticketLabel": "Ticket",
         "ticketPlaceholder": "Select a ticket product",
+        "ticketInactiveSuffix": " (inactive)",
         "ticketRequired": "Select a ticket.",
         "guestsHelp": "Set total guest slots next to the ticket (optional). Add rows only if you want names or fields now; empty slots are created for the rest.",
         "guestSlotCountLabel": "Guest slots",
@@ -401,6 +411,12 @@
         "expiresRequired": "Choose an expiry date and time.",
         "expiresInvalid": "Invalid date.",
         "expiresMustBeFuture": "Expiry must be in the future.",
+        "expiresMustBeOnOrBeforeEventEnd": "Expiry must be on or before the event ends (latest {{end}}).",
+        "expiresPreset7Days": "7 days",
+        "expiresPreset15Days": "15 days",
+        "expiresPreset30Days": "30 days",
+        "expiresPresetEventDay": "Event day",
+        "expiresPresetEventDayDisabled": "Add an event schedule first, or the event start is not in the future.",
         "tagsLabel": "Tags (optional)",
         "tagsPlaceholder": "Select tags",
         "success": "Invitation created."
@@ -408,8 +424,13 @@
       "edit": {
         "title": "Edit invitation",
         "intro": "Update this invitation for this event.",
-        "submit": "Save invitation",
-        "success": "Invitation saved."
+        "submit": "Save",
+        "success": "Invitation saved.",
+        "delete": "Delete",
+        "deleteConfirmTitle": "Delete this invitation?",
+        "deleteConfirmBody": "The invitation and its guest details will be removed. This cannot be undone.",
+        "deleteOk": "Delete",
+        "deleteSuccess": "Invitation removed."
       }
     },
     "tags": {

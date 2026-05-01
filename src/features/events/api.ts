@@ -408,3 +408,8 @@ export async function updateInvitation(
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Invitation>
 }
+
+export async function deleteInvitation(invitationId: string): Promise<void> {
+  const res = await fetchApi(`invitations/${invitationId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+}

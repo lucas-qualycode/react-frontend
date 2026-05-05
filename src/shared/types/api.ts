@@ -90,7 +90,6 @@ export type InvitationStatus =
   | 'SENT'
   | 'ACCEPTED'
   | 'DECLINED'
-  | 'EXPIRED'
   | 'CANCELLED'
 
 export const INVITATION_STATUSES: InvitationStatus[] = [
@@ -98,7 +97,6 @@ export const INVITATION_STATUSES: InvitationStatus[] = [
   'SENT',
   'ACCEPTED',
   'DECLINED',
-  'EXPIRED',
   'CANCELLED',
 ]
 

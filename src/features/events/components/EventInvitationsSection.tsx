@@ -1,7 +1,7 @@
 import { PlusOutlined } from '@ant-design/icons'
 import { Button, Col, Empty, Flex, Grid, Row, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { ListItemMediaCard } from '@/shared/components/ListItemMediaCard'
@@ -35,6 +35,8 @@ function invitationTitle(inv: Invitation): string {
   return namePart || destPart || inv.id
 }
 
+const MS_PER_DAY = 86400000
+
 function formatExpiresAt(iso: string): string {
   const ms = Date.parse(iso)
   if (Number.isNaN(ms)) {
@@ -46,14 +48,31 @@ function formatExpiresAt(iso: string): string {
   }).format(new Date(ms))
 }
 
+function expiresAtVisualState(iso: string): 'expired' | 'soon' | 'normal' {
+  const ms = Date.parse(iso)
+  if (Number.isNaN(ms)) return 'normal'
+  const now = Date.now()
+  if (ms <= now) return 'expired'
+  if (ms - now <= MS_PER_DAY) return 'soon'
+  return 'normal'
+}
+
+function expiresAtDisplayStyle(state: ReturnType<typeof expiresAtVisualState>): CSSProperties | undefined {
+  if (state === 'expired') return { color: 'var(--ant-color-error)' }
+  if (state === 'soon') return { color: 'var(--ant-color-warning)' }
+  return undefined
+}
+
+function invitationStatusLabel(t: (key: string, opts?: { defaultValue?: string }) => string, status: InvitationStatus) {
+  return t(`events.invitations.status.${status}`, { defaultValue: status })
+}
+
 function statusTagColor(status: InvitationStatus): string {
   switch (status) {
     case 'ACCEPTED':
       return 'success'
     case 'DECLINED':
       return 'error'
-    case 'EXPIRED':
-      return 'warning'
     case 'CANCELLED':
       return 'default'
     case 'SENT':
@@ -169,7 +188,9 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
         width: 130,
         render: (_, record) =>
           isGuestSlotRow(record) ? null : (
-            <Tag color={statusTagColor(record.status)}>{record.status}</Tag>
+            <Tag color={statusTagColor(record.status)}>
+              {invitationStatusLabel(t, record.status)}
+            </Tag>
           ),
       },
       {
@@ -178,7 +199,14 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
         width: 180,
         ellipsis: true,
         render: (_, record) =>
-          isGuestSlotRow(record) ? null : formatExpiresAt(record.expires_at),
+          isGuestSlotRow(record) ? null : (
+            <Typography.Text
+              ellipsis
+              style={expiresAtDisplayStyle(expiresAtVisualState(record.expires_at))}
+            >
+              {formatExpiresAt(record.expires_at)}
+            </Typography.Text>
+          ),
       },
     ],
     [t],
@@ -224,6 +252,8 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
               const title = invitationTitle(inv)
               const imageHeight = xs ? 140 : 160
               const expiresLabel = formatExpiresAt(inv.expires_at)
+              const expiresExp = expiresAtVisualState(inv.expires_at)
+              const expiresStyle = expiresAtDisplayStyle(expiresExp)
               const slotLines = guestSlotSummaryLines(inv, labelByFieldId)
               return (
                 <Col key={inv.id} span={24}>
@@ -235,7 +265,9 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
                     onClick={() => goToEditInvitation(inv.id)}
                     noImageText={t('events.detail.noImage')}
                     headerTrailing={
-                      <Tag color={statusTagColor(inv.status)}>{inv.status}</Tag>
+                      <Tag color={statusTagColor(inv.status)}>
+                        {invitationStatusLabel(t, inv.status)}
+                      </Tag>
                     }
                     footer={
                       <Flex vertical gap={4} style={{ padding: '12px 24px 24px' }}>
@@ -256,7 +288,8 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
                           </Flex>
                         ) : null}
                         <Typography.Text type="secondary" ellipsis>
-                          {t('events.invitations.colExpiresAt')}: {expiresLabel}
+                          {t('events.invitations.colExpiresAt')}:{' '}
+                          <span style={expiresStyle}>{expiresLabel}</span>
                         </Typography.Text>
                       </Flex>
                     }

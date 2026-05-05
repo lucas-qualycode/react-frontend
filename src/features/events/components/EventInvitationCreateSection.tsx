@@ -1,4 +1,9 @@
-import { ArrowLeftOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons'
+import {
+  ArrowLeftOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+} from '@ant-design/icons'
 import {
   Button,
   DatePicker,
@@ -386,7 +391,7 @@ export function EventInvitationCreateSection({
       destination_type: existingInvitation.destination_type,
       destination: existingInvitation.destination ?? '',
       ticket_id: existingInvitation.ticket_id ?? undefined,
-      guest_slot_count: existingInvitation.guest_slot_count ?? 0,
+      guest_slot_count: Math.max(1, existingInvitation.guest_slot_count ?? 0),
       expires_at: dayjs(existingInvitation.expires_at),
       tag_ids: existingInvitation.tags?.map((x) => x.id) ?? [],
       guests: (existingInvitation.guest_slots ?? []).map((s) => ({
@@ -405,8 +410,8 @@ export function EventInvitationCreateSection({
     }
     const max = selectedTicket.max_per_user
     const c = form.getFieldValue('guest_slot_count')
-    const cur = typeof c === 'number' && !Number.isNaN(c) ? c : 0
-    const clamped = Math.min(Math.max(0, cur), max)
+    const cur = typeof c === 'number' && !Number.isNaN(c) ? c : 1
+    const clamped = Math.min(Math.max(1, cur), max)
     if (clamped !== cur) {
       form.setFieldsValue({ guest_slot_count: clamped })
     }
@@ -440,10 +445,10 @@ export function EventInvitationCreateSection({
         return
       }
       const slotCount = Math.max(
-        0,
+        1,
         typeof values.guest_slot_count === 'number' && !Number.isNaN(values.guest_slot_count)
           ? values.guest_slot_count
-          : 0,
+          : 1,
       )
       const rawGuests = values.guests ?? []
       if (rawGuests.length > slotCount) {
@@ -529,36 +534,39 @@ export function EventInvitationCreateSection({
   if (isEdit && (invitationError || !existingInvitation)) {
     return (
       <div className="event-form-section-panel" style={{ width: '100%' }}>
-        <Typography.Paragraph type="danger">{t('events.form.submitError')}</Typography.Paragraph>
-        <Button type="default" onClick={onNavigateBack}>
-          {t('events.invitations.create.back')}
-        </Button>
+        <div style={{ width: '100%', maxWidth: 560, marginLeft: 'auto', marginRight: 'auto' }}>
+          <Typography.Paragraph type="danger">{t('events.form.submitError')}</Typography.Paragraph>
+          <Button type="default" onClick={onNavigateBack}>
+            {t('events.invitations.create.back')}
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="event-form-section-panel" style={{ width: '100%' }}>
-      <Flex justify="space-between" align="center" gap={16} wrap="wrap" style={{ marginBottom: 8 }}>
-        <Typography.Title
-          level={4}
-          style={{ marginTop: 0, marginBottom: 0, flex: '1 1 auto', minWidth: 0 }}
+      <div style={{ width: '100%', maxWidth: 560, marginLeft: 'auto', marginRight: 'auto' }}>
+        <Flex justify="space-between" align="center" gap={16} wrap="wrap" style={{ marginBottom: 8 }}>
+          <Typography.Title
+            level={4}
+            style={{ marginTop: 0, marginBottom: 0, flex: '1 1 auto', minWidth: 0 }}
+          >
+            {tx.title}
+          </Typography.Title>
+          <Button type="default" icon={<ArrowLeftOutlined />} onClick={onNavigateBack}>
+            {t('events.invitations.create.back')}
+          </Button>
+        </Flex>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          {tx.intro}
+        </Typography.Paragraph>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={(v) => void onFinish(v)}
+          style={{ width: '100%' }}
         >
-          {tx.title}
-        </Typography.Title>
-        <Button type="default" icon={<ArrowLeftOutlined />} onClick={onNavigateBack}>
-          {t('events.invitations.create.back')}
-        </Button>
-      </Flex>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-        {tx.intro}
-      </Typography.Paragraph>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={(v) => void onFinish(v)}
-        style={{ maxWidth: 560 }}
-      >
         <Form.Item
           name="name"
           label={t('events.invitations.create.nameLabel')}
@@ -612,12 +620,12 @@ export function EventInvitationCreateSection({
                 : undefined
             }
             rules={[
-              { type: 'number', min: 0 },
+              { type: 'number', min: 1 },
               {
                 validator: async (_, v) => {
                   if (v == null || v === '') return
                   const n = typeof v === 'number' ? v : Number(v)
-                  if (Number.isNaN(n) || n < 0) throw new Error(t('events.invitations.create.guestSlotCountInvalid'))
+                  if (Number.isNaN(n) || n < 1) throw new Error(t('events.invitations.create.guestSlotCountMin'))
                   const tid = form.getFieldValue('ticket_id') as string | undefined
                   const tk = ticketsForInvitationForm.find((p) => p.id === tid)
                   const max = tk?.max_per_user
@@ -630,17 +638,14 @@ export function EventInvitationCreateSection({
             style={{ flex: '0 0 132px', marginBottom: 0 }}
           >
             <InputNumber
-              min={0}
-              max={selectedTicket ? selectedTicket.max_per_user : 0}
+              min={1}
+              max={selectedTicket ? selectedTicket.max_per_user : 1}
               disabled={!ticketId}
               precision={0}
               style={{ width: '100%' }}
             />
           </Form.Item>
         </Flex>
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-          {t('events.invitations.create.guestsHelp')}
-        </Typography.Text>
         <Form.List name="guests">
           {(fields, { add, remove }) => (
             <>
@@ -654,7 +659,23 @@ export function EventInvitationCreateSection({
                     <Input placeholder={t('events.invitations.create.guestFirstNamePlaceholderOptional')} />
                   </Form.Item>
                   <Form.Item
-                    label={t('events.invitations.create.guestFieldsLabel')}
+                    label={
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {t('events.invitations.create.guestFieldsLabel')}
+                        <Tooltip title={t('events.invitations.create.guestFieldsHelp')}>
+                          <span
+                            role="img"
+                            aria-label={t('events.invitations.create.guestFieldsHelp')}
+                            style={{ display: 'inline-flex', cursor: 'help', lineHeight: 0 }}
+                          >
+                            <QuestionCircleOutlined
+                              style={{ color: 'var(--ant-color-text-tertiary)' }}
+                              aria-hidden
+                            />
+                          </span>
+                        </Tooltip>
+                      </span>
+                    }
                     name={[field.name, 'required_field_ids']}
                     normalize={(v) =>
                       normalizeGuestFieldIds(
@@ -714,28 +735,60 @@ export function EventInvitationCreateSection({
                   const currentLen = (form.getFieldValue('guests') as GuestRowForm[] | undefined)?.length ?? 0
                   const canAdd = ticketId && maxSlots > 0 && currentLen < maxSlots
                   return (
-                    <Button
-                      type="dashed"
-                      onClick={() =>
-                        add({
-                          first_name: '',
-                          required_field_ids: [...ticketDefaultGuestFieldIds],
-                        })
-                      }
-                      block
-                      disabled={!canAdd}
-                      icon={<PlusOutlined />}
-                      style={{ marginBottom: 16 }}
-                    >
-                      {t('events.invitations.create.addGuest')}
-                    </Button>
+                    <Flex align="center" gap={8} style={{ width: '100%', marginBottom: 16 }}>
+                      <Button
+                        type="dashed"
+                        onClick={() =>
+                          add({
+                            first_name: '',
+                            required_field_ids: [...ticketDefaultGuestFieldIds],
+                          })
+                        }
+                        disabled={!canAdd}
+                        icon={<PlusOutlined />}
+                        style={{ flex: 1, minWidth: 0 }}
+                      >
+                        {t('events.invitations.create.addGuest')}
+                      </Button>
+                      <Tooltip title={t('events.invitations.create.guestsHelp')}>
+                        <span
+                          role="img"
+                          aria-label={t('events.invitations.create.guestsHelp')}
+                          style={{ display: 'inline-flex', cursor: 'help', lineHeight: 0, flexShrink: 0 }}
+                        >
+                          <QuestionCircleOutlined
+                            style={{ color: 'var(--ant-color-text-tertiary)' }}
+                            aria-hidden
+                          />
+                        </span>
+                      </Tooltip>
+                    </Flex>
                   )
                 }}
               </Form.Item>
             </>
           )}
         </Form.List>
-        <Form.Item label={t('events.invitations.create.expiresLabel')} required>
+        <Form.Item
+          label={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {t('events.invitations.create.expiresLabel')}
+              <Tooltip title={t('events.invitations.create.expiresHelp')}>
+                <span
+                  role="img"
+                  aria-label={t('events.invitations.create.expiresHelp')}
+                  style={{ display: 'inline-flex', cursor: 'help', lineHeight: 0 }}
+                >
+                  <QuestionCircleOutlined
+                    style={{ color: 'var(--ant-color-text-tertiary)' }}
+                    aria-hidden
+                  />
+                </span>
+              </Tooltip>
+            </span>
+          }
+          required
+        >
           <Flex
             gap={12}
             align="flex-start"
@@ -846,6 +899,7 @@ export function EventInvitationCreateSection({
           </Space>
         </Flex>
       </Form>
+      </div>
       {isEdit && invitationId ? (
         <Modal
           title={t('events.invitations.edit.deleteConfirmTitle')}

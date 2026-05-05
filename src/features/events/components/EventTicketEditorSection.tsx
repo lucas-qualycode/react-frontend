@@ -345,10 +345,12 @@ export function EventTicketEditorSection({
   if (productsError) {
     return (
       <div className="event-form-section-panel" style={{ width: '100%' }}>
-        <Typography.Paragraph type="danger">{t('events.form.submitError')}</Typography.Paragraph>
-        <Button type="default" onClick={onNavigateBack}>
-          {tp('pageBack')}
-        </Button>
+        <div style={{ width: '100%', maxWidth: 560, marginLeft: 'auto', marginRight: 'auto' }}>
+          <Typography.Paragraph type="danger">{t('events.form.submitError')}</Typography.Paragraph>
+          <Button type="default" onClick={onNavigateBack}>
+            {tp('pageBack')}
+          </Button>
+        </div>
       </div>
     )
   }
@@ -356,36 +358,39 @@ export function EventTicketEditorSection({
   if (isEdit && !editing) {
     return (
       <div className="event-form-section-panel" style={{ width: '100%' }}>
-        <Typography.Paragraph type="danger">{t('events.form.submitError')}</Typography.Paragraph>
-        <Button type="default" onClick={onNavigateBack}>
-          {tp('pageBack')}
-        </Button>
+        <div style={{ width: '100%', maxWidth: 560, marginLeft: 'auto', marginRight: 'auto' }}>
+          <Typography.Paragraph type="danger">{t('events.form.submitError')}</Typography.Paragraph>
+          <Button type="default" onClick={onNavigateBack}>
+            {tp('pageBack')}
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="event-form-section-panel" style={{ width: '100%' }}>
-      <Flex justify="space-between" align="center" gap={16} wrap="wrap" style={{ marginBottom: 8 }}>
-        <Typography.Title
-          level={4}
-          style={{ marginTop: 0, marginBottom: 0, flex: '1 1 auto', minWidth: 0 }}
+      <div style={{ width: '100%', maxWidth: 560, marginLeft: 'auto', marginRight: 'auto' }}>
+        <Flex justify="space-between" align="center" gap={16} wrap="wrap" style={{ marginBottom: 8 }}>
+          <Typography.Title
+            level={4}
+            style={{ marginTop: 0, marginBottom: 0, flex: '1 1 auto', minWidth: 0 }}
+          >
+            {isEdit ? tp('pageEditTitle') : tp('pageCreateTitle')}
+          </Typography.Title>
+          <Button type="default" icon={<ArrowLeftOutlined />} onClick={onNavigateBack}>
+            {tp('pageBack')}
+          </Button>
+        </Flex>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          {isEdit ? tp('pageEditIntro') : tp('pageCreateIntro')}
+        </Typography.Paragraph>
+        <Form
+          form={form}
+          layout="vertical"
+          style={{ width: '100%' }}
+          onFinish={(vals) => void onFinish(vals)}
         >
-          {isEdit ? tp('pageEditTitle') : tp('pageCreateTitle')}
-        </Typography.Title>
-        <Button type="default" icon={<ArrowLeftOutlined />} onClick={onNavigateBack}>
-          {tp('pageBack')}
-        </Button>
-      </Flex>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-        {isEdit ? tp('pageEditIntro') : tp('pageCreateIntro')}
-      </Typography.Paragraph>
-      <Form
-        form={form}
-        layout="vertical"
-        style={{ maxWidth: 600 }}
-        onFinish={(vals) => void onFinish(vals)}
-      >
         <Form.Item name="imageURL" hidden rules={[urlRule]}>
           <Input />
         </Form.Item>
@@ -785,6 +790,7 @@ export function EventTicketEditorSection({
           </Space>
         </Flex>
       </Form>
+      </div>
       <Modal
         title={t('events.tags.createModalTitleProduct')}
         open={productTagModalOpen}

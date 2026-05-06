@@ -1,6 +1,7 @@
 import { fetchApi } from '@/shared/api/client'
 import type {
   Event,
+  EventVisibility,
   FieldDefinition,
   FulfillmentType,
   Invitation,
@@ -38,6 +39,7 @@ export type CreateEventPayload = {
   active?: boolean
   is_paid?: boolean
   is_online?: boolean
+  visibility?: EventVisibility
 }
 
 export type UpdateEventPayload = {
@@ -49,6 +51,7 @@ export type UpdateEventPayload = {
   active?: boolean
   is_paid?: boolean
   is_online?: boolean
+  visibility?: EventVisibility
 }
 
 export async function listUserEvents(userId: string): Promise<Event[]> {

@@ -25,6 +25,7 @@ export function EventCreatePage() {
     tag_ids: [],
     is_paid: false,
     is_online: false,
+    visibility: 'public' as const,
   }
 
   async function handleSubmit(payload: CreateEventPayload | UpdateEventPayload) {

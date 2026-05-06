@@ -6,7 +6,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
   Button,
   Checkbox,
@@ -48,6 +48,8 @@ import {
 import {
   TICKET_PRODUCT_FIELD_STYLE,
   PRODUCT_EDITOR_URL_REGEX,
+  baselineTicketSnapshotFromProduct,
+  snapshotTicketProductEditorForDirty,
   type AdditionalInfoFieldFormItem,
   type ProductEditorFormValues,
   fieldDefinitionSelectOptionsForRow,
@@ -60,13 +62,15 @@ type EventTicketEditorSectionProps = {
   eventId: string
   productId?: string
   onNavigateBack: () => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
-export function EventTicketEditorSection({
-  eventId,
-  productId,
-  onNavigateBack,
-}: EventTicketEditorSectionProps) {
+export type EventTicketEditorHandle = {
+  discardUnsavedEdits: () => void
+}
+
+export const EventTicketEditorSection = forwardRef<EventTicketEditorHandle, EventTicketEditorSectionProps>(
+  function EventTicketEditorSection({ eventId, productId, onNavigateBack, onDirtyChange }, ref) {
   const { t } = useTranslation()
   const ns = 'events.tickets' as const
   const tp = useCallback((key: string) => t(`${ns}.${key}`), [t])
@@ -103,7 +107,10 @@ export function EventTicketEditorSection({
   const watchedAdditionalInfoFields = Form.useWatch('additional_info_fields', form) as
     | AdditionalInfoFieldFormItem[]
     | undefined
+  const allFormValues = Form.useWatch([], form) as ProductEditorFormValues | undefined
   const hydratedRef = useRef<string | null>(null)
+  const baselineRef = useRef('')
+  const [isDirty, setIsDirty] = useState(false)
 
   useEffect(() => {
     hydratedRef.current = null
@@ -207,6 +214,7 @@ export function EventTicketEditorSection({
         fulfillment_type: editing.fulfillment_type ?? undefined,
         additional_info_fields: orderedAdditionalInfoFieldsFromRefs(editing.additional_info_fields),
       })
+      baselineRef.current = baselineTicketSnapshotFromProduct(editing, forceFree)
       return
     }
     if (hydratedRef.current === '__create__') return
@@ -224,11 +232,17 @@ export function EventTicketEditorSection({
       fulfillment_type: undefined,
       additional_info_fields: [],
     })
+    baselineRef.current = snapshotTicketProductEditorForDirty(
+      form.getFieldsValue(true) as ProductEditorFormValues,
+    )
   }, [isEdit, editing, form, eventForTickets, eventForTickets?.is_paid])
 
   useEffect(() => {
     if (eventForTickets?.is_paid !== false) return
     form.setFieldsValue({ is_free: true, price_reais: null })
+    baselineRef.current = snapshotTicketProductEditorForDirty(
+      form.getFieldsValue(true) as ProductEditorFormValues,
+    )
   }, [eventForTickets?.is_paid, form])
 
   useEffect(() => {
@@ -236,6 +250,64 @@ export function EventTicketEditorSection({
       productTagForm.resetFields()
     }
   }, [productTagModalOpen, productTagForm])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      discardUnsavedEdits: () => {
+        if (!eventForTickets) return
+        if (isEdit && editing) {
+          const forceFree = eventForTickets.is_paid === false
+          form.setFieldsValue({
+            name: editing.name,
+            description: editing.description,
+            is_free: forceFree ? true : editing.is_free,
+            price_reais: forceFree ? null : editing.is_free ? null : editing.value / 100,
+            quantity: editing.quantity,
+            max_per_user: editing.max_per_user,
+            active: editing.active,
+            tag_ids: (editing.tags ?? []).map((x) => x.id),
+            imageURL: editing.imageURL ?? '',
+            fulfillment_type: editing.fulfillment_type ?? undefined,
+            additional_info_fields: orderedAdditionalInfoFieldsFromRefs(editing.additional_info_fields),
+          })
+          baselineRef.current = baselineTicketSnapshotFromProduct(editing, forceFree)
+        } else {
+          form.setFieldsValue({
+            name: '',
+            description: '',
+            imageURL: '',
+            is_free: eventForTickets.is_paid === false,
+            price_reais: null,
+            quantity: 1,
+            max_per_user: 1,
+            active: true,
+            tag_ids: [],
+            fulfillment_type: undefined,
+            additional_info_fields: [],
+          })
+          if (eventForTickets.is_paid === false) {
+            form.setFieldsValue({ is_free: true, price_reais: null })
+          }
+          baselineRef.current = snapshotTicketProductEditorForDirty(
+            form.getFieldsValue(true) as ProductEditorFormValues,
+          )
+        }
+        setIsDirty(false)
+        onDirtyChange?.(false)
+      },
+    }),
+    [form, isEdit, editing, eventForTickets, onDirtyChange],
+  )
+
+  useEffect(() => {
+    if (!onDirtyChange) return
+    if (baselineRef.current === '') return
+    const raw = form.getFieldsValue(true) as ProductEditorFormValues
+    const next = snapshotTicketProductEditorForDirty(raw) !== baselineRef.current
+    setIsDirty(next)
+    onDirtyChange(next)
+  }, [allFormValues, form, onDirtyChange])
 
   async function handleCreateProductTag(values: {
     name: string
@@ -315,6 +387,7 @@ export function EventTicketEditorSection({
           })
           message.success(tp('createSuccess'))
         }
+        onDirtyChange?.(false)
         onNavigateBack()
       } catch (e) {
         if (e instanceof Error && e.message) {
@@ -327,6 +400,7 @@ export function EventTicketEditorSection({
       editing,
       eventId,
       isEdit,
+      onDirtyChange,
       onNavigateBack,
       ticketForceFree,
       tp,
@@ -784,7 +858,7 @@ export function EventTicketEditorSection({
             <Button htmlType="button" onClick={onNavigateBack}>
               {t('events.tags.cancel')}
             </Button>
-            <Button type="primary" htmlType="submit" loading={submitPending}>
+            <Button type="primary" htmlType="submit" loading={submitPending} disabled={!isDirty}>
               {tp('modalOk')}
             </Button>
           </Space>
@@ -859,4 +933,4 @@ export function EventTicketEditorSection({
       ) : null}
     </div>
   )
-}
+})

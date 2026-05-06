@@ -52,6 +52,8 @@ export interface Schedule {
   last_updated_by: string
 }
 
+export type EventVisibility = 'public' | 'private'
+
 export interface Event {
   id: string
   name: string
@@ -61,6 +63,7 @@ export interface Event {
   active: boolean
   is_paid: boolean
   is_online: boolean
+  visibility?: EventVisibility
   tags?: EventTagEmbed[]
   imageURL?: string
   deleted?: boolean

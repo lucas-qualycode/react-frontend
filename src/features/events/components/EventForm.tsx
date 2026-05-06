@@ -5,9 +5,10 @@ import {
   EnvironmentOutlined,
   FileTextOutlined,
   MailOutlined,
+  QuestionCircleOutlined,
   ShoppingOutlined,
 } from '@ant-design/icons'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
   Button,
   Card,
@@ -21,6 +22,7 @@ import {
   Select,
   Spin,
   TimePicker,
+  Tooltip,
   TreeSelect,
   Typography,
   message,
@@ -31,10 +33,20 @@ import { useAuth } from '@/app/auth/AuthContext'
 import { settingsStorage } from '@/features/settings/storage'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
 import { SectionStepsNavLayout } from '@/shared/components/SectionStepsNavLayout'
-import { EventInvitationCreateSection } from './EventInvitationCreateSection'
+import {
+  EventInvitationCreateSection,
+  type EventInvitationEditorHandle,
+} from './EventInvitationCreateSection'
 import { EventInvitationsSection } from './EventInvitationsSection'
+import {
+  EventMerchProductEditorSection,
+  type EventMerchProductEditorHandle,
+} from './EventMerchProductEditorSection'
 import { EventProductsSection } from './EventProductsSection'
-import { EventTicketEditorSection } from './EventTicketEditorSection'
+import {
+  EventTicketEditorSection,
+  type EventTicketEditorHandle,
+} from './EventTicketEditorSection'
 import type { RadioChangeEvent } from 'antd/es/radio'
 import type { TreeSelectProps } from 'antd'
 import { useTranslation } from 'react-i18next'
@@ -56,7 +68,7 @@ import {
   useUpdateSchedule,
 } from '../hooks'
 
-import type { Location, Schedule, Tag as EventTag } from '@/shared/types/api'
+import type { EventVisibility, Location, Schedule, Tag as EventTag } from '@/shared/types/api'
 import { updateEvent, type CreateEventPayload, type UpdateEventPayload } from '../api'
 
 type EventFormValues = {
@@ -67,6 +79,7 @@ type EventFormValues = {
   tag_ids: string[]
   is_paid: boolean
   is_online: boolean
+  visibility: EventVisibility
   schedule_date?: Dayjs
   schedule_end_date?: Dayjs
   schedule_start_time?: Dayjs
@@ -83,6 +96,10 @@ type EventFormProps = {
   onDirtyChange?: (dirty: boolean) => void
 }
 
+export type EventFormHandle = {
+  discardUnsavedEdits: () => void
+}
+
 const URL_REGEX = /^https?:\/\/[^\s]+$/i
 
 type EventFormSectionKey =
@@ -96,6 +113,8 @@ type EventFormSectionKey =
   | 'invitation_edit'
   | 'ticket_create'
   | 'ticket_edit'
+  | 'product_create'
+  | 'product_edit'
 
 const SECTION_QUERY_PARAM = 'section'
 
@@ -110,6 +129,8 @@ const SLUG_TO_SECTION: Record<string, EventFormSectionKey> = {
   'invitation-edit': 'invitation_edit',
   'ticket-new': 'ticket_create',
   'ticket-edit': 'ticket_edit',
+  'product-new': 'product_create',
+  'product-edit': 'product_edit',
 }
 
 const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
@@ -123,6 +144,8 @@ const SECTION_TO_SLUG: Record<EventFormSectionKey, string> = {
   invitation_edit: 'invitation-edit',
   ticket_create: 'ticket-new',
   ticket_edit: 'ticket-edit',
+  product_create: 'product-new',
+  product_edit: 'product-edit',
 }
 
 const CREATE_SECTION_ORDER: EventFormSectionKey[] = [
@@ -163,6 +186,7 @@ function snapshotEventFormValuesForDirty(v: EventFormValues): string {
     tag_ids: [...(v.tag_ids ?? [])].sort(),
     is_paid: Boolean(v.is_paid),
     is_online: Boolean(v.is_online),
+    visibility: v.visibility ?? 'public',
   })
 }
 
@@ -175,6 +199,7 @@ function snapshotFromInitialForDirty(iv: Partial<EventFormValues> & { active?: b
     tag_ids: iv.tag_ids ?? [],
     is_paid: iv.is_paid ?? false,
     is_online: iv.is_online ?? false,
+    visibility: iv.visibility ?? 'public',
   })
 }
 
@@ -348,6 +373,7 @@ function normalizePayload(
     active,
     is_paid: values.is_paid,
     is_online: values.is_online,
+    visibility: values.visibility ?? 'public',
     location_id,
   }
 
@@ -370,6 +396,7 @@ function normalizePayload(
     active: base.active,
     is_paid: base.is_paid,
     is_online: base.is_online,
+    visibility: base.visibility,
   }
   if (!values.is_online) {
     const trimmed = values.location_id?.trim()
@@ -380,14 +407,17 @@ function normalizePayload(
   return update
 }
 
-function EventForm({
-  mode,
-  eventId,
-  initialValues,
-  submitLoading,
-  onSubmit,
-  onDirtyChange,
-}: EventFormProps) {
+const EventForm = forwardRef<EventFormHandle, EventFormProps>(function EventForm(
+  {
+    mode,
+    eventId,
+    initialValues,
+    submitLoading,
+    onSubmit,
+    onDirtyChange,
+  },
+  ref,
+) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -396,6 +426,10 @@ function EventForm({
   const allFormValues = Form.useWatch([], form) as EventFormValues | undefined
   const editBaselineRef = useRef<string>('')
   const [isDirty, setIsDirty] = useState(false)
+  const [subEditorDirty, setSubEditorDirty] = useState(false)
+  const merchEditorRef = useRef<EventMerchProductEditorHandle>(null)
+  const ticketEditorRef = useRef<EventTicketEditorHandle>(null)
+  const invitationEditorRef = useRef<EventInvitationEditorHandle>(null)
   const [isPaidSaving, setIsPaidSaving] = useState(false)
   const isPaidAutoSavingRef = useRef(false)
   const [imageEditOpen, setImageEditOpen] = useState(false)
@@ -434,10 +468,29 @@ function EventForm({
       : mode === 'edit' &&
           (activeSection === 'ticket_create' || activeSection === 'ticket_edit')
         ? 'tickets'
-        : activeSection
+        : mode === 'edit' &&
+            (activeSection === 'product_create' || activeSection === 'product_edit')
+          ? 'products'
+          : activeSection
   const invitationRouteId = searchParams.get('invitation') ?? undefined
   const ticketRouteProductId = searchParams.get('ticket') ?? undefined
+  const merchRouteProductId = searchParams.get('merch') ?? undefined
   const isOnlineWatched = Form.useWatch('is_online', form) as boolean | undefined
+
+  useEffect(() => {
+    if (mode !== 'edit') {
+      setSubEditorDirty(false)
+      return
+    }
+    const onSub =
+      activeSection === 'product_edit' ||
+      activeSection === 'product_create' ||
+      activeSection === 'ticket_edit' ||
+      activeSection === 'ticket_create' ||
+      activeSection === 'invitation_edit' ||
+      activeSection === 'invitation_create'
+    if (!onSub) setSubEditorDirty(false)
+  }, [mode, activeSection])
 
   const scheduleFieldPlaceholders = useMemo(() => {
     const dateExample = dayjs().format('YYYY-MM-DD')
@@ -491,6 +544,7 @@ function EventForm({
     name: 'identity',
     description: 'identity',
     imageURL: 'identity',
+    visibility: 'identity',
     location_id: 'venue',
     tag_ids: 'identity',
     is_paid: 'tickets',
@@ -512,6 +566,7 @@ function EventForm({
       tag_ids: initialValues.tag_ids ?? [],
       is_paid: initialValues.is_paid ?? false,
       is_online: initialValues.is_online ?? false,
+      visibility: initialValues.visibility ?? 'public',
     })
   }, [form, mode, initialValues])
 
@@ -525,6 +580,7 @@ function EventForm({
       tag_ids: initialValues.tag_ids ?? [],
       is_paid: initialValues.is_paid ?? false,
       is_online: initialValues.is_online ?? false,
+      visibility: initialValues.visibility ?? 'public',
     })
   }, [form, mode, eventId])
 
@@ -590,9 +646,63 @@ function EventForm({
     }
   }, [mode, eventId, schedulesLoading, primarySchedule?.id, form])
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      discardUnsavedEdits: () => {
+        if (mode !== 'edit') return
+        merchEditorRef.current?.discardUnsavedEdits()
+        ticketEditorRef.current?.discardUnsavedEdits()
+        invitationEditorRef.current?.discardUnsavedEdits()
+        editBaselineRef.current = snapshotFromInitialForDirty(initialValues)
+        scheduleBaselineRef.current = snapshotScheduleFromLoaded(primarySchedule)
+        const baseFields = {
+          name: initialValues.name ?? '',
+          description: initialValues.description ?? '',
+          location_id: initialValues.location_id ?? '',
+          imageURL: initialValues.imageURL ?? '',
+          tag_ids: initialValues.tag_ids ?? [],
+          is_paid: initialValues.is_paid ?? false,
+          is_online: initialValues.is_online ?? false,
+          visibility: initialValues.visibility ?? 'public',
+        }
+        if (primarySchedule) {
+          form.setFieldsValue({
+            ...baseFields,
+            schedule_date: dayjs(primarySchedule.start_date),
+            schedule_end_date: dayjs(primarySchedule.end_date),
+            schedule_start_time: dayjs(primarySchedule.start_time, 'HH:mm'),
+            schedule_end_time: dayjs(primarySchedule.end_time, 'HH:mm'),
+            schedule_timezone: primarySchedule.timezone,
+          })
+        } else {
+          let browserTz = 'UTC'
+          try {
+            browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+          } catch {
+            /* ignore */
+          }
+          form.setFieldsValue({
+            ...baseFields,
+            schedule_date: undefined,
+            schedule_end_date: undefined,
+            schedule_start_time: undefined,
+            schedule_end_time: undefined,
+            schedule_timezone: browserTz,
+          })
+        }
+        setIsDirty(false)
+        setSubEditorDirty(false)
+        onDirtyChange?.(false)
+      },
+    }),
+    [form, mode, initialValues, primarySchedule, onDirtyChange],
+  )
+
   useEffect(() => {
     if (mode !== 'edit') {
       setIsDirty(false)
+      setSubEditorDirty(false)
       onDirtyChange?.(false)
       return
     }
@@ -603,8 +713,8 @@ function EventForm({
     const scheduleDirty = isScheduleDirty(schedSnap, scheduleBaselineRef.current)
     const next = eventDirty || scheduleDirty
     setIsDirty(next)
-    onDirtyChange(next)
-  }, [mode, onDirtyChange, allFormValues, eventId, initialValues, form, schedulesLoading])
+    onDirtyChange(next || subEditorDirty)
+  }, [mode, onDirtyChange, allFormValues, eventId, initialValues, form, schedulesLoading, subEditorDirty])
 
   const handleIsPaidAutoSave = useCallback(
     async (e: RadioChangeEvent) => {
@@ -624,7 +734,7 @@ function EventForm({
         const schedSnap = snapshotScheduleForDirty(raw)
         const scheduleDirty = isScheduleDirty(schedSnap, scheduleBaselineRef.current)
         setIsDirty(scheduleDirty)
-        onDirtyChange?.(scheduleDirty)
+        onDirtyChange?.(scheduleDirty || subEditorDirty)
         message.success(t('events.edit.saveSuccess'))
       } catch (err) {
         form.setFieldsValue({ is_paid: previous })
@@ -635,7 +745,7 @@ function EventForm({
         setIsPaidSaving(false)
       }
     },
-    [mode, eventId, form, queryClient, onDirtyChange, t],
+    [mode, eventId, form, queryClient, onDirtyChange, subEditorDirty, t],
   )
 
   const tagTreeData: TreeSelectProps['treeData'] = useMemo(() => {
@@ -934,6 +1044,9 @@ function EventForm({
         if (sectionKey !== 'ticket_edit') {
           next.delete('ticket')
         }
+        if (sectionKey !== 'product_edit') {
+          next.delete('merch')
+        }
         return next
       },
       { replace: true },
@@ -969,6 +1082,21 @@ function EventForm({
       { replace: true },
     )
   }, [activeSection, ticketRouteProductId, mode, setSearchParams])
+
+  useEffect(() => {
+    if (mode !== 'edit') return
+    if (activeSection !== 'product_edit') return
+    if (merchRouteProductId) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG.products)
+        next.delete('merch')
+        return next
+      },
+      { replace: true },
+    )
+  }, [activeSection, merchRouteProductId, mode, setSearchParams])
 
   function goToPrevCreateSection() {
     if (mode !== 'create') return
@@ -1014,7 +1142,9 @@ function EventForm({
               (activeSection === 'invitation_create' ||
                 activeSection === 'invitation_edit' ||
                 activeSection === 'ticket_create' ||
-                activeSection === 'ticket_edit')
+                activeSection === 'ticket_edit' ||
+                activeSection === 'product_create' ||
+                activeSection === 'product_edit')
                 ? { display: 'none', width: '100%' }
                 : { width: '100%' }
             }
@@ -1039,6 +1169,7 @@ function EventForm({
               initialValues={{
                 is_paid: false,
                 is_online: false,
+                visibility: 'public',
                 ...formInitialRest,
               }}
             >
@@ -1073,15 +1204,64 @@ function EventForm({
               </Form.Item>
 
               <Typography.Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+                {t('events.form.sectionVisibility')}
+              </Typography.Title>
+              <Divider style={{ margin: '0 0 16px' }} />
+              <Form.Item
+                style={fieldItemStyle}
+                name="visibility"
+                label={
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {t('events.form.visibilityLabel')}
+                    <Tooltip title={t('events.form.visibilityHelp')}>
+                      <span
+                        role="img"
+                        aria-label={t('events.form.visibilityHelp')}
+                        style={{ display: 'inline-flex', cursor: 'help', lineHeight: 0 }}
+                      >
+                        <QuestionCircleOutlined
+                          style={{ color: 'var(--ant-color-text-tertiary)' }}
+                          aria-hidden
+                        />
+                      </span>
+                    </Tooltip>
+                  </span>
+                }
+              >
+                <Radio.Group
+                  optionType="button"
+                  buttonStyle="solid"
+                  options={[
+                    { label: t('events.form.visibilityPublic'), value: 'public' },
+                    { label: t('events.form.visibilityPrivate'), value: 'private' },
+                  ]}
+                />
+              </Form.Item>
+
+              <Typography.Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
                 {t('events.form.sectionTags')}
               </Typography.Title>
               <Divider style={{ margin: '0 0 16px' }} />
-              <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                {t('events.tags.helpText')}
-              </Typography.Text>
               <Form.Item
                 style={fieldItemStyle}
                 name="tag_ids"
+                label={
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {t('events.tags.fieldLabel')}
+                    <Tooltip title={t('events.tags.helpText')}>
+                      <span
+                        role="img"
+                        aria-label={t('events.tags.helpText')}
+                        style={{ display: 'inline-flex', cursor: 'help', lineHeight: 0 }}
+                      >
+                        <QuestionCircleOutlined
+                          style={{ color: 'var(--ant-color-text-tertiary)' }}
+                          aria-hidden
+                        />
+                      </span>
+                    </Tooltip>
+                  </span>
+                }
                 getValueProps={tagIdsFormValueProps}
                 getValueFromEvent={tagIdsFromTreeSelectEvent}
                 rules={[
@@ -1483,7 +1663,32 @@ function EventForm({
                   style={{ width: '100%' }}
                 >
                   {mode === 'edit' && eventId ? (
-                    <EventProductsSection eventId={eventId} variant="merchandise" />
+                    <EventProductsSection
+                      eventId={eventId}
+                      variant="merchandise"
+                      onMerchCreate={() => {
+                        setSearchParams(
+                          (prev) => {
+                            const next = new URLSearchParams(prev)
+                            next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG.product_create)
+                            next.delete('merch')
+                            return next
+                          },
+                          { replace: true },
+                        )
+                      }}
+                      onMerchEdit={(productId) => {
+                        setSearchParams(
+                          (prev) => {
+                            const next = new URLSearchParams(prev)
+                            next.set(SECTION_QUERY_PARAM, SECTION_TO_SLUG.product_edit)
+                            next.set('merch', productId)
+                            return next
+                          },
+                          { replace: true },
+                        )
+                      }}
+                    />
                   ) : (
                     <Typography.Text type="secondary" style={{ display: 'block' }}>
                       {t('events.form.productsAfterCreateHint')}
@@ -1514,7 +1719,6 @@ function EventForm({
                     <EventProductsSection
                       eventId={eventId}
                       variant="ticket"
-                      ticketListMode
                       onTicketCreate={() => {
                         setSearchParams(
                           (prev) => {
@@ -1563,7 +1767,9 @@ function EventForm({
                 activeSection !== 'invitation_create' &&
                 activeSection !== 'invitation_edit' &&
                 activeSection !== 'ticket_create' &&
-                activeSection !== 'ticket_edit') ? (
+                activeSection !== 'ticket_edit' &&
+                activeSection !== 'product_create' &&
+                activeSection !== 'product_edit') ? (
                 <Form.Item style={{ marginBottom: 0 }}>
                   {mode === 'create' ? (
                     <Flex justify="flex-end" gap={8} wrap="wrap" style={{ width: '100%' }}>
@@ -1616,11 +1822,13 @@ function EventForm({
           (activeSection === 'invitation_create' ||
             (activeSection === 'invitation_edit' && invitationRouteId)) ? (
             <EventInvitationCreateSection
+              ref={invitationEditorRef}
               eventId={eventId}
               invitationId={
                 activeSection === 'invitation_edit' ? invitationRouteId : undefined
               }
               onNavigateBack={() => goToFormSection('invitations')}
+              onDirtyChange={setSubEditorDirty}
             />
           ) : null}
           {mode === 'edit' &&
@@ -1628,11 +1836,27 @@ function EventForm({
           (activeSection === 'ticket_create' ||
             (activeSection === 'ticket_edit' && ticketRouteProductId)) ? (
             <EventTicketEditorSection
+              ref={ticketEditorRef}
               eventId={eventId}
               productId={
                 activeSection === 'ticket_edit' ? ticketRouteProductId : undefined
               }
               onNavigateBack={() => goToFormSection('tickets')}
+              onDirtyChange={setSubEditorDirty}
+            />
+          ) : null}
+          {mode === 'edit' &&
+          eventId &&
+          (activeSection === 'product_create' ||
+            (activeSection === 'product_edit' && merchRouteProductId)) ? (
+            <EventMerchProductEditorSection
+              ref={merchEditorRef}
+              eventId={eventId}
+              productId={
+                activeSection === 'product_edit' ? merchRouteProductId : undefined
+              }
+              onNavigateBack={() => goToFormSection('products')}
+              onDirtyChange={setSubEditorDirty}
             />
           ) : null}
         </Card>
@@ -1712,6 +1936,6 @@ function EventForm({
       </Modal>
     </>
   )
-}
+})
 
 export { EventForm }

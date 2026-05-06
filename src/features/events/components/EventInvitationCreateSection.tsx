@@ -24,7 +24,16 @@ import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import tzPlugin from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
 import {
@@ -136,17 +145,44 @@ type InvitationCreateFormValues = {
   guests?: GuestRowForm[]
 }
 
+function snapshotInvitationDirty(v: InvitationCreateFormValues): string {
+  const guests = (v.guests ?? []).map((g) => ({
+    first_name: (g.first_name ?? '').trim(),
+    required_field_ids: [...(g.required_field_ids ?? [])].sort(),
+  }))
+  return JSON.stringify({
+    name: (v.name ?? '').trim(),
+    destination_type: v.destination_type,
+    destination: (v.destination ?? '').trim(),
+    ticket_id: v.ticket_id ?? '',
+    guest_slot_count:
+      typeof v.guest_slot_count === 'number' && !Number.isNaN(v.guest_slot_count)
+        ? v.guest_slot_count
+        : 0,
+    expires_at: v.expires_at?.isValid() ? v.expires_at.toISOString() : '',
+    tag_ids: [...(v.tag_ids ?? [])].sort(),
+    guests,
+  })
+}
+
 type EventInvitationCreateSectionProps = {
   eventId: string
   onNavigateBack: () => void
   invitationId?: string
+  onDirtyChange?: (dirty: boolean) => void
 }
 
-export function EventInvitationCreateSection({
-  eventId,
-  onNavigateBack,
-  invitationId,
-}: EventInvitationCreateSectionProps) {
+export type EventInvitationEditorHandle = {
+  discardUnsavedEdits: () => void
+}
+
+export const EventInvitationCreateSection = forwardRef<
+  EventInvitationEditorHandle,
+  EventInvitationCreateSectionProps
+>(function EventInvitationCreateSection(
+  { eventId, onNavigateBack, invitationId, onDirtyChange },
+  ref,
+) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const [form] = Form.useForm<InvitationCreateFormValues>()
@@ -170,6 +206,9 @@ export function EventInvitationCreateSection({
     | InvitationDestinationType
     | undefined
   const ticketId = Form.useWatch('ticket_id', form) as string | undefined
+  const allInviteValues = Form.useWatch([], form) as InvitationCreateFormValues | undefined
+  const baselineRef = useRef('')
+  const [isDirty, setIsDirty] = useState(false)
 
   const ticketsForInvitationForm = useMemo(() => {
     const activeOnly = tickets.filter((p) => p.active)
@@ -375,6 +414,9 @@ export function EventInvitationCreateSection({
       tag_ids: [],
       guests: [],
     })
+    baselineRef.current = snapshotInvitationDirty(
+      form.getFieldsValue(true) as InvitationCreateFormValues,
+    )
   }, [eventId, form, isEdit])
 
   useEffect(() => {
@@ -399,7 +441,62 @@ export function EventInvitationCreateSection({
         required_field_ids: s.required_field_ids ?? [],
       })),
     })
+    baselineRef.current = snapshotInvitationDirty(
+      form.getFieldsValue(true) as InvitationCreateFormValues,
+    )
   }, [eventId, existingInvitation, form, isEdit, onNavigateBack, t])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      discardUnsavedEdits: () => {
+        if (isEdit && existingInvitation && existingInvitation.event_id === eventId) {
+          form.setFieldsValue({
+            name: existingInvitation.name ?? '',
+            destination_type: existingInvitation.destination_type,
+            destination: existingInvitation.destination ?? '',
+            ticket_id: existingInvitation.ticket_id ?? undefined,
+            guest_slot_count: Math.max(1, existingInvitation.guest_slot_count ?? 0),
+            expires_at: dayjs(existingInvitation.expires_at),
+            tag_ids: existingInvitation.tags?.map((x) => x.id) ?? [],
+            guests: (existingInvitation.guest_slots ?? []).map((s) => ({
+              first_name: s.first_name ?? '',
+              required_field_ids: s.required_field_ids ?? [],
+            })),
+          })
+          baselineRef.current = snapshotInvitationDirty(
+            form.getFieldsValue(true) as InvitationCreateFormValues,
+          )
+        } else {
+          form.setFieldsValue({
+            name: '',
+            destination_type: 'WHATSAPP',
+            destination: '',
+            ticket_id: undefined,
+            guest_slot_count: 0,
+            expires_at: dayjs().add(7, 'day'),
+            tag_ids: [],
+            guests: [],
+          })
+          baselineRef.current = snapshotInvitationDirty(
+            form.getFieldsValue(true) as InvitationCreateFormValues,
+          )
+        }
+        setIsDirty(false)
+        onDirtyChange?.(false)
+      },
+    }),
+    [eventId, existingInvitation, form, isEdit, onDirtyChange],
+  )
+
+  useEffect(() => {
+    if (!onDirtyChange) return
+    if (baselineRef.current === '') return
+    const raw = form.getFieldsValue(true) as InvitationCreateFormValues
+    const next = snapshotInvitationDirty(raw) !== baselineRef.current
+    setIsDirty(next)
+    onDirtyChange(next)
+  }, [allInviteValues, form, onDirtyChange])
 
   useEffect(() => {
     if (!ticketId || !selectedTicket) {
@@ -503,6 +600,7 @@ export function EventInvitationCreateSection({
           })
         }
         message.success(tx.success)
+        onDirtyChange?.(false)
         onNavigateBack()
       } catch (e) {
         message.error(e instanceof Error ? e.message : t('events.form.submitError'))
@@ -513,6 +611,7 @@ export function EventInvitationCreateSection({
       eventId,
       invitationId,
       isEdit,
+      onDirtyChange,
       onNavigateBack,
       t,
       tx.success,
@@ -893,7 +992,7 @@ export function EventInvitationCreateSection({
             <Button htmlType="button" onClick={onNavigateBack}>
               {t('events.tags.cancel')}
             </Button>
-            <Button type="primary" htmlType="submit" loading={submitPending}>
+            <Button type="primary" htmlType="submit" loading={submitPending} disabled={!isDirty}>
               {tx.submit}
             </Button>
           </Space>
@@ -927,4 +1026,4 @@ export function EventInvitationCreateSection({
       ) : null}
     </div>
   )
-}
+})

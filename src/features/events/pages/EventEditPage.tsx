@@ -8,7 +8,7 @@ import { EditorPageColumn } from '@/shared/components/EditorPageColumn'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 import { PageHeaderRow } from '@/shared/components/PageHeaderRow'
 import { ResponsiveLabelButton } from '@/shared/components/ResponsiveLabelButton'
-import { EventForm } from '../components/EventForm'
+import { EventForm, type EventFormHandle } from '../components/EventForm'
 import { useEvent, useUpdateEvent } from '../hooks'
 import type { UpdateEventPayload } from '../api'
 
@@ -27,6 +27,7 @@ export function EventEditPage() {
   const backButtonIconOnly = screens.md === false
   const [formDirty, setFormDirty] = useState(false)
   const leaveModalShownRef = useRef(false)
+  const eventFormRef = useRef<EventFormHandle>(null)
 
   const initialValues = useMemo(
     () =>
@@ -40,6 +41,7 @@ export function EventEditPage() {
             active: event.active,
             is_paid: event.is_paid,
             is_online: event.is_online,
+            visibility: event.visibility ?? 'public',
           }
         : null,
     [event]
@@ -61,6 +63,9 @@ export function EventEditPage() {
       cancelText: t('events.edit.leaveUnsavedStay'),
       onOk: () => {
         leaveModalShownRef.current = false
+        flushSync(() => {
+          eventFormRef.current?.discardUnsavedEdits()
+        })
         blocker.proceed()
       },
       onCancel: () => {
@@ -146,6 +151,28 @@ export function EventEditPage() {
         { title: t('events.tickets.breadcrumbEdit') },
       ]
     }
+    if (editSectionSlug === 'product-new') {
+      return [
+        ...base,
+        {
+          title: (
+            <Link to={`/events/${id}/edit?section=products`}>{t('events.form.menuProducts')}</Link>
+          ),
+        },
+        { title: t('events.products.breadcrumbNew') },
+      ]
+    }
+    if (editSectionSlug === 'product-edit') {
+      return [
+        ...base,
+        {
+          title: (
+            <Link to={`/events/${id}/edit?section=products`}>{t('events.form.menuProducts')}</Link>
+          ),
+        },
+        { title: t('events.products.breadcrumbEdit') },
+      ]
+    }
     return [...base, { title: t('events.detail.edit') }]
   }, [editSectionSlug, event, id, t])
 
@@ -197,6 +224,7 @@ export function EventEditPage() {
             }
           />
           <EventForm
+            ref={eventFormRef}
             mode="edit"
             eventId={id}
             initialValues={initialValues}

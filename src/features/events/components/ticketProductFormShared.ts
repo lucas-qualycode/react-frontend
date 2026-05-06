@@ -51,3 +51,74 @@ export type ProductEditorFormValues = {
   fulfillment_type?: FulfillmentType | null
   additional_info_fields?: AdditionalInfoFieldFormItem[]
 }
+
+export function snapshotMerchProductEditorForDirty(v: ProductEditorFormValues): string {
+  const price =
+    v.is_free === true
+      ? null
+      : typeof v.price_reais === 'number' && !Number.isNaN(v.price_reais)
+        ? v.price_reais
+        : null
+  return JSON.stringify({
+    name: (v.name ?? '').trim(),
+    description: (v.description ?? '').trim(),
+    imageURL: (v.imageURL ?? '').trim(),
+    is_free: Boolean(v.is_free),
+    price_reais: price,
+    quantity:
+      typeof v.quantity === 'number' && !Number.isNaN(v.quantity) ? v.quantity : 1,
+    max_per_user:
+      typeof v.max_per_user === 'number' && !Number.isNaN(v.max_per_user)
+        ? v.max_per_user
+        : 1,
+    active: Boolean(v.active),
+    tag_ids: [...(v.tag_ids ?? [])].sort(),
+    fulfillment_type: v.fulfillment_type ?? null,
+  })
+}
+
+export function baselineMerchSnapshotFromProduct(p: Product): string {
+  return snapshotMerchProductEditorForDirty({
+    name: p.name,
+    description: p.description,
+    imageURL: p.imageURL ?? '',
+    is_free: p.is_free,
+    price_reais: p.is_free ? null : p.value / 100,
+    quantity: p.quantity,
+    max_per_user: p.max_per_user,
+    active: p.active,
+    tag_ids: (p.tags ?? []).map((x) => x.id),
+    fulfillment_type: p.fulfillment_type ?? undefined,
+  })
+}
+
+export function snapshotTicketProductEditorForDirty(v: ProductEditorFormValues): string {
+  const rows = (v.additional_info_fields ?? [])
+    .filter((r) => r?.field_id?.trim())
+    .map((r, index) => ({
+      field_id: String(r.field_id).trim(),
+      required: Boolean(r.required),
+      order: index,
+    }))
+  return JSON.stringify({
+    ...JSON.parse(snapshotMerchProductEditorForDirty(v)),
+    additional_info_fields: rows,
+  })
+}
+
+export function baselineTicketSnapshotFromProduct(p: Product, forceFree: boolean): string {
+  const rows = orderedAdditionalInfoFieldsFromRefs(p.additional_info_fields)
+  return snapshotTicketProductEditorForDirty({
+    name: p.name,
+    description: p.description,
+    imageURL: p.imageURL ?? '',
+    is_free: forceFree ? true : p.is_free,
+    price_reais: forceFree ? null : p.is_free ? null : p.value / 100,
+    quantity: p.quantity,
+    max_per_user: p.max_per_user,
+    active: p.active,
+    tag_ids: (p.tags ?? []).map((x) => x.id),
+    fulfillment_type: p.fulfillment_type ?? undefined,
+    additional_info_fields: rows,
+  })
+}

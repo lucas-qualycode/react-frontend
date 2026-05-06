@@ -141,6 +141,10 @@
       "namePlaceholder": "Ex.: Casamento de Ana e Bruno",
       "descriptionLabel": "Descrição",
       "descriptionPlaceholder": "Conte o que os convidados podem esperar.",
+      "visibilityLabel": "Quem pode encontrar este evento",
+      "visibilityHelp": "Eventos públicos podem aparecer na descoberta e em links compartilhados. Eventos privados são só para quem você convidar.",
+      "visibilityPublic": "Público",
+      "visibilityPrivate": "Privado",
       "savedVenueLabel": "Local salvo",
       "savedVenuePlaceholder": "Selecione um local que você cadastrou",
       "savedVenueRequired": "Selecione um local para eventos presenciais.",
@@ -208,6 +212,13 @@
     "products": {
       "sectionTitle": "Produtos",
       "sectionIntro": "Adicione itens para venda neste evento.",
+      "pageCreateTitle": "Novo produto",
+      "pageEditTitle": "Editar produto",
+      "pageCreateIntro": "Adicione um produto para venda neste evento.",
+      "pageEditIntro": "Atualize os detalhes e a configuração deste produto.",
+      "pageBack": "Voltar",
+      "breadcrumbNew": "Novo produto",
+      "breadcrumbEdit": "Editar produto",
       "addButton": "Adicionar produto",
       "tableEmpty": "Nenhum produto ainda.",
       "colName": "Nome",
@@ -444,6 +455,7 @@
       }
     },
     "tags": {
+      "fieldLabel": "Escolha as tags",
       "pickerPlaceholder": "Selecione uma ou mais tags",
       "helpText": "Selecione uma ou mais tags para descrever o tema ou o público do seu evento (obrigatório).",
       "createButton": "Criar nova tag",

@@ -141,6 +141,10 @@
       "namePlaceholder": "e.g. Marry & John Wedding",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Tell guests what to expect.",
+      "visibilityLabel": "Who can find this event",
+      "visibilityHelp": "Public events can appear in discovery and shared links. Private events are only for people you invite.",
+      "visibilityPublic": "Public",
+      "visibilityPrivate": "Private",
       "savedVenueLabel": "Saved venue",
       "savedVenuePlaceholder": "Select a venue you have saved",
       "savedVenueRequired": "Select a venue for in-person events.",
@@ -208,6 +212,13 @@
     "products": {
       "sectionTitle": "Products",
       "sectionIntro": "Add items for sale at this event.",
+      "pageCreateTitle": "New product",
+      "pageEditTitle": "Edit product",
+      "pageCreateIntro": "Add a product for sale at this event.",
+      "pageEditIntro": "Update this product’s details and configuration.",
+      "pageBack": "Back",
+      "breadcrumbNew": "New product",
+      "breadcrumbEdit": "Edit product",
       "addButton": "Add product",
       "tableEmpty": "No products yet.",
       "colName": "Name",
@@ -444,6 +455,7 @@
       }
     },
     "tags": {
+      "fieldLabel": "Choose tags",
       "pickerPlaceholder": "Select one or more tags",
       "helpText": "Choose one or more tags to describe the theme or audience of your event (required).",
       "createButton": "Create new tag",

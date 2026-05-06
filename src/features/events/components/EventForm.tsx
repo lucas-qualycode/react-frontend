@@ -8,7 +8,16 @@ import {
   QuestionCircleOutlined,
   ShoppingOutlined,
 } from '@ant-design/icons'
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   Button,
   Card,
@@ -699,7 +708,7 @@ const EventForm = forwardRef<EventFormHandle, EventFormProps>(function EventForm
     [form, mode, initialValues, primarySchedule, onDirtyChange],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (mode !== 'edit') {
       setIsDirty(false)
       setSubEditorDirty(false)
@@ -929,13 +938,22 @@ const EventForm = forwardRef<EventFormHandle, EventFormProps>(function EventForm
       }
       if (eventDirty) {
         await onSubmit(eventPayload)
+        editBaselineRef.current = snapshotEventFormValuesForDirty(values)
       } else if (scheduleDirty) {
         message.success(t('events.edit.saveSuccess'))
       }
     } catch (e) {
       const text = e instanceof Error ? e.message : t('events.form.submitError')
       message.error(text)
+      return
     }
+    const rawAfterSave = form.getFieldsValue(true) as EventFormValues
+    const eventDirtyAfter = snapshotEventFormValuesForDirty(rawAfterSave) !== editBaselineRef.current
+    const schedSnapAfter = snapshotScheduleForDirty(rawAfterSave)
+    const scheduleDirtyAfter = isScheduleDirty(schedSnapAfter, scheduleBaselineRef.current)
+    const nextMainDirty = eventDirtyAfter || scheduleDirtyAfter
+    setIsDirty(nextMainDirty)
+    onDirtyChange?.(nextMainDirty || subEditorDirty)
   }
 
   async function performEventImageUpload(file: File) {
@@ -1496,28 +1514,15 @@ const EventForm = forwardRef<EventFormHandle, EventFormProps>(function EventForm
                           style={fieldItemStyle}
                           name="schedule_date"
                           label={t('events.form.scheduleStartDateLabel')}
-                          dependencies={['schedule_start_time', 'schedule_timezone']}
-                          rules={[
-                            {
-                              validator: async (_: unknown, value: Dayjs | undefined) => {
-                                if (!value?.isValid()) return
-                                const st = form.getFieldValue('schedule_start_time') as Dayjs | undefined
-                                const tz = form.getFieldValue('schedule_timezone') as string | undefined
-                                assertScheduleStartInFutureIfChanged(
-                                  value,
-                                  st,
-                                  tz,
-                                  scheduleBaselineRef.current,
-                                  t,
-                                )
-                              },
-                            },
-                          ]}
                         >
                           <DatePicker
                             style={{ width: '100%' }}
                             format="YYYY-MM-DD"
                             placeholder={scheduleFieldPlaceholders.date}
+                            disabledDate={(current) => {
+                              if (!current?.isValid()) return false
+                              return current.isBefore(dayjs().startOf('day'))
+                            }}
                             onChange={(v) => {
                               if (v?.isValid()) {
                                 const end = form.getFieldValue('schedule_end_date') as Dayjs | undefined
@@ -1555,8 +1560,18 @@ const EventForm = forwardRef<EventFormHandle, EventFormProps>(function EventForm
                             style={{ width: '100%' }}
                             format="YYYY-MM-DD"
                             placeholder={scheduleFieldPlaceholders.endDate}
+                            onChange={(v) => {
+                              if (v?.isValid()) {
+                                const start = form.getFieldValue('schedule_date') as Dayjs | undefined
+                                if (!start?.isValid()) {
+                                  form.setFieldsValue({ schedule_date: v })
+                                }
+                              }
+                            }}
                             disabledDate={(current) => {
                               if (!current?.isValid()) return false
+                              const today = dayjs().startOf('day')
+                              if (current.isBefore(today)) return true
                               const sd = form.getFieldValue('schedule_date') as Dayjs | undefined
                               if (!sd?.isValid()) return false
                               return current.isBefore(sd.startOf('day'))

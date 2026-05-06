@@ -54,6 +54,18 @@ export interface Schedule {
 
 export type EventVisibility = 'public' | 'private'
 
+export type EventPrimaryCategory =
+  | 'concert'
+  | 'wedding'
+  | 'festival'
+  | 'conference'
+  | 'party'
+  | 'sports'
+  | 'meetup'
+  | 'corporate'
+  | 'charity'
+  | 'other'
+
 export interface Event {
   id: string
   name: string
@@ -64,6 +76,7 @@ export interface Event {
   is_paid: boolean
   is_online: boolean
   visibility?: EventVisibility
+  primary_category?: EventPrimaryCategory | null
   tags?: EventTagEmbed[]
   imageURL?: string
   deleted?: boolean

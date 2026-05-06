@@ -115,6 +115,7 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 
 - **No** cover image block (image is added on **edit** only). **No** full-page **`Spin`** while submitting—only the submit button **`loading`** state.
 - **Section menu** uses **local state only** — no **`?section=`** in the URL (any `section` query is removed on this flow).
+- **New events** are created with **`primary_category: "wedding"`** automatically: **`createEvent`** in **`features/events/api.ts`** merges that into the POST body (no event-type field in **`EventForm`**; edits do not PATCH `primary_category` yet).
 - **Wizard footer:** **Next** validates the current step and advances (**Details** → **Venue** → **Schedules** → **Products** → **Tickets** → **Invitations**). **Back** moves to the previous step without validating. **Create** (`events.create.submit`) appears only on **Invitations** and runs full-form submit (same as before).
 
 ### Edit event (`EventEditPage` + `EventForm` `mode="edit"`)

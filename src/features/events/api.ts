@@ -1,6 +1,7 @@
 import { fetchApi } from '@/shared/api/client'
 import type {
   Event,
+  EventPrimaryCategory,
   EventVisibility,
   FieldDefinition,
   FulfillmentType,
@@ -67,11 +68,13 @@ export async function getEvent(eventId: string): Promise<Event> {
   return res.json() as Promise<Event>
 }
 
+const NEW_EVENT_PRIMARY_CATEGORY: EventPrimaryCategory = 'wedding'
+
 export async function createEvent(payload: CreateEventPayload): Promise<Event> {
   const res = await fetchApi('events', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, primary_category: NEW_EVENT_PRIMARY_CATEGORY }),
   })
   if (!res.ok) throw new Error('Failed to create event')
   return res.json() as Promise<Event>

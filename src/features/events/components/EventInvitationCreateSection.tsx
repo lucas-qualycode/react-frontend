@@ -20,6 +20,7 @@ import {
   Typography,
   message,
 } from 'antd'
+import { flushSync } from 'react-dom'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import tzPlugin from 'dayjs/plugin/timezone'
@@ -600,7 +601,9 @@ export const EventInvitationCreateSection = forwardRef<
           })
         }
         message.success(tx.success)
-        onDirtyChange?.(false)
+        flushSync(() => {
+          onDirtyChange?.(false)
+        })
         onNavigateBack()
       } catch (e) {
         message.error(e instanceof Error ? e.message : t('events.form.submitError'))
@@ -1012,6 +1015,9 @@ export const EventInvitationCreateSection = forwardRef<
               await deleteMutation.mutateAsync(invitationId)
               message.success(t('events.invitations.edit.deleteSuccess'))
               setInvitationDeleteModalOpen(false)
+              flushSync(() => {
+                onDirtyChange?.(false)
+              })
               onNavigateBack()
             } catch (e) {
               setInvitationDeleteModalOpen(false)

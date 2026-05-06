@@ -6,6 +6,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons'
 import { getDownloadURL, ref as storageRefFn, uploadBytes } from 'firebase/storage'
+import { flushSync } from 'react-dom'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
   Button,
@@ -387,7 +388,9 @@ export const EventTicketEditorSection = forwardRef<EventTicketEditorHandle, Even
           })
           message.success(tp('createSuccess'))
         }
-        onDirtyChange?.(false)
+        flushSync(() => {
+          onDirtyChange?.(false)
+        })
         onNavigateBack()
       } catch (e) {
         if (e instanceof Error && e.message) {
@@ -921,6 +924,9 @@ export const EventTicketEditorSection = forwardRef<EventTicketEditorHandle, Even
               await deleteMutation.mutateAsync({ productId: editing.id, eventId })
               message.success(tp('deleteSuccess'))
               setTicketDeleteModalOpen(false)
+              flushSync(() => {
+                onDirtyChange?.(false)
+              })
               onNavigateBack()
             } catch (e) {
               setTicketDeleteModalOpen(false)

@@ -5,7 +5,7 @@ import {
   MinusCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons'
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
+import { getDownloadURL, ref as storageRefFn, uploadBytes } from 'firebase/storage'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
   Button,
@@ -179,7 +179,7 @@ export const EventTicketEditorSection = forwardRef<EventTicketEditorHandle, Even
       return
     }
     const path = `ticket-images/${user.uid}/${eventId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
-    const storageRef = ref(settingsStorage, path)
+    const storageRef = storageRefFn(settingsStorage, path)
     await uploadBytes(storageRef, file)
     const url = await getDownloadURL(storageRef)
     form.setFieldsValue({ imageURL: url })

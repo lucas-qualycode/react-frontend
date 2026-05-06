@@ -28,7 +28,7 @@ import {
   message,
   theme,
 } from 'antd'
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
+import { getDownloadURL, ref as storageRefFn, uploadBytes } from 'firebase/storage'
 import { useAuth } from '@/app/auth/AuthContext'
 import { settingsStorage } from '@/features/settings/storage'
 import { ImageEditModal } from '@/shared/components/ImageEditModal'
@@ -943,7 +943,7 @@ const EventForm = forwardRef<EventFormHandle, EventFormProps>(function EventForm
     if (!eventId) return
     const path = `event-images/${user.uid}/${eventId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
     try {
-      const storageRef = ref(settingsStorage, path)
+      const storageRef = storageRefFn(settingsStorage, path)
       await uploadBytes(storageRef, file)
       const url = await getDownloadURL(storageRef)
       const updated = await updateEvent(eventId, { imageURL: url })

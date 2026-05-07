@@ -31,10 +31,11 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth'
 import { app } from '@/app/firebase'
-import { setApiAuthGetter, setApiGuestListGetter } from '@/shared/api/client'
-import { guestListStore } from '@/shared/stores/guestListStore'
-
-const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn'
+import { setApiAuthGetter } from '@/shared/api/client'
+import {
+  EMAIL_FOR_SIGN_IN_STORAGE_KEY,
+  isAccountExistsDifferentCredentialError,
+} from '@/app/auth/authHelpers'
 
 export interface AuthState {
   user: FirebaseUser | null
@@ -57,23 +58,6 @@ export interface AuthState {
   updatePasswordWithPassword: (currentPassword: string, newPassword: string) => Promise<void>
   revokeAllSessions: () => Promise<void>
   sendVerificationEmail: () => Promise<void>
-}
-
-export const ACCOUNT_EXISTS_DIFFERENT_CREDENTIAL = 'auth/account-exists-with-different-credential' as const
-
-export function isAccountExistsDifferentCredentialError(
-  err: unknown
-): err is { code: typeof ACCOUNT_EXISTS_DIFFERENT_CREDENTIAL; email?: string; credential?: OAuthCredential } {
-  return (
-    err != null &&
-    typeof err === 'object' &&
-    'code' in err &&
-    (err as { code: string }).code === ACCOUNT_EXISTS_DIFFERENT_CREDENTIAL
-  )
-}
-
-export function getEmailForSignInKey(): string {
-  return EMAIL_FOR_SIGN_IN_KEY
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -110,13 +94,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       handleCodeInApp: true,
     })
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email)
+      window.localStorage.setItem(EMAIL_FOR_SIGN_IN_STORAGE_KEY, email)
     }
   }, [])
   const signInWithEmailLinkFn = useCallback(async (email: string, link: string) => {
     await signInWithEmailLink(auth, email, link)
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY)
+      window.localStorage.removeItem(EMAIL_FOR_SIGN_IN_STORAGE_KEY)
     }
   }, [])
   const signInWithPhoneNumberFn = useCallback(
@@ -247,7 +231,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
   setApiAuthGetter(getIdToken)
-  setApiGuestListGetter((url) => guestListStore.getState().getTokenForRequest(url))
   const value = useMemo<AuthState>(
     () => ({
       user,

@@ -6,7 +6,7 @@ import type { OAuthCredential } from 'firebase/auth'
 import { Alert, Button, Card, Divider, Form, Input, Layout, Space, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/auth/AuthContext'
-import { isAccountExistsDifferentCredentialError } from '@/app/auth/AuthContext'
+import { isAccountExistsDifferentCredentialError } from '@/app/auth/authHelpers'
 import { AuthFooterLink } from '../AuthFooterLink'
 import { GoogleOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons'
 

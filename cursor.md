@@ -11,7 +11,7 @@ Reference for the **react-frontend** app: stack, structure, patterns, and conven
 | **Build** | Vite + TypeScript | `vite.config.ts`, path alias `@/` → `src/`. |
 | **Routing** | `react-router-dom` v7 | `createBrowserRouter` + `RouterProvider`; entry `src/app/routes/index.tsx`, segments in `src/app/routes/*.tsx`. |
 | **Server/API state** | TanStack Query (React Query) | API data: cache, loading, error, refetch. Prefer hooks over ad-hoc global server state. |
-| **Client state** | React state or Zustand | Zustand for cross-cutting client state (e.g. `shared/stores/guestListStore.ts`, `shared/stores/screenLoaderStore.ts`). |
+| **Client state** | React state or Zustand | Zustand for cross-cutting client state (e.g. `shared/stores/screenLoaderStore.ts`). |
 | **Forms** | Ant Design `Form`, `react-hook-form`, Zod | Use what fits the screen: Ant Form with Zod where validation is centralized; `react-hook-form` + `@hookform/resolvers` + Zod where that pattern is already used. |
 | **HTTP** | `fetch` | Centralized in `src/shared/api/client.ts` (`fetchApi`); TanStack Query hooks call feature or shared API helpers. |
 | **UI** | Ant Design v6 | `ConfigProvider` theme from `src/app/antdTheme.ts` (`lightTheme` / `darkTheme`). `AppearanceThemeProvider` wraps the app and switches theme, `componentSize`, token tweaks (e.g. font size). |
@@ -41,7 +41,6 @@ Order in `src/main.tsx`:
 - `fetchApi(path, init?)` builds URL from `VITE_API_URL` (trailing slash stripped).
 - `setApiAuthGetter(() => Promise<string | null>)` is set from `AuthContext` so requests use the current Firebase ID token.
 - If the getter returns null, `resolveIdToken` falls back to `firebaseAuth.currentUser?.getIdToken()`.
-- `setApiGuestListGetter` maps a request URL to an optional guest-list token; `AuthContext` wires it to `guestListStore.getState().getTokenForRequest(url)`.
 - Responses with status **401** dispatch a browser event `api:unauthorized` (listeners can sign out or redirect).
 
 ---
@@ -71,7 +70,7 @@ src/
     settings/               # SettingsLayout, sections, api/hooks/types
   shared/
     api/client.ts
-    stores/                 # guestListStore, screenLoaderStore
+    stores/                 # screenLoaderStore
     components/, types/     # api.ts types (no barrel); add hooks/utils when needed
   assets/
 ```
@@ -156,7 +155,6 @@ Cursor rule: **`.cursor/rules/react-nav-menus-and-breadcrumbs.mdc`**.
 - **Server state**: TanStack Query hooks in features (e.g. `features/settings/hooks.ts`, `features/events/…`).
 - **Auth**: Consume `useAuth()` from `AuthContext` for `user`, `loading`, `getIdToken`, sign-in/out, profile updates, reauth helpers, etc.
 - **Appearance**: Server-backed `UserPreferences` (theme, density, font size, reduced motion) plus local merge in `appearance/`; `AppearanceSettingsSection` persists via user PATCH; root provider applies Ant theme and optional `.reduce-motion` on `document.documentElement`.
-- **Guest list**: Zustand store holds per-event guest token for API calls on event-scoped routes.
 - **Full-screen loading**: `ScreenLoader` + `screenLoaderStore` for global blocking UI when needed.
 - **Code splitting**: Route-level `lazy()` imports in `routes.tsx`.
 - **TypeScript**: Strict; feature types in `features/<name>/types.ts` or colocated.

@@ -3,7 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { Flex, message, Spin } from 'antd'
 import { getAuth, isSignInWithEmailLink } from 'firebase/auth'
 import { app } from '@/app/firebase'
-import { useAuth, getEmailForSignInKey } from '@/app/auth/AuthContext'
+import { useAuth } from '@/app/auth/AuthContext'
+import { EMAIL_FOR_SIGN_IN_STORAGE_KEY } from '@/app/auth/authHelpers'
 
 const auth = getAuth(app)
 
@@ -19,7 +20,7 @@ export function AuthCompletePage() {
       setStatus('error')
       return
     }
-    const email = window.localStorage.getItem(getEmailForSignInKey())
+    const email = window.localStorage.getItem(EMAIL_FOR_SIGN_IN_STORAGE_KEY)
     if (!email) {
       message.error('Please open the sign-in link from the same device where you requested it.')
       setStatus('error')

@@ -132,7 +132,22 @@
       "tagsHeading": "Tags",
       "goToSchedules": "Cronogramas",
       "goToProducts": "Produtos",
-      "goToInvitations": "Convites"
+      "goToInvitations": "Convites",
+      "hero": {
+        "eyebrowWedding": "Casamento"
+      },
+      "coupleStory": {
+        "decorIconAria": "Celebração de casamento",
+        "detailsHeading": "Detalhes do evento",
+        "detailsWhen": "Quando",
+        "detailsWhenTbd": "Data e horário a confirmar",
+        "detailsWhere": "Onde",
+        "detailsOnline": "Celebração online",
+        "detailsWhereTbd": "Local a confirmar",
+        "closing": "Reserve um momento para confirmar presença (RSVP) e nos dizer se você pode estar conosco. Mal podemos esperar para celebrar.",
+        "ctaPrimary": "Convites e RSVP",
+        "ctaSecondary": "Editar detalhes do evento"
+      }
     },
     "form": {
       "nameLabel": "Nome do evento",

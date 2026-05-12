@@ -132,7 +132,22 @@
       "tagsHeading": "Tags",
       "goToSchedules": "Schedules",
       "goToProducts": "Products",
-      "goToInvitations": "Invitations"
+      "goToInvitations": "Invitations",
+      "hero": {
+        "eyebrowWedding": "Wedding"
+      },
+      "coupleStory": {
+        "decorIconAria": "Wedding celebration",
+        "detailsHeading": "Event details",
+        "detailsWhen": "When",
+        "detailsWhenTbd": "Date and time to be announced",
+        "detailsWhere": "Where",
+        "detailsOnline": "Online celebration",
+        "detailsWhereTbd": "Venue to be announced",
+        "closing": "Please take a moment to RSVP and let us know if you can join us. We cannot wait to celebrate with you.",
+        "ctaPrimary": "Invitations & RSVP",
+        "ctaSecondary": "Edit event details"
+      }
     },
     "form": {
       "nameLabel": "Event name",

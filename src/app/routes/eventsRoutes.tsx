@@ -37,6 +37,14 @@ export function getEventsRoutes(Protected: ProtectedComponent): RouteObject[] {
       ),
     },
     {
+      path: 'events/:id/invitation/:invitationId',
+      element: (
+        <Protected>
+          <EventDetailPage />
+        </Protected>
+      ),
+    },
+    {
       path: 'events/:id',
       element: (
         <Protected>

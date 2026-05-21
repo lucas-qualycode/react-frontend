@@ -1,29 +1,37 @@
-import { Flex } from 'antd'
 import type { Event } from '@/shared/types/api'
-import { EventCoupleStoryBlock } from './blocks/EventCoupleStoryBlock'
-import { EventHeroBlock } from './blocks/EventHeroBlock'
+import { EventGuestFlow } from './EventGuestFlow'
 import { resolveEventDetailBlueprint } from './resolveBlueprint'
 
 type Props = {
   event: Event
+  invitationId?: string
 }
 
-export function EventDetailComposition({ event }: Props) {
+export function EventDetailComposition({ event, invitationId }: Props) {
   const slots = resolveEventDetailBlueprint(event)
 
   return (
-    <Flex vertical gap={24}>
+    <>
       {slots.map((slot, index) => {
-        if (slot.blockId === 'hero') {
-          return <EventHeroBlock key={`hero-${index}`} event={event} variant={slot.variant} />
-        }
-        if (slot.blockId === 'couple_story') {
+        if (slot.blockId === 'guest_welcome') {
           return (
-            <EventCoupleStoryBlock key={`couple_story-${index}`} event={event} variant={slot.variant} />
+            <EventGuestFlow
+              key={`guest-flow-${index}`}
+              event={event}
+              invitationId={invitationId}
+              backgroundVariant="wedding"
+              welcomeVariant={slot.variant}
+              declineVariant="wedding"
+              confirmVariant="wedding"
+              giftVariant="wedding"
+              mpPaymentVariant="wedding"
+              messageVariant="wedding"
+              reviewVariant="wedding"
+            />
           )
         }
         return null
       })}
-    </Flex>
+    </>
   )
 }

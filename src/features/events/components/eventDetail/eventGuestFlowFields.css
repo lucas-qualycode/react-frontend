@@ -1,0 +1,93 @@
+.guest-flow-field {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 12px 2px;
+  border: 1px solid var(--ant-color-border);
+  border-radius: var(--ant-border-radius);
+  background: var(--ant-color-bg-container);
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.guest-flow-field:hover:not(.guest-flow-field--error):not(:focus-within) {
+  border-color: color-mix(in srgb, var(--ant-color-primary) 42%, var(--ant-color-bg-container));
+}
+
+.guest-flow-field:focus-within {
+  border-color: var(--ant-color-primary);
+}
+
+.guest-flow-field--error {
+  border-color: var(--ant-color-error);
+}
+
+.guest-flow-field--error:focus-within {
+  border-color: var(--ant-color-error);
+}
+
+.guest-flow-field-legend {
+  padding: 0 6px;
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ant-color-text-secondary);
+  transition: color 0.2s ease;
+}
+
+.guest-flow-field:hover:not(.guest-flow-field--error):not(:focus-within) .guest-flow-field-legend {
+  color: color-mix(in srgb, var(--ant-color-primary) 55%, var(--ant-color-text-secondary));
+}
+
+.guest-flow-field:focus-within:not(.guest-flow-field--error) .guest-flow-field-legend {
+  color: var(--ant-color-primary);
+}
+
+.guest-flow-field--error .guest-flow-field-legend {
+  color: var(--ant-color-error);
+}
+
+.guest-flow-field-required {
+  color: var(--ant-color-error);
+}
+
+.guest-flow-field-input.ant-input,
+.guest-flow-field-input.ant-input-affix-wrapper,
+textarea.guest-flow-field-input {
+  padding: 8px 0 10px;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.guest-flow-field-input.ant-input:hover,
+.guest-flow-field-input.ant-input:focus,
+.guest-flow-field-input.ant-input-focused,
+textarea.guest-flow-field-input:hover,
+textarea.guest-flow-field-input:focus {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.guest-flow-field--error .guest-flow-field-input.ant-input,
+.guest-flow-field--error textarea.guest-flow-field-input {
+  background: transparent;
+}
+
+.guest-flow-field-textarea-wrap {
+  width: 100%;
+}
+
+.guest-flow-field-textarea-wrap .ant-input-textarea-affix-wrapper.ant-input-affix-wrapper {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+
+.guest-flow-field-textarea-wrap .ant-input-textarea-show-count::after {
+  padding-right: 4px;
+  padding-bottom: 4px;
+}

@@ -2,13 +2,13 @@ import { Button, Flex, Spin, Typography } from 'antd'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { EventDetailComposition } from '../components/eventDetail/EventDetailComposition'
-import { useEvent } from '../hooks'
+import { useEvent } from '@/features/events/hooks'
 
 const { Text } = Typography
 
 export function EventDetailPage() {
   const { t } = useTranslation()
-  const { id } = useParams<{ id: string }>()
+  const { id, invitationId } = useParams<{ id: string; invitationId?: string }>()
   const { data: event, isLoading, isError, refetch } = useEvent(id)
 
   return (
@@ -26,7 +26,9 @@ export function EventDetailPage() {
         </Flex>
       ) : null}
 
-      {!isLoading && !isError && event ? <EventDetailComposition event={event} /> : null}
+      {!isLoading && !isError && event ? (
+        <EventDetailComposition event={event} invitationId={invitationId} />
+      ) : null}
     </Flex>
   )
 }

@@ -43,14 +43,16 @@ import {
 import {
   useCreateInvitation,
   useDeleteInvitation,
-  useEventSchedules,
+  useEvent,
   useEventTicketProducts,
   useFieldDefinitions,
   useInvitation,
   useInvitationTags,
   useUpdateInvitation,
 } from '../hooks'
-import { scheduleEventEnd, scheduleEventStart } from './eventDetail/scheduleEventZoned'
+import { setStoredInvitationAccessToken } from '../lib/invitationAccessStorage'
+import { schedulesFromEvent } from '../scheduleList'
+import { scheduleEventEnd, scheduleEventStart } from './invitationFlow/lib/scheduleEventZoned'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -176,7 +178,8 @@ export const EventInvitationCreateSection = forwardRef<
   } = useInvitation(isEdit ? invitationId : undefined)
 
   const { data: tickets = [] } = useEventTicketProducts(eventId)
-  const { data: schedules = [] } = useEventSchedules(eventId)
+  const { data: event } = useEvent(eventId)
+  const schedules = useMemo(() => schedulesFromEvent(event), [event])
   const { data: invitationTags = [], isLoading: tagsLoading } = useInvitationTags()
   const { data: fieldDefinitions = [], isLoading: fieldDefinitionsLoading } = useFieldDefinitions(true)
 
@@ -563,7 +566,7 @@ export const EventInvitationCreateSection = forwardRef<
             },
           })
         } else {
-          await createMutation.mutateAsync({
+          const created = await createMutation.mutateAsync({
             event_id: eventId,
             inviter_id: user.uid,
             name: values.name.trim(),
@@ -576,6 +579,9 @@ export const EventInvitationCreateSection = forwardRef<
             guest_slot_count: slotCount,
             guests: guestsPayload,
           })
+          if (created.access_token && created.id) {
+            setStoredInvitationAccessToken(created.id, created.access_token)
+          }
         }
         message.success(tx.success)
         flushSync(() => {

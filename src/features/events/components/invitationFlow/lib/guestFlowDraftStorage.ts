@@ -1,0 +1,197 @@
+import { normalizeCheckoutSnapshot } from './guestCheckoutSession'
+import type { GuestConfirmFormSlot } from './guestConfirmMock'
+import {
+  createDefaultCardPaymentPersisted,
+  type GuestMpCardPaymentTypeId,
+} from '../../blocks/mpPayment/guestMpPaymentDraft'
+import {
+  GUEST_FLOW_DRAFT_MAX_AGE_MS,
+  GUEST_FLOW_DRAFT_VERSION,
+  paymentTypeIdForGuestMethod,
+  type GuestFlowDraft,
+  type GuestPaymentMethodChoice,
+  guestFlowDraftStorageKey,
+} from './guestFlowDraft'
+import { GUEST_FLOW_STEP_INDEX, type EventGuestFlowStep } from '../types'
+
+export function mergeGuestSlotsWithDraft(
+  initialSlots: GuestConfirmFormSlot[],
+  draftSlots: GuestConfirmFormSlot[] | undefined,
+): GuestConfirmFormSlot[] {
+  const safeDraft = draftSlots ?? []
+
+  return initialSlots.map((initial, index) => {
+    const draft = safeDraft[index]
+    if (!draft) return initial
+
+    const fieldValues = { ...initial.fieldValues }
+    for (const fieldId of initial.requiredFieldIds) {
+      const value = draft.fieldValues?.[fieldId]
+      if (value !== undefined) {
+        fieldValues[fieldId] = value
+      }
+    }
+    for (const [fieldId, value] of Object.entries(draft.fieldValues ?? {})) {
+      if (value !== undefined) {
+        fieldValues[fieldId] = value
+      }
+    }
+
+    return {
+      ...initial,
+      slotId: initial.slotId ?? draft.slotId,
+      firstName: initial.hasPresetName ? initial.firstName : (draft.firstName ?? initial.firstName),
+      fieldValues,
+      attending: draft.attending ?? initial.attending,
+    }
+  })
+}
+
+export function loadGuestFlowDraft(
+  invitationId: string,
+  eventId: string,
+): GuestFlowDraft | null {
+  if (typeof localStorage === 'undefined') return null
+
+  try {
+    const raw = localStorage.getItem(guestFlowDraftStorageKey(invitationId))
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as GuestFlowDraft
+    if (parsed.version !== GUEST_FLOW_DRAFT_VERSION) return null
+    if (parsed.invitationId !== invitationId || parsed.eventId !== eventId) return null
+
+    const updatedAt = Date.parse(parsed.updatedAt)
+    if (Number.isNaN(updatedAt) || Date.now() - updatedAt > GUEST_FLOW_DRAFT_MAX_AGE_MS) {
+      clearGuestFlowDraft(invitationId)
+      return null
+    }
+
+    return normalizeGuestFlowDraft(parsed)
+  } catch {
+    return null
+  }
+}
+
+function normalizeLegacyPaymentMethod(
+  paymentMethod: string | null | undefined,
+): GuestPaymentMethodChoice | null {
+  if (paymentMethod === 'card') return 'credit_card'
+  if (
+    paymentMethod === 'credit_card' ||
+    paymentMethod === 'debit_card' ||
+    paymentMethod === 'pix'
+  ) {
+    return paymentMethod
+  }
+  return null
+}
+
+function normalizeCardPaymentTypeId(
+  paymentTypeId: string | undefined,
+  paymentMethod: GuestPaymentMethodChoice | null,
+): GuestMpCardPaymentTypeId {
+  if (paymentTypeId === 'credit_card' || paymentTypeId === 'debit_card') {
+    return paymentTypeId
+  }
+  return paymentTypeIdForGuestMethod(paymentMethod) ?? 'credit_card'
+}
+
+export function normalizeGuestFlowDraft(draft: GuestFlowDraft): GuestFlowDraft {
+  const paymentMethod = normalizeLegacyPaymentMethod(
+    draft.paymentMethod as string | null | undefined,
+  )
+  const defaultCard = createDefaultCardPaymentPersisted()
+  const cardPayment = {
+    ...defaultCard,
+    ...draft.cardPayment,
+    paymentTypeId: normalizeCardPaymentTypeId(
+      (draft.cardPayment as { paymentTypeId?: string } | undefined)?.paymentTypeId,
+      paymentMethod,
+    ),
+  }
+
+  const checkout = draft.checkout
+    ? normalizeCheckoutSnapshot(draft.checkout)
+    : null
+
+  return {
+    ...draft,
+    paymentMethod,
+    cardPayment,
+    checkout,
+  }
+}
+
+export function saveGuestFlowDraft(draft: GuestFlowDraft): void {
+  if (typeof localStorage === 'undefined') return
+
+  try {
+    localStorage.setItem(guestFlowDraftStorageKey(draft.invitationId), JSON.stringify(draft))
+  } catch {
+    // quota exceeded or private mode
+  }
+}
+
+export function clearGuestFlowDraft(invitationId: string): void {
+  if (typeof localStorage === 'undefined') return
+
+  try {
+    localStorage.removeItem(guestFlowDraftStorageKey(invitationId))
+  } catch {
+    // ignore
+  }
+}
+
+export function resolveGuestFlowStepFromDraft(draft: GuestFlowDraft): EventGuestFlowStep {
+  if (draft.flowPath === 'decline') {
+    return 'decline'
+  }
+
+  let step = draft.activeStep
+
+  if (step === 'decline') {
+    step = 'welcome'
+  }
+
+  if (step === 'welcome') {
+    return 'welcome'
+  }
+
+  const hasGuestProgress =
+    draft.guestSlots.length > 0 &&
+    draft.guestSlots.some(
+      (slot) =>
+        slot.attending === false ||
+        slot.firstName.trim().length > 0 ||
+        Object.values(slot.fieldValues).some((v) => v.trim().length > 0),
+    )
+
+  if (!hasGuestProgress && GUEST_FLOW_STEP_INDEX[step] > GUEST_FLOW_STEP_INDEX.confirm) {
+    return 'confirm'
+  }
+
+  if (!draft.checkout && GUEST_FLOW_STEP_INDEX[step] >= GUEST_FLOW_STEP_INDEX.mp_payment) {
+    step = 'gift'
+  }
+
+  if (draft.checkout && draft.checkout.total_cents === 0 && step === 'mp_payment') {
+    step = 'message'
+  }
+
+  if (step === 'mp_payment' && !draft.checkout) {
+    step = 'gift'
+  }
+
+  const checkout =
+    draft.checkout && draft.checkout.parent_id === draft.eventId ? draft.checkout : null
+  if (
+    checkout &&
+    checkout.total_cents > 0 &&
+    (step === 'message' || step === 'review')
+  ) {
+    return 'mp_payment'
+  }
+
+  return step
+}

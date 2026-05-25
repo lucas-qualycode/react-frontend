@@ -126,9 +126,18 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **Cover image**: after Firebase upload, call **`updateEvent`**, then **`queryClient.setQueryData(['event', eventId], updated)`** and **`invalidateQueries`** for `userEvents`. Clearing the image uses **`updateEvent` with `imageURL: null`** (JSON must include `null`, not omit the field). Toasts: `events.form.imageUpdated` / `events.form.imageRemoved`. Do not reset the whole form on every cache bump: **sync `setFieldsValue` from `initialValues` on edit only when `eventId` changes**, not on every `initialValues` reference change.
 - **Leave guard**: `useBlocker(formDirty)`, `beforeunload` when dirty, Ant **`modal.confirm`** for in-app navigation. After a **successful** main-form save, use **`flushSync(() => setFormDirty(false))`** before **`navigate(...)`** so programmatic navigation is not blocked while `formDirty` is still true.
 
+### Guest invitation flow (`/events/:id/invitation/:invitationId`)
+
+- **Route is not `Protected`** — guests open the magic link without Firebase.
+- URL shape: **`/events/{eventId}/invitation/{invitationId}?token={access_token}`** (`features/events/lib/invitationAccessStorage.ts` helpers).
+- **`EventDetailPage`** reads `token` from search params and wraps content in **`InvitationAccessProvider`**; hooks (`useEvent`, `useInvitation`, `useFieldDefinitions`, ticket/gift products) pass **`invitation_id` + `token`** on GETs and **`X-Invitation-Token`** on writes via **`fetchApi(..., invitationAccess)`**.
+- Organizers get **`access_token`** once on **POST `/invitations`** (create) or **`POST /invitations/{id}/access-token`** (refresh); token is stored in **`sessionStorage`** per invitation id for the invitations table **Link** / **Refresh link** actions (`EventInvitationsSection`).
+- **`POST /invitations/{id}/guest-submit`** requires the same token (`guestSubmitPersistence`).
+
 ### API types (`features/events/api.ts`)
 
 - **`UpdateEventPayload.imageURL`**: `string | null` so the client can **clear** the server field with `"imageURL": null` in the PATCH body.
+- **`CreateInvitationResponse`**: `Invitation & { access_token?: string }` (one-time; not returned on list GET).
 
 ### Event products and tickets (`EventProductsSection`)
 

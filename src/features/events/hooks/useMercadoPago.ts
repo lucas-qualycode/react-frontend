@@ -1,8 +1,13 @@
 import { loadMercadoPago } from '@mercadopago/sdk-js'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { GuestMpCardTokenResult } from '../components/eventDetail/guestMpPaymentDraft'
-import type { GuestCardPaymentFormState } from '../components/eventDetail/guestMpPaymentForm'
-import { cardBin, normalizeCardNumber } from '../components/eventDetail/guestMpPaymentForm'
+import type { GuestMpCardTokenResult } from '../components/blocks/mpPayment/guestMpPaymentDraft'
+import type { GuestCardPaymentFormState } from '../components/blocks/mpPayment/guestMpPaymentForm'
+import {
+  cardBinForInstallments,
+  mpInstallmentAmount,
+  type MpInstallmentCost,
+} from '../components/blocks/mpPayment/guestMpInstallments'
+import { cardBin, normalizeCardNumber } from '../components/blocks/mpPayment/guestMpPaymentForm'
 
 export type MpIdentificationType = {
   id: string
@@ -26,7 +31,18 @@ type MercadoPagoInstance = {
   getPaymentMethods: (params: { bin: string }) => Promise<{
     results?: MpPaymentMethodOption[]
   }>
+  getInstallments: (params: {
+    amount: string
+    bin: string
+    locale?: string
+  }) => Promise<
+    Array<{
+      payer_costs?: MpInstallmentCost[]
+    }>
+  >
 }
+
+export type { MpInstallmentCost }
 
 declare global {
   interface Window {
@@ -107,6 +123,36 @@ export function useMercadoPago(locale = 'pt-BR') {
     [getInstance],
   )
 
+  const fetchInstallmentsForBin = useCallback(
+    async (
+      totalCents: number,
+      cardNumber: string,
+      locale?: string,
+    ): Promise<MpInstallmentCost[]> => {
+      const mp = getInstance()
+      const bin = cardBinForInstallments(cardNumber)
+      if (!mp || bin.length < 6 || totalCents <= 0) return []
+      try {
+        const response = await mp.getInstallments({
+          amount: mpInstallmentAmount(totalCents),
+          bin,
+          locale,
+        })
+        const costs = response.flatMap((entry) => entry.payer_costs ?? [])
+        const byCount = new Map<number, MpInstallmentCost>()
+        for (const cost of costs) {
+          if (!byCount.has(cost.installments)) {
+            byCount.set(cost.installments, cost)
+          }
+        }
+        return Array.from(byCount.values()).sort((a, b) => a.installments - b.installments)
+      } catch {
+        return []
+      }
+    },
+    [getInstance],
+  )
+
   const createCardToken = useCallback(
     async (form: GuestCardPaymentFormState): Promise<GuestMpCardTokenResult> => {
       const mp = getInstance()
@@ -132,7 +178,7 @@ export function useMercadoPago(locale = 'pt-BR') {
       return {
         token,
         paymentMethodId: response.payment_method_id ?? form.paymentMethodId,
-        paymentTypeId: response.payment_type_id ?? 'credit_card',
+        paymentTypeId: response.payment_type_id ?? form.paymentTypeId ?? 'credit_card',
       }
     },
     [getInstance],
@@ -146,6 +192,7 @@ export function useMercadoPago(locale = 'pt-BR') {
     getInstance,
     fetchIdentificationTypes,
     fetchPaymentMethodsForBin,
+    fetchInstallmentsForBin,
     createCardToken,
   }
 }

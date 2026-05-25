@@ -18,6 +18,7 @@ import {
   listSchedules,
   listTags,
   listUserEvents,
+  regenerateInvitationAccessToken,
   updateEvent,
   updateProduct,
   updateSchedule,
@@ -41,18 +42,8 @@ import type {
   Schedule,
   Tag,
 } from '@/shared/types/api'
-
-function compareByCreatedAtDesc(a: Event, b: Event): number {
-  const at = a.created_at ? new Date(a.created_at).getTime() : 0
-  const bt = b.created_at ? new Date(b.created_at).getTime() : 0
-  return bt - at
-}
-
-function compareScheduleByCreatedAtAsc(a: Schedule, b: Schedule): number {
-  const at = new Date(a.created_at).getTime()
-  const bt = new Date(b.created_at).getTime()
-  return at - bt
-}
+import { compareScheduleByCreatedAtAsc } from '../scheduleList'
+import { useInvitationAccess } from '@/shared/api/InvitationAccessContext'
 
 export function useUserEvents(userId: string | null | undefined) {
   return useQuery({
@@ -74,10 +65,17 @@ export function useDeleteEvent() {
   })
 }
 
+function compareByCreatedAtDesc(a: Event, b: Event): number {
+  const at = a.created_at ? new Date(a.created_at).getTime() : 0
+  const bt = b.created_at ? new Date(b.created_at).getTime() : 0
+  return bt - at
+}
+
 export function useEvent(eventId: string | undefined) {
+  const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['event', eventId],
-    queryFn: async (): Promise<Event> => getEvent(eventId!),
+    queryKey: ['event', eventId, invitationAccess?.token ?? ''],
+    queryFn: async (): Promise<Event> => getEvent(eventId!, invitationAccess),
     enabled: !!eventId,
     staleTime: 30_000,
   })
@@ -164,11 +162,23 @@ export function useEventInvitations(eventId: string | undefined) {
 }
 
 export function useInvitation(invitationId: string | undefined) {
+  const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['invitation', invitationId],
-    queryFn: async (): Promise<Invitation> => getInvitation(invitationId!),
+    queryKey: ['invitation', invitationId, invitationAccess?.token ?? ''],
+    queryFn: async (): Promise<Invitation> =>
+      getInvitation(invitationId!, invitationAccess),
     enabled: !!invitationId,
     staleTime: 30_000,
+  })
+}
+
+export function useRegenerateInvitationAccessToken(eventId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invitationId: string) => regenerateInvitationAccessToken(invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invitations', eventId] })
+    },
   })
 }
 
@@ -227,6 +237,7 @@ export function useCreateSchedule() {
     mutationFn: (payload: CreateSchedulePayload) => createSchedule(payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['schedules', variables.event_id] })
+      queryClient.invalidateQueries({ queryKey: ['event', variables.event_id] })
     },
   })
 }
@@ -244,6 +255,7 @@ export function useUpdateSchedule() {
     }) => updateSchedule(scheduleId, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['schedules', variables.eventId] })
+      queryClient.invalidateQueries({ queryKey: ['event', variables.eventId] })
     },
   })
 }
@@ -254,6 +266,22 @@ function isMerchandiseProduct(p: Product): boolean {
 
 function isTicketProduct(p: Product): boolean {
   return p.type === 'TICKET'
+}
+
+function isGiftProduct(p: Product): boolean {
+  return p.type === 'GIFT'
+}
+
+export function useEventGiftProducts(eventId: string | undefined) {
+  const invitationAccess = useInvitationAccess()
+  return useQuery({
+    queryKey: ['eventProducts', eventId, 'gift', invitationAccess?.token ?? ''],
+    queryFn: async (): Promise<Product[]> =>
+      listEventProducts(eventId!, { type: 'GIFT', invitationAccess }),
+    enabled: !!eventId,
+    select: (list) => list.filter(isGiftProduct),
+    staleTime: 30_000,
+  })
 }
 
 export function useEventMerchProducts(eventId: string | undefined) {
@@ -267,10 +295,11 @@ export function useEventMerchProducts(eventId: string | undefined) {
 }
 
 export function useEventTicketProducts(eventId: string | undefined) {
+  const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['eventProducts', eventId, 'ticket'],
+    queryKey: ['eventProducts', eventId, 'ticket', invitationAccess?.token ?? ''],
     queryFn: async (): Promise<Product[]> =>
-      listEventProducts(eventId!, { type: 'TICKET' }),
+      listEventProducts(eventId!, { type: 'TICKET', invitationAccess }),
     enabled: !!eventId,
     select: (list) => list.filter(isTicketProduct),
     staleTime: 30_000,
@@ -287,9 +316,11 @@ export function useProductTags() {
 }
 
 export function useFieldDefinitions(enabled: boolean) {
+  const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['fieldDefinitions'],
-    queryFn: async (): Promise<FieldDefinition[]> => listFieldDefinitions(),
+    queryKey: ['fieldDefinitions', invitationAccess?.token ?? ''],
+    queryFn: async (): Promise<FieldDefinition[]> =>
+      listFieldDefinitions(invitationAccess),
     enabled,
     staleTime: 60_000,
   })

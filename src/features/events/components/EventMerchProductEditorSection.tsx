@@ -341,7 +341,7 @@ export const EventMerchProductEditorSection = forwardRef<
             ...base,
             parent_id: eventId,
             parent_type: 'EVENT',
-            type: 'MERCH',
+            type: 'GIFT',
           })
           message.success(tp('createSuccess'))
         }

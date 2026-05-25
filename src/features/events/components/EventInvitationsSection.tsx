@@ -1,12 +1,17 @@
-import { PlusOutlined } from '@ant-design/icons'
-import { Button, Col, Empty, Flex, Grid, Row, Spin, Table, Tag, Typography } from 'antd'
+import { LinkOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Button, Col, Empty, Flex, Grid, Row, Spin, Table, Tag, Tooltip, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useCallback, useMemo, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { ListItemMediaCard } from '@/shared/components/ListItemMediaCard'
 import type { Invitation, InvitationStatus } from '@/shared/types/api'
-import { useEventInvitations, useFieldDefinitions } from '../hooks'
+import {
+  getStoredInvitationAccessToken,
+  guestInvitationHref,
+  setStoredInvitationAccessToken,
+} from '../lib/invitationAccessStorage'
+import { useEventInvitations, useFieldDefinitions, useRegenerateInvitationAccessToken } from '../hooks'
 
 type GuestSlotTableRow = {
   id: string
@@ -108,6 +113,33 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
     mode === 'edit' ? eventId : undefined,
   )
   const { data: fieldDefinitions = [], isLoading: definitionsLoading } = useFieldDefinitions(true)
+  const regenerateTokenMutation = useRegenerateInvitationAccessToken(eventId)
+  const [accessTokenByInvitationId, setAccessTokenByInvitationId] = useState<Record<string, string>>(
+    {},
+  )
+  const [refreshingInvitationId, setRefreshingInvitationId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (invitations.length === 0) return
+    setAccessTokenByInvitationId((prev) => {
+      const next = { ...prev }
+      let changed = false
+      for (const inv of invitations) {
+        if (next[inv.id]) continue
+        const stored = getStoredInvitationAccessToken(inv.id)
+        if (stored) {
+          next[inv.id] = stored
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [invitations])
+
+  const getAccessToken = useCallback(
+    (invitationId: string) => accessTokenByInvitationId[invitationId] ?? null,
+    [accessTokenByInvitationId],
+  )
 
   const labelByFieldId = useMemo(
     () => new Map(fieldDefinitions.map((d) => [d.id, d.label])),
@@ -149,6 +181,47 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
       )
     },
     [setSearchParams],
+  )
+
+  const openGuestInvitation = useCallback(
+    (invitationId: string) => {
+      if (!eventId) return
+      const token = getAccessToken(invitationId)
+      if (!token) {
+        message.warning(t('events.invitations.linkNeedsToken'))
+        return
+      }
+      const path = guestInvitationHref(eventId, invitationId, token)
+      window.open(`${window.location.origin}${path}`, '_blank', 'noopener,noreferrer')
+    },
+    [eventId, getAccessToken, t],
+  )
+
+  const refreshGuestLink = useCallback(
+    async (invitationId: string) => {
+      setRefreshingInvitationId(invitationId)
+      try {
+        const { access_token } = await regenerateTokenMutation.mutateAsync(invitationId)
+        setStoredInvitationAccessToken(invitationId, access_token)
+        setAccessTokenByInvitationId((prev) => ({ ...prev, [invitationId]: access_token }))
+        if (eventId) {
+          const url = `${window.location.origin}${guestInvitationHref(eventId, invitationId, access_token)}`
+          try {
+            await navigator.clipboard.writeText(url)
+            message.success(t('events.invitations.refreshLinkSuccess'))
+          } catch {
+            message.success(t('events.invitations.refreshLinkSuccess'))
+          }
+        }
+      } catch (e) {
+        message.error(
+          e instanceof Error ? e.message : t('events.invitations.refreshLinkFailed'),
+        )
+      } finally {
+        setRefreshingInvitationId(null)
+      }
+    },
+    [eventId, regenerateTokenMutation, t],
   )
 
   const goToCreateInvitation = useCallback(() => {
@@ -208,8 +281,53 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
             </Typography.Text>
           ),
       },
+      {
+        title: t('events.invitations.colLink'),
+        key: 'link',
+        width: 96,
+        align: 'center',
+        render: (_, record) =>
+          isGuestSlotRow(record) ? null : (
+            <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', gap: 4 }}>
+              <Tooltip
+                title={
+                  getAccessToken(record.id)
+                    ? t('events.invitations.openGuestLink')
+                    : t('events.invitations.linkNeedsToken')
+                }
+                placement="bottom"
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<LinkOutlined />}
+                  aria-label={t('events.invitations.openGuestLink')}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    openGuestInvitation(record.id)
+                  }}
+                />
+              </Tooltip>
+              <Tooltip title={t('events.invitations.refreshLink')} placement="bottom">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  aria-label={t('events.invitations.refreshLink')}
+                  loading={refreshingInvitationId === record.id}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    void refreshGuestLink(record.id)
+                  }}
+                />
+              </Tooltip>
+            </span>
+          ),
+      },
     ],
-    [t],
+    [t, openGuestInvitation, refreshGuestLink, getAccessToken, refreshingInvitationId],
   )
 
   if (mode !== 'edit' || !eventId) {
@@ -265,9 +383,45 @@ export function EventInvitationsSection({ eventId, mode }: EventInvitationsSecti
                     onClick={() => goToEditInvitation(inv.id)}
                     noImageText={t('events.detail.noImage')}
                     headerTrailing={
-                      <Tag color={statusTagColor(inv.status)}>
-                        {invitationStatusLabel(t, inv.status)}
-                      </Tag>
+                      <>
+                        <Tag color={statusTagColor(inv.status)}>
+                          {invitationStatusLabel(t, inv.status)}
+                        </Tag>
+                        <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', gap: 4 }}>
+                          <Tooltip
+                            title={
+                              getAccessToken(inv.id)
+                                ? t('events.invitations.openGuestLink')
+                                : t('events.invitations.linkNeedsToken')
+                            }
+                            placement="bottom"
+                          >
+                            <Button
+                              type="text"
+                              icon={<LinkOutlined />}
+                              aria-label={t('events.invitations.openGuestLink')}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                openGuestInvitation(inv.id)
+                              }}
+                            />
+                          </Tooltip>
+                          <Tooltip title={t('events.invitations.refreshLink')} placement="bottom">
+                            <Button
+                              type="text"
+                              icon={<ReloadOutlined />}
+                              aria-label={t('events.invitations.refreshLink')}
+                              loading={refreshingInvitationId === inv.id}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                void refreshGuestLink(inv.id)
+                              }}
+                            />
+                          </Tooltip>
+                        </span>
+                      </>
                     }
                     footer={
                       <Flex vertical gap={4} style={{ padding: '12px 24px 24px' }}>

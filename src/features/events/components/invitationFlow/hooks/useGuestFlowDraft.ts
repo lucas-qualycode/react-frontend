@@ -1,0 +1,151 @@
+import { useEffect, useRef } from 'react'
+import type { Invitation, Product } from '@/shared/types/api'
+import { buildCheckoutSnapshotFromProducts } from '../lib/guestCheckoutSession'
+import { buildInitialGuestConfirmSlots } from '../lib/guestConfirmMock'
+import {
+  GUEST_FLOW_DRAFT_VERSION,
+  createDefaultGuestFlowDraftState,
+  type GuestFlowDraft,
+  type GuestFlowDraftState,
+} from '../lib/guestFlowDraft'
+import { createDefaultCardPaymentPersisted } from '../../blocks/mpPayment/guestMpPaymentDraft'
+import {
+  buildRsvpPersistFlagsFromInvitation,
+  mergeDraftWithServerState,
+  readGuestMessageFromInvitation,
+} from '../lib/guestFlowRsvpHydration'
+import {
+  clearGuestFlowDraft,
+  loadGuestFlowDraft,
+  resolveGuestFlowStepFromDraft,
+  saveGuestFlowDraft,
+} from '../lib/guestFlowDraftStorage'
+
+export type GuestFlowHydrationPayload = GuestFlowDraftState
+
+type Params = {
+  invitationId: string | undefined
+  eventId: string
+  invitation: Invitation | null
+  ticket: Product | null
+  isReady: boolean
+  state: GuestFlowDraftState
+  draftHydrated: boolean
+  onHydrate: (payload: GuestFlowHydrationPayload) => void
+  onDraftHydrated: () => void
+}
+
+function buildDraftFromState(
+  invitationId: string,
+  eventId: string,
+  state: GuestFlowDraftState,
+): GuestFlowDraft {
+  return {
+    version: GUEST_FLOW_DRAFT_VERSION,
+    invitationId,
+    eventId,
+    updatedAt: new Date().toISOString(),
+    ...state,
+  }
+}
+
+function hydrationFromDraft(
+  draft: GuestFlowDraft,
+  invitation: Invitation,
+  ticket: Product,
+): GuestFlowHydrationPayload {
+  const merged = mergeDraftWithServerState(draft, invitation, ticket)
+  const initialSlots = buildInitialGuestConfirmSlots(invitation, ticket)
+
+  return {
+    ...merged,
+    activeStep: resolveGuestFlowStepFromDraft(draft),
+    confirmGuestIndex: Math.min(
+      Math.max(0, draft.confirmGuestIndex),
+      Math.max(0, initialSlots.length - 1),
+    ),
+    cardPayment: {
+      ...createDefaultCardPaymentPersisted(),
+      ...draft.cardPayment,
+    },
+  }
+}
+
+function hydrationWithoutDraft(
+  invitation: Invitation,
+  ticket: Product,
+): GuestFlowHydrationPayload {
+  const serverFlags = buildRsvpPersistFlagsFromInvitation(invitation, ticket)
+  const savedMessage = readGuestMessageFromInvitation(invitation)
+
+  return {
+    ...createDefaultGuestFlowDraftState(),
+    activeStep: 'welcome',
+    guestSlots: buildInitialGuestConfirmSlots(invitation, ticket),
+    coupleMessage: savedMessage,
+    guestsSaved: serverFlags.guestsSaved,
+    messageSaved: serverFlags.messageSaved,
+    lastSavedGuestsFingerprint: serverFlags.lastSavedGuestsFingerprint,
+    lastSavedMessage: serverFlags.lastSavedMessage,
+  }
+}
+
+export function useGuestFlowDraft({
+  invitationId,
+  eventId,
+  invitation,
+  ticket,
+  isReady,
+  state,
+  draftHydrated,
+  onHydrate,
+  onDraftHydrated,
+}: Params) {
+  const hydrateStartedRef = useRef(false)
+  const stateRef = useRef(state)
+  stateRef.current = state
+
+  useEffect(() => {
+    if (!isReady || !invitation || !ticket || hydrateStartedRef.current) return
+    hydrateStartedRef.current = true
+
+    const draftKey = invitationId ?? invitation.id
+    const draft = loadGuestFlowDraft(draftKey, eventId)
+    if (draft) {
+      onHydrate(hydrationFromDraft(draft, invitation, ticket))
+    } else {
+      onHydrate(hydrationWithoutDraft(invitation, ticket))
+    }
+    onDraftHydrated()
+  }, [eventId, invitation, invitationId, isReady, onDraftHydrated, onHydrate, ticket])
+
+  useEffect(() => {
+    if (!draftHydrated || !invitation) return
+
+    const draftKey = invitationId ?? invitation.id
+    const timeoutId = window.setTimeout(() => {
+      saveGuestFlowDraft(buildDraftFromState(draftKey, eventId, stateRef.current))
+    }, 400)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [draftHydrated, eventId, invitation, invitationId, state])
+
+  const clearDraft = () => {
+    const draftKey = invitationId ?? invitation?.id
+    if (draftKey) clearGuestFlowDraft(draftKey)
+  }
+
+  return { clearDraft }
+}
+
+export function rebuildCheckoutFromSelectedProducts(
+  eventId: string,
+  selectedProductIds: string[],
+  products: Product[],
+): GuestFlowDraftState['checkout'] {
+  if (selectedProductIds.length === 0) {
+    return buildCheckoutSnapshotFromProducts(eventId, [])
+  }
+  const selected = products.filter((p) => selectedProductIds.includes(p.id))
+  return buildCheckoutSnapshotFromProducts(eventId, selected)
+}

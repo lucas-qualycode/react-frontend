@@ -78,6 +78,7 @@ export interface Event {
   visibility?: EventVisibility
   primary_category?: EventPrimaryCategory | null
   tags?: EventTagEmbed[]
+  schedules?: Schedule[]
   imageURL?: string
   deleted?: boolean
   created_at?: string
@@ -132,6 +133,8 @@ export interface InvitationGuestSlot {
   invitation_id: string
   first_name: string
   required_field_ids: string[]
+  field_values?: Record<string, string>
+  attending?: boolean
   status: InvitationGuestSlotStatus
   created_at: string
   updated_at: string
@@ -162,7 +165,7 @@ export interface ProductInventoryEmbed {
   total_quantity: number
 }
 
-export type ProductKind = 'TICKET' | 'MERCH'
+export type ProductKind = 'TICKET' | 'MERCH' | 'GIFT'
 
 export type FulfillmentType = 'DIGITAL' | 'WILL_CALL' | 'SHIPPING' | 'PICKUP'
 

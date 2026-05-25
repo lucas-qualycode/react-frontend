@@ -1,5 +1,7 @@
 import { getAuth } from 'firebase/auth'
 import { app } from '@/app/firebase'
+import type { InvitationAccess } from '@/shared/api/invitationAccess'
+import { invitationAccessHeaders } from '@/shared/api/invitationAccess'
 
 function getBaseUrl(): string {
   const url = import.meta.env.VITE_API_URL
@@ -23,12 +25,16 @@ async function resolveIdToken(): Promise<string | null> {
   return null
 }
 
-export async function fetchApi(path: string, init?: RequestInit): Promise<Response> {
+export async function fetchApi(
+  path: string,
+  init?: RequestInit,
+  invitationAccess?: InvitationAccess | null,
+): Promise<Response> {
   const base = getBaseUrl()
   const pathNorm = path.startsWith('/') ? path.slice(1) : path
   const url = base ? `${base}/${pathNorm}` : `/${pathNorm}`
   const token = await resolveIdToken()
-  const headers = new Headers(init?.headers)
+  const headers = invitationAccessHeaders(invitationAccess, init)
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }

@@ -1,4 +1,8 @@
 import { fetchApi } from '@/shared/api/client'
+import {
+  appendInvitationAccessQuery,
+  type InvitationAccess,
+} from '@/shared/api/invitationAccess'
 import type {
   Event,
   EventPrimaryCategory,
@@ -62,8 +66,12 @@ export async function listUserEvents(userId: string): Promise<Event[]> {
   return res.json() as Promise<Event[]>
 }
 
-export async function getEvent(eventId: string): Promise<Event> {
-  const res = await fetchApi(`events/${eventId}`)
+export async function getEvent(
+  eventId: string,
+  invitationAccess?: InvitationAccess | null,
+): Promise<Event> {
+  const path = appendInvitationAccessQuery(`events/${eventId}`, invitationAccess)
+  const res = await fetchApi(path, undefined, invitationAccess)
   if (!res.ok) throw new Error('Failed to load event')
   return res.json() as Promise<Event>
 }
@@ -255,19 +263,25 @@ export type UpdateProductPayload = {
   tag_ids?: string[]
 }
 
-export async function listFieldDefinitions(): Promise<FieldDefinition[]> {
+export async function listFieldDefinitions(
+  invitationAccess?: InvitationAccess | null,
+): Promise<FieldDefinition[]> {
   const params = new URLSearchParams({
     deleted: 'false',
     active: 'true',
   })
-  const res = await fetchApi(`field-definitions?${params.toString()}`)
+  const path = appendInvitationAccessQuery(
+    `field-definitions?${params.toString()}`,
+    invitationAccess,
+  )
+  const res = await fetchApi(path, undefined, invitationAccess)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<FieldDefinition[]>
 }
 
 export async function listEventProducts(
   eventId: string,
-  opts?: { type?: ProductKind },
+  opts?: { type?: ProductKind; invitationAccess?: InvitationAccess | null },
 ): Promise<Product[]> {
   const params = new URLSearchParams({
     parent_id: eventId,
@@ -276,7 +290,11 @@ export async function listEventProducts(
   if (opts?.type) {
     params.set('type', opts.type)
   }
-  const res = await fetchApi(`products?${params.toString()}`)
+  const path = appendInvitationAccessQuery(
+    `products?${params.toString()}`,
+    opts?.invitationAccess,
+  )
+  const res = await fetchApi(path, undefined, opts?.invitationAccess)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Product[]>
 }
@@ -337,7 +355,11 @@ export type CreateInvitationPayload = {
   guests?: { first_name: string; required_field_ids: string[] }[]
 }
 
-export async function createInvitation(payload: CreateInvitationPayload): Promise<Invitation> {
+export type CreateInvitationResponse = Invitation & { access_token?: string }
+
+export async function createInvitation(
+  payload: CreateInvitationPayload,
+): Promise<CreateInvitationResponse> {
   const body: Record<string, unknown> = {
     event_id: payload.event_id,
     inviter_id: payload.inviter_id,
@@ -363,11 +385,78 @@ export async function createInvitation(payload: CreateInvitationPayload): Promis
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<CreateInvitationResponse>
+}
+
+export async function regenerateInvitationAccessToken(
+  invitationId: string,
+): Promise<{ access_token: string }> {
+  const res = await fetchApi(`invitations/${invitationId}/access-token`, {
+    method: 'POST',
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<{ access_token: string }>
+}
+
+export async function getInvitation(
+  invitationId: string,
+  invitationAccess?: InvitationAccess | null,
+): Promise<Invitation> {
+  const path = appendInvitationAccessQuery(
+    `invitations/${invitationId}`,
+    invitationAccess,
+    { includeInvitationId: false },
+  )
+  const res = await fetchApi(path, undefined, invitationAccess)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Invitation>
 }
 
-export async function getInvitation(invitationId: string): Promise<Invitation> {
-  const res = await fetchApi(`invitations/${invitationId}`)
+export type SubmitGuestInvitationGuestRow = {
+  id?: string
+  first_name: string
+  required_field_ids: string[]
+  field_values: Record<string, string>
+  attending: boolean
+}
+
+export type SubmitGuestInvitationPayload = {
+  message?: string
+  guests?: SubmitGuestInvitationGuestRow[]
+}
+
+export async function submitGuestInvitation(
+  invitationId: string,
+  payload: SubmitGuestInvitationPayload,
+  invitationAccess?: InvitationAccess | null,
+): Promise<Invitation> {
+  const body: Record<string, unknown> = {}
+  if (payload.message !== undefined) {
+    body.message = payload.message
+  }
+  if (payload.guests !== undefined) {
+    body.guests = payload.guests.map((g) => {
+      const row: Record<string, unknown> = {
+        first_name: (g.first_name ?? '').trim(),
+        required_field_ids: g.required_field_ids ?? [],
+        field_values: g.field_values ?? {},
+        attending: g.attending !== false,
+      }
+      if (g.id) {
+        row.id = g.id
+      }
+      return row
+    })
+  }
+  const res = await fetchApi(
+    `invitations/${invitationId}/guest-submit`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    invitationAccess,
+  )
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Invitation>
 }

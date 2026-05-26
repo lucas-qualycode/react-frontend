@@ -49,7 +49,6 @@ export type GuestFlowDraft = {
   giftPage: number
   checkout: GuestCheckoutSnapshot | null
   coupleMessage: string
-  declineMessage: string
   paymentMethod: GuestPaymentMethodChoice | null
   pixPayerEmail: string
   cardPayment: GuestCardPaymentPersisted
@@ -73,7 +72,6 @@ export function createDefaultGuestFlowDraftState(): GuestFlowDraftState {
     giftPage: 0,
     checkout: null,
     coupleMessage: '',
-    declineMessage: '',
     paymentMethod: null,
     pixPayerEmail: '',
     cardPayment: createDefaultCardPaymentPersisted(),

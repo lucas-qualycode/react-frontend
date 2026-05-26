@@ -97,7 +97,14 @@ function normalizeCardPaymentTypeId(
   return paymentTypeIdForGuestMethod(paymentMethod) ?? 'credit_card'
 }
 
+type GuestFlowDraftWithLegacyFields = GuestFlowDraft & { declineMessage?: string }
+
 export function normalizeGuestFlowDraft(draft: GuestFlowDraft): GuestFlowDraft {
+  const raw = draft as GuestFlowDraftWithLegacyFields
+  const legacyDeclineMessage = raw.declineMessage?.trim() ?? ''
+  const coupleMessage =
+    raw.coupleMessage.trim().length > 0 ? raw.coupleMessage : legacyDeclineMessage
+
   const paymentMethod = normalizeLegacyPaymentMethod(
     draft.paymentMethod as string | null | undefined,
   )
@@ -115,8 +122,11 @@ export function normalizeGuestFlowDraft(draft: GuestFlowDraft): GuestFlowDraft {
     ? normalizeCheckoutSnapshot(draft.checkout)
     : null
 
+  const { declineMessage: _legacyDeclineMessage, ...rest } = raw
+
   return {
-    ...draft,
+    ...rest,
+    coupleMessage,
     paymentMethod,
     cardPayment,
     checkout,
@@ -145,13 +155,13 @@ export function clearGuestFlowDraft(invitationId: string): void {
 
 export function resolveGuestFlowStepFromDraft(draft: GuestFlowDraft): EventGuestFlowStep {
   if (draft.flowPath === 'decline') {
-    return 'decline'
+    return 'confirm'
   }
 
   let step = draft.activeStep
 
-  if (step === 'decline') {
-    step = 'welcome'
+  if ((step as string) === 'decline') {
+    step = 'confirm'
   }
 
   if (step === 'welcome') {

@@ -4,7 +4,7 @@ import type { Event } from '@/shared/types/api'
 import { GuestFlowActions } from '../../invitationFlow/shared/GuestFlowActions'
 import { GuestFlowBorderField } from '../../invitationFlow/shared/GuestFlowBorderField'
 import { guestPanelContentStyle, guestPanelShellClassName, guestPanelShellStyle } from '../../invitationFlow/shared/guestPanelLayout'
-import type { EventGuestDeclineVariant } from '../../invitationFlow/types'
+type EventGuestDeclineVariant = 'wedding'
 
 const { Title, Paragraph } = Typography
 

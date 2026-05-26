@@ -108,6 +108,16 @@ export function findFirstInvalidGuestSlotIndex(
   return null
 }
 
+export function allGuestsNotAttending(slots: GuestConfirmFormSlot[]): boolean {
+  return slots.length > 0 && slots.every((slot) => slot.attending === false)
+}
+
+export function markAllGuestsNotAttending(
+  slots: GuestConfirmFormSlot[],
+): GuestConfirmFormSlot[] {
+  return slots.map((slot) => ({ ...slot, attending: false }))
+}
+
 export function validateGuestSlot(slot: GuestConfirmFormSlot): GuestSlotValidationResult {
   if (slot.attending === false) {
     return { valid: true, missingName: false, missingFieldIds: [] }

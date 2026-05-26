@@ -1,7 +1,6 @@
 export type EventDetailBlockId =
   | 'guest_background'
   | 'guest_welcome'
-  | 'guest_decline'
   | 'guest_confirm'
   | 'guest_gift'
   | 'guest_mp_payment'
@@ -11,8 +10,6 @@ export type EventDetailBlockId =
 export type EventGuestBackgroundVariant = 'wedding'
 
 export type EventGuestWelcomeVariant = 'wedding'
-
-export type EventGuestDeclineVariant = 'wedding'
 
 export type EventGuestConfirmVariant = 'wedding'
 
@@ -28,7 +25,6 @@ export type EventDetailSlot = { blockId: 'guest_welcome'; variant: EventGuestWel
 
 export type EventGuestFlowStep =
   | 'welcome'
-  | 'decline'
   | 'confirm'
   | 'gift'
   | 'mp_payment'
@@ -36,11 +32,10 @@ export type EventGuestFlowStep =
   | 'review'
 
 export const GUEST_FLOW_STEP_INDEX: Record<EventGuestFlowStep, number> = {
-  decline: 0,
-  welcome: 1,
-  confirm: 2,
-  gift: 3,
-  mp_payment: 4,
-  message: 5,
-  review: 6,
+  welcome: 0,
+  confirm: 1,
+  gift: 2,
+  mp_payment: 3,
+  message: 4,
+  review: 5,
 }

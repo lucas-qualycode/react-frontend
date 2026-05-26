@@ -166,11 +166,12 @@ function GiftBrowseView({
 
 type ReviewProps = {
   selectedProducts: Product[]
+  hasAttendingGuests: boolean
   onBackToBrowse: () => void
   onConfirm: () => void
 }
 
-function GiftReviewView({ selectedProducts, onBackToBrowse, onConfirm }: ReviewProps) {
+function GiftReviewView({ selectedProducts, hasAttendingGuests, onBackToBrowse, onConfirm }: ReviewProps) {
   const { t } = useTranslation()
   const freeLabel = t('events.detail.guestGift.free')
   const hasSelection = selectedProducts.length > 0
@@ -222,7 +223,11 @@ function GiftReviewView({ selectedProducts, onBackToBrowse, onConfirm }: ReviewP
           }}
         >
           <GiftOutlined style={{ fontSize: 32, color: 'var(--ant-color-text-quaternary)' }} />
-          <Text style={{ fontSize: 16, lineHeight: 1.7 }}>{t('events.detail.guestGift.reviewEmptyBody')}</Text>
+          <Text style={{ fontSize: 16, lineHeight: 1.7 }}>
+            {hasAttendingGuests
+              ? t('events.detail.guestGift.reviewEmptyBody')
+              : t('events.detail.guestGift.reviewEmptyBodyNoGuests')}
+          </Text>
         </Flex>
       )}
 
@@ -259,6 +264,7 @@ export function EventGuestGiftBlock({
   if (variant !== 'wedding') return null
 
   const selectedIds = useMemo(() => new Set(selectedProductIds), [selectedProductIds])
+  const hasAttendingGuests = guestSlots.some((slot) => slot.attending !== false)
 
   const selectedProducts = useMemo(
     () => products.filter((p) => selectedIds.has(p.id) && p.type === 'GIFT'),
@@ -297,6 +303,7 @@ export function EventGuestGiftBlock({
       ) : (
         <GiftReviewView
           selectedProducts={selectedProducts}
+          hasAttendingGuests={hasAttendingGuests}
           onBackToBrowse={() => onPhaseChange('browse')}
           onConfirm={() => {
             onGiftsConfirmed(

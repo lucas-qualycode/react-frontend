@@ -3,7 +3,6 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProper
 import { useTranslation } from 'react-i18next'
 import type { Event } from '@/shared/types/api'
 import { EventGuestConfirmBlock } from '../blocks/confirm/EventGuestConfirmBlock'
-import { EventGuestDeclineBlock } from '../blocks/decline/EventGuestDeclineBlock'
 import { EventGuestGiftBlock } from '../blocks/gift/EventGuestGiftBlock'
 import { EventGuestMessageBlock } from '../blocks/message/EventGuestMessageBlock'
 import { getDefaultGuestPaymentProvider } from '../blocks/payment/registry'
@@ -36,7 +35,11 @@ import {
 import type { GuestSlotValidationResult } from './lib/guestConfirmMock'
 import type { CardFormValidation } from '../blocks/mpPayment/guestMpPaymentForm'
 import { createDefaultCardPaymentSecrets } from '../blocks/mpPayment/guestMpPaymentForm'
-import { buildInitialGuestConfirmSlots, type GuestConfirmFormSlot } from './lib/guestConfirmMock'
+import {
+  buildInitialGuestConfirmSlots,
+  markAllGuestsNotAttending,
+  type GuestConfirmFormSlot,
+} from './lib/guestConfirmMock'
 import {
   buildGuestMessageSubmitPayload,
   buildGuestSlotsSubmitPayload,
@@ -57,7 +60,6 @@ import {
   GUEST_FLOW_STEP_INDEX,
   type EventGuestBackgroundVariant,
   type EventGuestConfirmVariant,
-  type EventGuestDeclineVariant,
   type EventGuestFlowStep,
   type EventGuestGiftVariant,
   type EventGuestMessageVariant,
@@ -76,7 +78,6 @@ type Props = {
   invitationId?: string
   backgroundVariant: EventGuestBackgroundVariant
   welcomeVariant: EventGuestWelcomeVariant
-  declineVariant: EventGuestDeclineVariant
   confirmVariant: EventGuestConfirmVariant
   giftVariant: EventGuestGiftVariant
   mpPaymentVariant: EventGuestMpPaymentVariant
@@ -116,7 +117,6 @@ export function EventGuestFlow({
   invitationId,
   backgroundVariant,
   welcomeVariant,
-  declineVariant,
   confirmVariant,
   giftVariant,
   mpPaymentVariant,
@@ -154,7 +154,6 @@ export function EventGuestFlow({
   const [giftPage, setGiftPage] = useState(defaultDraftState.giftPage)
   const [checkout, setCheckout] = useState<GuestCheckoutSnapshot | null>(defaultDraftState.checkout)
   const [coupleMessage, setCoupleMessage] = useState(defaultDraftState.coupleMessage)
-  const [declineMessage, setDeclineMessage] = useState(defaultDraftState.declineMessage)
   const [paymentMethod, setPaymentMethod] = useState(defaultDraftState.paymentMethod)
   const [pixPayerEmail, setPixPayerEmail] = useState(defaultDraftState.pixPayerEmail)
   const [cardPayment, setCardPayment] = useState(defaultDraftState.cardPayment)
@@ -204,7 +203,6 @@ export function EventGuestFlow({
       giftPage,
       checkout,
       coupleMessage,
-      declineMessage,
       paymentMethod,
       pixPayerEmail,
       cardPayment,
@@ -224,7 +222,6 @@ export function EventGuestFlow({
       giftPage,
       checkout,
       coupleMessage,
-      declineMessage,
       paymentMethod,
       pixPayerEmail,
       cardPayment,
@@ -247,7 +244,6 @@ export function EventGuestFlow({
     setGiftPage(payload.giftPage)
     setCheckout(payload.checkout)
     setCoupleMessage(payload.coupleMessage)
-    setDeclineMessage(payload.declineMessage)
     setPaymentMethod(payload.paymentMethod)
     setPixPayerEmail(payload.pixPayerEmail)
     setCardPayment(payload.cardPayment)
@@ -437,6 +433,26 @@ export function EventGuestFlow({
     },
     [activeStep, slideWidth, syncViewportHeight],
   )
+
+  const handleCannotAttend = useCallback(() => {
+    const invitation = guestInvitation.invitation
+    const ticket = guestInvitation.ticket
+    if (!invitation || !ticket) return
+
+    const baseSlots =
+      guestSlots.length > 0
+        ? guestSlots
+        : buildInitialGuestConfirmSlots(invitation, ticket)
+    const declinedSlots = markAllGuestsNotAttending(baseSlots)
+
+    setFlowPath('decline')
+    setGuestSlots(declinedSlots)
+    setConfirmPhase('review')
+    setConfirmGuestIndex(Math.max(0, declinedSlots.length - 1))
+    setConfirmValidationHighlight(null)
+    setConfirmValidationGuestIndex(undefined)
+    animateTo('confirm')
+  }, [animateTo, guestInvitation.invitation, guestInvitation.ticket, guestSlots])
 
   useLayoutEffect(() => () => cancelAnimationFrame(frameRef.current), [])
 
@@ -716,25 +732,12 @@ export function EventGuestFlow({
 
   const renderStep = (flowStep: EventGuestFlowStep) => {
     switch (flowStep) {
-      case 'decline':
-        return (
-          <EventGuestDeclineBlock
-            event={event}
-            variant={declineVariant}
-            message={declineMessage}
-            onMessageChange={setDeclineMessage}
-            onBack={() => animateTo('welcome')}
-          />
-        )
       case 'welcome':
         return (
           <EventGuestWelcomeBlock
             event={event}
             variant={welcomeVariant}
-            onCannotAttend={() => {
-              setFlowPath('decline')
-              animateTo('decline')
-            }}
+            onCannotAttend={handleCannotAttend}
             onConfirmAttendance={() => {
               setFlowPath('attend')
               if (

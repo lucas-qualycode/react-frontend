@@ -84,7 +84,6 @@ export function mergeDraftWithServerState(
     giftPage: draft.giftPage,
     checkout: draft.checkout?.parent_id === draft.eventId ? draft.checkout : null,
     coupleMessage: useServerMessage ? savedMessage : draft.coupleMessage,
-    declineMessage: draft.declineMessage,
     paymentMethod: draft.paymentMethod,
     pixPayerEmail: draft.pixPayerEmail,
     cardPayment: draft.cardPayment,

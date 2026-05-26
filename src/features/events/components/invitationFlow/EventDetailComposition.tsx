@@ -21,7 +21,6 @@ export function EventDetailComposition({ event, invitationId }: Props) {
               invitationId={invitationId}
               backgroundVariant="wedding"
               welcomeVariant={slot.variant}
-              declineVariant="wedding"
               confirmVariant="wedding"
               giftVariant="wedding"
               mpPaymentVariant="wedding"

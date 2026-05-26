@@ -6,6 +6,7 @@ import type { Event, FieldDefinition, Invitation, Product } from '@/shared/types
 import type { GuestConfirmPhase } from '../../invitationFlow/lib/guestFlowDraft'
 import {
   fieldLabelById,
+  allGuestsNotAttending,
   formatReviewFieldLine,
   formatReviewGuestHeading,
   showGuestConfirmValidationMessage,
@@ -177,35 +178,46 @@ type ReviewViewProps = {
 
 function GuestConfirmReviewView({ slots, fieldDefinitions, onBack, onConfirm }: ReviewViewProps) {
   const { t } = useTranslation()
+  const everyoneDeclined = allGuestsNotAttending(slots)
 
   return (
     <>
       <GuestFlowBlockHeader
         icon={<TeamOutlined />}
-        title={t('events.detail.guestConfirm.reviewTitle')}
-        subtitle={t('events.detail.guestConfirm.reviewSubtitle')}
+        title={
+          everyoneDeclined
+            ? t('events.detail.guestConfirm.reviewAllDeclinedTitle')
+            : t('events.detail.guestConfirm.reviewTitle')
+        }
+        subtitle={
+          everyoneDeclined
+            ? t('events.detail.guestConfirm.reviewAllDeclinedSubtitle')
+            : t('events.detail.guestConfirm.reviewSubtitle')
+        }
       />
 
-      <Flex vertical gap={12} style={{ width: '100%' }}>
-        {slots.map((slot, index) => (
-          <Card key={index} size="small" style={{ textAlign: 'left' }}>
-            <Flex vertical gap={10}>
-              <Text strong style={{ fontSize: 16 }}>
-                {formatReviewGuestHeading(slot, index + 1, t)}
-              </Text>
-              {slot.attending === false ? null : slot.requiredFieldIds.length === 0 ? (
-                <Text type="secondary">{t('events.detail.guestConfirm.reviewNoFields')}</Text>
-              ) : (
-                slot.requiredFieldIds.map((fieldId) => (
-                  <Text key={fieldId} style={{ fontSize: 16 }}>
-                    {formatReviewFieldLine(fieldId, slot, fieldDefinitions, t)}
-                  </Text>
-                ))
-              )}
-            </Flex>
-          </Card>
-        ))}
-      </Flex>
+      {!everyoneDeclined ? (
+        <Flex vertical gap={12} style={{ width: '100%' }}>
+          {slots.map((slot, index) => (
+            <Card key={index} size="small" style={{ textAlign: 'left' }}>
+              <Flex vertical gap={10}>
+                <Text strong style={{ fontSize: 16 }}>
+                  {formatReviewGuestHeading(slot, index + 1, t)}
+                </Text>
+                {slot.attending === false ? null : slot.requiredFieldIds.length === 0 ? (
+                  <Text type="secondary">{t('events.detail.guestConfirm.reviewNoFields')}</Text>
+                ) : (
+                  slot.requiredFieldIds.map((fieldId) => (
+                    <Text key={fieldId} style={{ fontSize: 16 }}>
+                      {formatReviewFieldLine(fieldId, slot, fieldDefinitions, t)}
+                    </Text>
+                  ))
+                )}
+              </Flex>
+            </Card>
+          ))}
+        </Flex>
+      ) : null}
 
       <GuestFlowActions>
         <Button size="large" onClick={onBack}>

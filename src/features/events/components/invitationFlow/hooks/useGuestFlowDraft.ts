@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react'
 import type { Invitation, Product } from '@/shared/types/api'
 import { buildCheckoutSnapshotFromProducts } from '../lib/guestCheckoutSession'
-import { buildInitialGuestConfirmSlots } from '../lib/guestConfirmMock'
+import {
+  buildInitialGuestConfirmSlots,
+  markAllGuestsNotAttending,
+} from '../lib/guestConfirmMock'
 import {
   GUEST_FLOW_DRAFT_VERSION,
   createDefaultGuestFlowDraftState,
@@ -56,20 +59,28 @@ function hydrationFromDraft(
 ): GuestFlowHydrationPayload {
   const merged = mergeDraftWithServerState(draft, invitation, ticket)
   const initialSlots = buildInitialGuestConfirmSlots(invitation, ticket)
+  const declinedPath = draft.flowPath === 'decline'
+  const guestSlots = declinedPath
+    ? markAllGuestsNotAttending(merged.guestSlots)
+    : merged.guestSlots
+  const confirmPhase = declinedPath ? 'review' : merged.confirmPhase
+  const confirmGuestIndex = declinedPath
+    ? Math.max(0, guestSlots.length - 1)
+    : Math.min(Math.max(0, draft.confirmGuestIndex), Math.max(0, initialSlots.length - 1))
 
   return {
     ...merged,
+    guestSlots,
+    confirmPhase,
+    confirmGuestIndex,
     activeStep: resolveGuestFlowStepFromDraft(draft),
-    confirmGuestIndex: Math.min(
-      Math.max(0, draft.confirmGuestIndex),
-      Math.max(0, initialSlots.length - 1),
-    ),
     cardPayment: {
       ...createDefaultCardPaymentPersisted(),
       ...draft.cardPayment,
     },
   }
 }
+
 
 function hydrationWithoutDraft(
   invitation: Invitation,

@@ -21,6 +21,7 @@ import {
   type GuestCheckoutSnapshot,
 } from '../../invitationFlow/lib/guestCheckoutSession'
 import {
+  allGuestsNotAttending,
   formatReviewFieldLine,
   formatReviewGuestHeading,
   type GuestConfirmFormSlot,
@@ -253,11 +254,13 @@ function GuestsSection({
   fieldDefinitions,
   editLabel,
   onEdit,
+  everyoneDeclined,
 }: {
   slots: GuestConfirmFormSlot[]
   fieldDefinitions: FieldDefinition[]
   editLabel: string
   onEdit: () => void
+  everyoneDeclined: boolean
 }) {
   const { t } = useTranslation()
 
@@ -270,12 +273,20 @@ function GuestsSection({
       onEdit={onEdit}
       titleExtra={
         <Text type="secondary" className="guest-review-section-count">
-          {t('events.detail.guestReview.guestCount', { count: slots.length })}
+          {everyoneDeclined
+            ? t('events.detail.guestReview.allDeclinedGuestBadge', { count: slots.length })
+            : t('events.detail.guestReview.guestCount', { count: slots.length })}
         </Text>
       }
     >
       {slots.length === 0 ? (
         <Text type="secondary">{t('events.detail.guestReview.guestsEmpty')}</Text>
+      ) : everyoneDeclined ? (
+        <div className="guest-review-decline-notice">
+          <Paragraph style={{ margin: 0, fontSize: 16, lineHeight: 1.6 }}>
+            {t('events.detail.guestReview.allDeclinedGuestsSummary')}
+          </Paragraph>
+        </div>
       ) : (
         slots.map((slot, index) => (
           <div key={index} className="guest-review-guest-block">
@@ -456,16 +467,33 @@ export function EventGuestReviewBlock({
   const { t } = useTranslation()
   const sectionEditLabel = t('events.detail.guestReview.sectionEdit')
   const showPaymentEdit = Boolean(onEditPayment)
+  const everyoneDeclined = guestSlots.length > 0 && allGuestsNotAttending(guestSlots)
+  const hasSelectedGifts = Boolean(checkout && giftCheckoutLineItems(checkout).length > 0)
 
   if (variant !== 'wedding') return null
 
   return (
-    <div className={guestPanelShellClassName} style={guestPanelShellStyle}>
+    <div
+      className={
+        everyoneDeclined
+          ? `${guestPanelShellClassName} guest-review-shell--all-declined`
+          : guestPanelShellClassName
+      }
+      style={guestPanelShellStyle}
+    >
       <Flex vertical align="center" gap={24} style={guestPanelContentStyle}>
         <GuestFlowBlockHeader
           icon={<CheckCircleOutlined />}
-          title={t('events.detail.guestReview.title')}
-          subtitle={t('events.detail.guestReview.subtitle')}
+          title={
+            everyoneDeclined
+              ? t('events.detail.guestConfirm.reviewAllDeclinedTitle')
+              : t('events.detail.guestReview.title')
+          }
+          subtitle={
+            everyoneDeclined
+              ? t('events.detail.guestReview.allDeclinedFinalSubtitle')
+              : t('events.detail.guestReview.subtitle')
+          }
         />
 
         <EventInfoSection event={event} />
@@ -474,19 +502,22 @@ export function EventGuestReviewBlock({
           fieldDefinitions={fieldDefinitions}
           editLabel={sectionEditLabel}
           onEdit={onEditGuests}
+          everyoneDeclined={everyoneDeclined}
         />
         <GiftsSection
           checkout={checkout}
           editLabel={sectionEditLabel}
           onEdit={onEditGifts}
         />
-        <GuestPaymentReviewSection
-          checkout={checkout}
-          paymentSnapshot={paymentSnapshot}
-          cardPayment={cardPayment}
-          editLabel={showPaymentEdit ? sectionEditLabel : undefined}
-          onEdit={showPaymentEdit ? onEditPayment : undefined}
-        />
+        {hasSelectedGifts ? (
+          <GuestPaymentReviewSection
+            checkout={checkout}
+            paymentSnapshot={paymentSnapshot}
+            cardPayment={cardPayment}
+            editLabel={showPaymentEdit ? sectionEditLabel : undefined}
+            onEdit={showPaymentEdit ? onEditPayment : undefined}
+          />
+        ) : null}
         <MessageSection
           message={coupleMessage}
           editLabel={sectionEditLabel}

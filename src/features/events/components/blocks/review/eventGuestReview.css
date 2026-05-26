@@ -3,6 +3,19 @@
   text-align: left;
 }
 
+.guest-review-decline-notice {
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--ant-color-fill-quaternary);
+  border: 1px solid var(--ant-color-border-secondary);
+}
+
+.guest-review-shell--all-declined {
+  border-radius: 16px;
+  outline: 1px solid var(--ant-color-border-secondary);
+  outline-offset: -1px;
+}
+
 .guest-review-section-card .ant-card-body {
   padding: 32px 28px 36px;
 }

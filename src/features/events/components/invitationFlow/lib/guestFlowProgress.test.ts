@@ -27,6 +27,8 @@ describe('guestFlowProgress', () => {
     expect(guestFlowProgressStepCanNavigate('message', 'confirm', checkout, completion)).toBe(
       true,
     )
+    expect(guestFlowProgressStepStatus('review', 'confirm', checkout, completion)).toBe('upcoming')
+    expect(guestFlowProgressStepCanNavigate('review', 'confirm', checkout, completion)).toBe(true)
   })
 
   it('keeps upcoming steps disabled when not filled', () => {

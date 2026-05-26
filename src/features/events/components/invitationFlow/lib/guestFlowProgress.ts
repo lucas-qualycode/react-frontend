@@ -101,6 +101,10 @@ export function guestFlowProgressStepStatus(
 
   if (stepIndex === activeIndex) return 'current'
 
+  if (progressStep === 'review') {
+    return 'upcoming'
+  }
+
   if (guestFlowProgressStepIsFilled(progressStep, completion, checkout, activeStep)) {
     return 'completed'
   }

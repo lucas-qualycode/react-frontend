@@ -1,6 +1,5 @@
 import {
   CheckCircleOutlined,
-  CheckOutlined,
   CreditCardOutlined,
   GiftOutlined,
   HeartOutlined,
@@ -112,7 +111,7 @@ export function GuestFlowStepIndicator({
                   {isReviewStep ? (
                     <CheckCircleOutlined className="guest-flow-step-review-icon" aria-hidden />
                   ) : status === 'completed' ? (
-                    <CheckOutlined className="guest-flow-step-check" aria-hidden />
+                    PROGRESS_STEP_ICON[step]
                   ) : (
                     PROGRESS_STEP_ICON[step]
                   )}

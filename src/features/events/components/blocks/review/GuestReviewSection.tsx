@@ -11,6 +11,7 @@ type Props = {
   titleExtra?: ReactNode
   editLabel?: string
   onEdit?: () => void
+  hideDivider?: boolean
   children: ReactNode
 }
 
@@ -21,6 +22,7 @@ export function GuestReviewSection({
   titleExtra,
   editLabel,
   onEdit,
+  hideDivider,
   children,
 }: Props) {
   return (
@@ -53,7 +55,9 @@ export function GuestReviewSection({
             </div>
           ) : null}
         </div>
-        <div className="guest-review-section-divider" role="presentation" />
+        {hideDivider ? null : (
+          <div className="guest-review-section-divider" role="presentation" />
+        )}
         <div className="guest-review-section-body">{children}</div>
       </Card>
     </section>

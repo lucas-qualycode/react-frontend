@@ -106,7 +106,7 @@ function formatScheduleLine(
   }
 }
 
-function EventInfoSection({ event }: { event: Event }) {
+function EventInfoSection({ event, hideDetails }: { event: Event; hideDetails?: boolean }) {
   const { t, i18n } = useTranslation()
   const [externalLinkModalOpen, setExternalLinkModalOpen] = useState(false)
   const schedules = useMemo(() => schedulesFromEvent(event), [event])
@@ -206,45 +206,50 @@ function EventInfoSection({ event }: { event: Event }) {
       id="guest-review-event-heading"
       icon={<CalendarOutlined />}
       title={event.name}
+      hideDivider={hideDetails}
     >
-      <div>
-        <ReviewDetailLabel icon={<CarryOutOutlined />}>
-          {t('events.detail.guestWelcome.detailsWhen')}
-        </ReviewDetailLabel>
-        {whenLine ? (
-          <Text style={{ fontSize: 16 }}>{whenLine}</Text>
-        ) : (
-          <Text type="secondary">{t('events.detail.guestWelcome.detailsWhenTbd')}</Text>
-        )}
-      </div>
-      <div>
-        <ReviewDetailLabel
-          icon={<EnvironmentOutlined />}
-          inlineActions={whereLabelInlineActions}
-        >
-          {t('events.detail.guestWelcome.detailsWhere')}
-        </ReviewDetailLabel>
-        {whereContent}
-      </div>
+      {hideDetails ? null : (
+        <>
+          <div>
+            <ReviewDetailLabel icon={<CarryOutOutlined />}>
+              {t('events.detail.guestWelcome.detailsWhen')}
+            </ReviewDetailLabel>
+            {whenLine ? (
+              <Text style={{ fontSize: 16 }}>{whenLine}</Text>
+            ) : (
+              <Text type="secondary">{t('events.detail.guestWelcome.detailsWhenTbd')}</Text>
+            )}
+          </div>
+          <div>
+            <ReviewDetailLabel
+              icon={<EnvironmentOutlined />}
+              inlineActions={whereLabelInlineActions}
+            >
+              {t('events.detail.guestWelcome.detailsWhere')}
+            </ReviewDetailLabel>
+            {whereContent}
+          </div>
 
-      <Modal
-        open={externalLinkModalOpen}
-        title={t('events.detail.guestReview.externalLinkModalTitle')}
-        okText={t('events.detail.guestReview.externalLinkModalOk')}
-        cancelText={t('events.detail.guestReview.externalLinkModalCancel')}
-        onOk={handleConfirmExternalLink}
-        onCancel={() => setExternalLinkModalOpen(false)}
-        destroyOnClose
-      >
-        <Paragraph style={{ marginBottom: whereExternalUrl ? 12 : 0 }}>
-          {t('events.detail.guestReview.externalLinkModalBody')}
-        </Paragraph>
-        {whereExternalUrl ? (
-          <Text type="secondary" className="guest-review-external-link-url">
-            {whereExternalUrl}
-          </Text>
-        ) : null}
-      </Modal>
+          <Modal
+            open={externalLinkModalOpen}
+            title={t('events.detail.guestReview.externalLinkModalTitle')}
+            okText={t('events.detail.guestReview.externalLinkModalOk')}
+            cancelText={t('events.detail.guestReview.externalLinkModalCancel')}
+            onOk={handleConfirmExternalLink}
+            onCancel={() => setExternalLinkModalOpen(false)}
+            destroyOnClose
+          >
+            <Paragraph style={{ marginBottom: whereExternalUrl ? 12 : 0 }}>
+              {t('events.detail.guestReview.externalLinkModalBody')}
+            </Paragraph>
+            {whereExternalUrl ? (
+              <Text type="secondary" className="guest-review-external-link-url">
+                {whereExternalUrl}
+              </Text>
+            ) : null}
+          </Modal>
+        </>
+      )}
     </GuestReviewSection>
   )
 }
@@ -496,7 +501,7 @@ export function EventGuestReviewBlock({
           }
         />
 
-        <EventInfoSection event={event} />
+        <EventInfoSection event={event} hideDetails={everyoneDeclined} />
         <GuestsSection
           slots={guestSlots}
           fieldDefinitions={fieldDefinitions}

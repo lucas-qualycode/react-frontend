@@ -251,6 +251,7 @@
         "successTitle": "Payment details saved",
         "successBody": "Your payment information is ready. The charge will be completed when checkout is connected to the server.",
         "mockModeWarning": "Mercado Pago is not configured. Add VITE_MERCADOPAGO_PUBLIC_KEY to enable card payments.",
+        "httpsRequiredWarning": "Card payments need HTTPS. On http://localhost a test token is used at checkout. Use https:// in production, or run the Vite dev server with HTTPS to test real card tokens.",
         "pixHint": "The Pix QR code appears only after you confirm your invitation details on the final step.",
         "brickError": "Could not load the card payment form. Try again or choose Pix.",
         "brickLoading": "Loading payment form…",

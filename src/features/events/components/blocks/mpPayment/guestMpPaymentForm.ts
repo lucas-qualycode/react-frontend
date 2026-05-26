@@ -1,4 +1,5 @@
 import type { GuestCheckoutSnapshot } from '../../invitationFlow/lib/guestCheckoutSession'
+import { guestPaymentProviderForMpPaymentBlock } from '../../invitationFlow/lib/guestPaymentProvider'
 import {
   getCardNumberMaxLength,
   inferCardBrandFromDigits,
@@ -130,11 +131,19 @@ export function mergeIdentificationDocTypes(
 export function buildCardPaymentSnapshot(
   persisted: GuestCardPaymentPersisted,
 ): GuestMpPaymentSnapshot {
-  return { method: 'card', card: persisted }
+  return {
+    method: 'card',
+    card: persisted,
+    payment_provider: guestPaymentProviderForMpPaymentBlock(),
+  }
 }
 
 export function buildPixPaymentSnapshot(payer: GuestMpPixPayer): GuestMpPaymentSnapshot {
-  return { method: 'pix', payer }
+  return {
+    method: 'pix',
+    payer,
+    payment_provider: guestPaymentProviderForMpPaymentBlock(),
+  }
 }
 
 export function buildPixOrderFromSnapshot(

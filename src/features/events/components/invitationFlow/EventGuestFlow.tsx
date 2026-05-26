@@ -181,7 +181,12 @@ export function EventGuestFlow({
   const [mpNavigationFieldErrors, setMpNavigationFieldErrors] = useState<
     CardFormValidation['fieldErrors'] | undefined
   >(undefined)
-  const { isConfigured: isMpConfigured, isReady: isMpReady, createCardToken } = useMercadoPago()
+  const {
+    isConfigured: isMpConfigured,
+    isReady: isMpReady,
+    canCreateCardToken: canCreateMpCardToken,
+    createCardToken,
+  } = useMercadoPago()
 
   const invitationReady =
     !guestInvitation.isLoading &&
@@ -489,6 +494,9 @@ export function EventGuestFlow({
       if (snapshot.method === 'card') {
         setCardPayment(snapshot.card)
       }
+      setCheckout((prev) =>
+        prev ? { ...prev, payment_provider: snapshot.payment_provider } : prev,
+      )
       animateTo('message')
     },
     [animateTo],
@@ -666,7 +674,7 @@ export function EventGuestFlow({
       if (mpPaymentSnapshot.method === 'pix') {
         orderBody = buildPixOrderFromSnapshot(resolvedCheckout, mpPaymentSnapshot)
       } else {
-        const tokenResult = isMpConfigured
+        const tokenResult = canCreateMpCardToken
           ? await createCardToken({ ...mpPaymentSnapshot.card, ...cardSecrets })
           : buildMockCardTokenResult(mpPaymentSnapshot.card)
         orderBody = buildCardOrderFromSnapshot(
@@ -693,12 +701,12 @@ export function EventGuestFlow({
     cardSecrets,
     checkout,
     clearDraft,
+    canCreateMpCardToken,
     createCardToken,
     guestInvitation.invitation,
     guestInvitation.ticket,
     guestSlots,
     invitationId,
-    isMpConfigured,
     mpPaymentSnapshot,
     t,
   ])

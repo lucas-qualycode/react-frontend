@@ -1,5 +1,9 @@
 import type { Product, ProductKind } from '@/shared/types/api'
 import type { GuestConfirmFormSlot } from './guestConfirmMock'
+import {
+  normalizeGuestPaymentProvider,
+  type GuestPaymentProviderId,
+} from './guestPaymentProvider'
 
 export type GuestCheckoutLineItem = {
   product_id: string
@@ -12,9 +16,10 @@ export type GuestCheckoutLineItem = {
 
 export type GuestCheckoutSnapshot = {
   parent_id: string
-  line_items: GuestCheckoutLineItem[]
+  items: GuestCheckoutLineItem[]
   total_cents: number
   currency: 'BRL'
+  payment_provider?: GuestPaymentProviderId
 }
 
 function normalizeProductKind(raw: unknown): ProductKind {
@@ -67,20 +72,22 @@ export function normalizeCheckoutSnapshot(raw: unknown): GuestCheckoutSnapshot |
     checkout.parent_id ?? checkout.parentId ?? checkout.event_id ?? checkout.eventId ?? '',
   ).trim()
   if (!parent_id) return null
-  const rawItems = checkout.line_items ?? checkout.lineItems
-  const line_items = Array.isArray(rawItems)
+  const rawItems = checkout.items ?? checkout.line_items ?? checkout.lineItems
+  const items = Array.isArray(rawItems)
     ? rawItems
         .map(normalizeCheckoutLineItem)
         .filter((item): item is GuestCheckoutLineItem => item !== null)
     : []
   const total_cents = Number(checkout.total_cents ?? checkout.totalCents ?? 0)
+  const payment_provider = normalizeGuestPaymentProvider(checkout.payment_provider)
   return {
     parent_id,
-    line_items,
+    items,
     total_cents: Number.isFinite(total_cents)
       ? total_cents
-      : line_items.reduce((sum, item) => sum + item.total_price_cents, 0),
+      : items.reduce((sum, item) => sum + item.total_price_cents, 0),
     currency: 'BRL',
+    ...(payment_provider ? { payment_provider } : {}),
   }
 }
 
@@ -108,7 +115,7 @@ export function buildGiftLineItemsFromProducts(products: Product[]): GuestChecko
 export function giftCheckoutLineItems(
   checkout: GuestCheckoutSnapshot,
 ): GuestCheckoutLineItem[] {
-  return checkout.line_items.filter((item) => item.product_type === 'GIFT')
+  return checkout.items.filter((item) => item.product_type === 'GIFT')
 }
 
 export function giftCheckoutTotalCents(checkout: GuestCheckoutSnapshot): number {
@@ -118,13 +125,13 @@ export function giftCheckoutTotalCents(checkout: GuestCheckoutSnapshot): number 
   )
 }
 
-export function splitCheckoutLineItemsByTicketId(
-  line_items: GuestCheckoutLineItem[],
+export function splitCheckoutItemsByType(
+  items: GuestCheckoutLineItem[],
   _ticket_id: string | undefined,
-): { ticket_line_items: GuestCheckoutLineItem[]; gift_line_items: GuestCheckoutLineItem[] } {
+): { ticket_items: GuestCheckoutLineItem[]; gift_items: GuestCheckoutLineItem[] } {
   return {
-    ticket_line_items: line_items.filter((item) => item.product_type === 'TICKET'),
-    gift_line_items: line_items.filter((item) => item.product_type === 'GIFT'),
+    ticket_items: items.filter((item) => item.product_type === 'TICKET'),
+    gift_items: items.filter((item) => item.product_type === 'GIFT'),
   }
 }
 
@@ -134,16 +141,16 @@ export function buildGuestCheckoutSnapshot(
   guestSlots: GuestConfirmFormSlot[],
   giftProducts: Product[],
 ): GuestCheckoutSnapshot {
-  const ticket_line_items = ticket
+  const ticket_items = ticket
     ? buildTicketLineItemsForAttendingGuests(ticket, guestSlots)
     : []
-  const gift_line_items = buildGiftLineItemsFromProducts(giftProducts)
-  const line_items = [...ticket_line_items, ...gift_line_items]
-  const total_cents = line_items.reduce((sum, item) => sum + item.total_price_cents, 0)
+  const gift_items = buildGiftLineItemsFromProducts(giftProducts)
+  const items = [...ticket_items, ...gift_items]
+  const total_cents = items.reduce((sum, item) => sum + item.total_price_cents, 0)
 
   return {
     parent_id,
-    line_items,
+    items,
     total_cents,
     currency: 'BRL',
   }
@@ -156,11 +163,8 @@ export function refreshGuestCheckoutWithAttendingTickets(
 ): GuestCheckoutSnapshot {
   if (!ticket) return checkout
 
-  const { gift_line_items } = splitCheckoutLineItemsByTicketId(
-    checkout.line_items,
-    ticket.id,
-  )
-  const giftProducts: Product[] = gift_line_items.map((item) => ({
+  const { gift_items } = splitCheckoutItemsByType(checkout.items, ticket.id)
+  const giftProducts: Product[] = gift_items.map((item) => ({
     id: item.product_id,
     name: item.name,
     description: '',
@@ -183,11 +187,11 @@ export function buildCheckoutSnapshotFromProducts(
   parent_id: string,
   products: Product[],
 ): GuestCheckoutSnapshot {
-  const line_items = buildGiftLineItemsFromProducts(products)
-  const total_cents = line_items.reduce((sum, item) => sum + item.total_price_cents, 0)
+  const items = buildGiftLineItemsFromProducts(products)
+  const total_cents = items.reduce((sum, item) => sum + item.total_price_cents, 0)
   return {
     parent_id,
-    line_items,
+    items,
     total_cents,
     currency: 'BRL',
   }

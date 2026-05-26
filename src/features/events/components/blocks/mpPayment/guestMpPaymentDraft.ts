@@ -1,4 +1,5 @@
 import type { GuestCheckoutSnapshot } from '../../invitationFlow/lib/guestCheckoutSession'
+import type { GuestPaymentProviderId } from '../../invitationFlow/lib/guestPaymentProvider'
 
 export function centsToMpAmount(totalCents: number): string {
   return (totalCents / 100).toFixed(2)
@@ -87,8 +88,8 @@ export type GuestMpCardTokenResult = {
 }
 
 export type GuestMpPaymentSnapshot =
-  | { method: 'pix'; payer: GuestMpPixPayer }
-  | { method: 'card'; card: GuestCardPaymentPersisted }
+  | { method: 'pix'; payer: GuestMpPixPayer; payment_provider: GuestPaymentProviderId }
+  | { method: 'card'; card: GuestCardPaymentPersisted; payment_provider: GuestPaymentProviderId }
 
 export type GuestMpPaymentDraft = {
   snapshot: GuestMpPaymentSnapshot
@@ -97,6 +98,7 @@ export type GuestMpPaymentDraft = {
 
 export type GuestMpPaymentPayload = GuestCheckoutSnapshot & {
   invitation_id: string
+  payment_provider: GuestPaymentProviderId
   mp_order: MpCreateOrderBody
 }
 
@@ -170,9 +172,15 @@ export function buildGuestMpPaymentPayload(
   checkout: GuestCheckoutSnapshot,
   draft: GuestMpPaymentDraft,
 ): GuestMpPaymentPayload {
+  const payment_provider =
+    draft.snapshot.payment_provider ?? checkout.payment_provider
+  if (!payment_provider) {
+    throw new Error('Guest checkout payload requires payment_provider')
+  }
   return {
     ...checkout,
     invitation_id: invitationId,
+    payment_provider,
     mp_order: draft.orderBody,
   }
 }

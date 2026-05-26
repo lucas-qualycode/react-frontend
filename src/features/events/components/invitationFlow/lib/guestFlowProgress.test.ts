@@ -10,7 +10,7 @@ describe('guestFlowProgress', () => {
     const checkout = {
       parent_id: 'e1',
       total_cents: 0,
-      line_items: [],
+      items: [],
       currency: 'BRL' as const,
     }
     const completion = buildGuestFlowProgressCompletion({

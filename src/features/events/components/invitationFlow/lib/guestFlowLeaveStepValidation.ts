@@ -15,6 +15,7 @@ import {
   type CardFormValidation,
   type GuestCardPaymentFormState,
 } from '../../blocks/mpPayment/guestMpPaymentForm'
+import { canUseMercadoPagoCardTokenization } from '../../../lib/mercadoPagoSecureContext'
 
 export type LeaveStepValidationFailure =
   | {
@@ -92,7 +93,8 @@ function validateLeaveMpPaymentStep(
   }
 
   const validation = validateCardPaymentForm(cardForm, t, {
-    requirePaymentMethod: isMpConfigured && isMpReady,
+    requirePaymentMethod:
+      isMpConfigured && isMpReady && canUseMercadoPagoCardTokenization(),
   })
   if (!validation.valid) {
     message.error(t('events.detail.guestMpPayment.validation.formInvalid'))

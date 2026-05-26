@@ -8,6 +8,7 @@ import {
   type MpInstallmentCost,
 } from '../components/blocks/mpPayment/guestMpInstallments'
 import { cardBin, normalizeCardNumber } from '../components/blocks/mpPayment/guestMpPaymentForm'
+import { canUseMercadoPagoCardTokenization } from '../lib/mercadoPagoSecureContext'
 
 export type MpIdentificationType = {
   id: string
@@ -155,6 +156,10 @@ export function useMercadoPago(locale = 'pt-BR') {
 
   const createCardToken = useCallback(
     async (form: GuestCardPaymentFormState): Promise<GuestMpCardTokenResult> => {
+      if (!canUseMercadoPagoCardTokenization()) {
+        throw new Error('Mercado Pago card tokenization requires HTTPS')
+      }
+
       const mp = getInstance()
       if (!mp) {
         throw new Error('Mercado Pago is not ready')
@@ -184,9 +189,15 @@ export function useMercadoPago(locale = 'pt-BR') {
     [getInstance],
   )
 
+  const isConfigured = publicKey.length > 0
+  const supportsCardTokenization = canUseMercadoPagoCardTokenization()
+  const canCreateCardToken = isConfigured && isReady && supportsCardTokenization
+
   return {
     publicKey,
-    isConfigured: publicKey.length > 0,
+    isConfigured,
+    supportsCardTokenization,
+    canCreateCardToken,
     isReady,
     error,
     getInstance,

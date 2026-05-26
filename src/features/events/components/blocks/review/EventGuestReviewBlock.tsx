@@ -348,7 +348,7 @@ function productFromCheckoutLine(item: GuestCheckoutLineItem, catalog?: Product)
 }
 
 function resolveCheckoutProducts(
-  lineItems: GuestCheckoutSnapshot['line_items'],
+  lineItems: GuestCheckoutSnapshot['items'],
   products: Product[],
 ): Product[] {
   const byId = new Map(products.map((product) => [product.id, product]))

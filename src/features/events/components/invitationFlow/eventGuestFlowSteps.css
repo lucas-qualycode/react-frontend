@@ -80,6 +80,11 @@
   line-height: 1;
 }
 
+.guest-flow-step-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
 .guest-flow-step-check {
   font-size: 14px;
 }

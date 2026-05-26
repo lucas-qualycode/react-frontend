@@ -1,4 +1,12 @@
-import { CheckCircleOutlined, CheckOutlined, HeartOutlined } from '@ant-design/icons'
+import {
+  CheckCircleOutlined,
+  CheckOutlined,
+  CreditCardOutlined,
+  GiftOutlined,
+  HeartOutlined,
+  MessageOutlined,
+  TeamOutlined,
+} from '@ant-design/icons'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GuestCheckoutSnapshot } from '../lib/guestCheckoutSession'
@@ -20,6 +28,13 @@ const PROGRESS_STEP_LABEL_KEY: Record<GuestFlowProgressStep, string> = {
   mp_payment: 'events.detail.guestFlow.progressStepPayment',
   message: 'events.detail.guestFlow.progressStepMessage',
   review: 'events.detail.guestFlow.progressStepReview',
+}
+
+const PROGRESS_STEP_ICON: Record<Exclude<GuestFlowProgressStep, 'review'>, JSX.Element> = {
+  confirm: <TeamOutlined className="guest-flow-step-icon" aria-hidden />,
+  gift: <GiftOutlined className="guest-flow-step-icon" aria-hidden />,
+  mp_payment: <CreditCardOutlined className="guest-flow-step-icon" aria-hidden />,
+  message: <MessageOutlined className="guest-flow-step-icon" aria-hidden />,
 }
 
 type Props = {
@@ -99,9 +114,7 @@ export function GuestFlowStepIndicator({
                   ) : status === 'completed' ? (
                     <CheckOutlined className="guest-flow-step-check" aria-hidden />
                   ) : (
-                    <span className="guest-flow-step-number" aria-hidden>
-                      {index + 1}
-                    </span>
+                    PROGRESS_STEP_ICON[step]
                   )}
                 </button>
               </li>

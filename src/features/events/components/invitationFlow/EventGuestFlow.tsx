@@ -6,7 +6,13 @@ import { EventGuestConfirmBlock } from '../blocks/confirm/EventGuestConfirmBlock
 import { EventGuestDeclineBlock } from '../blocks/decline/EventGuestDeclineBlock'
 import { EventGuestGiftBlock } from '../blocks/gift/EventGuestGiftBlock'
 import { EventGuestMessageBlock } from '../blocks/message/EventGuestMessageBlock'
-import { EventGuestMpPaymentBlock } from '../blocks/mpPayment/EventGuestMpPaymentBlock'
+import { getDefaultGuestPaymentProvider } from '../blocks/payment/registry'
+import {
+  buildGuestCheckoutPayload,
+  logGuestCheckoutPayload,
+} from '../blocks/payment/checkoutPayload'
+import { finalizeGuestPayment } from '../blocks/payment/finalize'
+import type { GuestPaymentSnapshot } from '../blocks/payment/types'
 import { EventGuestReviewBlock } from '../blocks/review/EventGuestReviewBlock'
 import { EventGuestBackgroundBlock } from '../blocks/background/EventGuestBackgroundBlock'
 import { EventGuestWelcomeBlock } from '../blocks/welcome/EventGuestWelcomeBlock'
@@ -29,17 +35,7 @@ import {
 } from './lib/guestFlowLeaveStepValidation'
 import type { GuestSlotValidationResult } from './lib/guestConfirmMock'
 import type { CardFormValidation } from '../blocks/mpPayment/guestMpPaymentForm'
-import {
-  buildMockCardTokenResult,
-  buildGuestMpPaymentPayload,
-  logGuestMpPaymentPayload,
-  type GuestMpPaymentSnapshot,
-} from '../blocks/mpPayment/guestMpPaymentDraft'
-import {
-  buildCardOrderFromSnapshot,
-  buildPixOrderFromSnapshot,
-  createDefaultCardPaymentSecrets,
-} from '../blocks/mpPayment/guestMpPaymentForm'
+import { createDefaultCardPaymentSecrets } from '../blocks/mpPayment/guestMpPaymentForm'
 import { buildInitialGuestConfirmSlots, type GuestConfirmFormSlot } from './lib/guestConfirmMock'
 import {
   buildGuestMessageSubmitPayload,
@@ -163,7 +159,7 @@ export function EventGuestFlow({
   const [pixPayerEmail, setPixPayerEmail] = useState(defaultDraftState.pixPayerEmail)
   const [cardPayment, setCardPayment] = useState(defaultDraftState.cardPayment)
   const [cardSecrets, setCardSecrets] = useState(createDefaultCardPaymentSecrets)
-  const [mpPaymentSnapshot, setMpPaymentSnapshot] = useState<GuestMpPaymentSnapshot | null>(null)
+  const [paymentSnapshot, setPaymentSnapshot] = useState<GuestPaymentSnapshot | null>(null)
   const [guestsSaved, setGuestsSaved] = useState(defaultDraftState.guestsSaved ?? false)
   const [messageSaved, setMessageSaved] = useState(defaultDraftState.messageSaved ?? false)
   const [lastSavedGuestsFingerprint, setLastSavedGuestsFingerprint] = useState<string | null>(
@@ -178,9 +174,11 @@ export function EventGuestFlow({
   const [confirmValidationGuestIndex, setConfirmValidationGuestIndex] = useState<number | undefined>(
     undefined,
   )
-  const [mpNavigationFieldErrors, setMpNavigationFieldErrors] = useState<
+  const [paymentNavigationFieldErrors, setPaymentNavigationFieldErrors] = useState<
     CardFormValidation['fieldErrors'] | undefined
   >(undefined)
+  const guestPaymentProvider = useMemo(() => getDefaultGuestPaymentProvider(), [])
+  const PaymentBlock = guestPaymentProvider.PaymentBlock
   const {
     isConfigured: isMpConfigured,
     isReady: isMpReady,
@@ -254,7 +252,7 @@ export function EventGuestFlow({
     setPixPayerEmail(payload.pixPayerEmail)
     setCardPayment(payload.cardPayment)
     setCardSecrets(createDefaultCardPaymentSecrets())
-    setMpPaymentSnapshot(null)
+    setPaymentSnapshot(null)
     setGuestsSaved(payload.guestsSaved ?? false)
     setMessageSaved(payload.messageSaved ?? false)
     setLastSavedGuestsFingerprint(payload.lastSavedGuestsFingerprint ?? null)
@@ -317,7 +315,7 @@ export function EventGuestFlow({
         confirmPhase,
         lastSavedGuestsFingerprint,
         checkout,
-        mpPaymentSnapshot: mpPaymentSnapshot !== null,
+        paymentSnapshot: paymentSnapshot !== null,
         messageSaved,
         maxProgressIndexReached,
       }),
@@ -326,7 +324,7 @@ export function EventGuestFlow({
       confirmPhase,
       lastSavedGuestsFingerprint,
       checkout,
-      mpPaymentSnapshot,
+      paymentSnapshot,
       messageSaved,
       maxProgressIndexReached,
     ],
@@ -478,7 +476,7 @@ export function EventGuestFlow({
   const handleGiftsConfirmed = useCallback(
     (snapshot: GuestCheckoutSnapshot) => {
       setCheckout(snapshot)
-      setMpPaymentSnapshot(null)
+      setPaymentSnapshot(null)
       if (snapshot.total_cents > 0) {
         animateTo('mp_payment')
         return
@@ -489,8 +487,8 @@ export function EventGuestFlow({
   )
 
   const handlePaymentComplete = useCallback(
-    (snapshot: GuestMpPaymentSnapshot) => {
-      setMpPaymentSnapshot(snapshot)
+    (snapshot: GuestPaymentSnapshot) => {
+      setPaymentSnapshot(snapshot)
       if (snapshot.method === 'card') {
         setCardPayment(snapshot.card)
       }
@@ -564,7 +562,7 @@ export function EventGuestFlow({
       return
     }
     if (failure.step === 'mp_payment') {
-      setMpNavigationFieldErrors(failure.fieldErrors)
+      setPaymentNavigationFieldErrors(failure.fieldErrors)
     }
   }, [confirmPhase])
 
@@ -581,14 +579,13 @@ export function EventGuestFlow({
         paymentMethod,
         pixPayerEmail,
         cardPaymentForm: { ...cardPayment, ...cardSecrets },
-        isMpConfigured,
-        isMpReady,
+        mercadoPagoLeaveDeps: { isConfigured: isMpConfigured, isReady: isMpReady },
         t,
       })
       if (leaveResult.ok) {
         setConfirmValidationHighlight(null)
         setConfirmValidationGuestIndex(undefined)
-        setMpNavigationFieldErrors(undefined)
+        setPaymentNavigationFieldErrors(undefined)
         return true
       }
       applyLeaveStepValidationFailure(leaveResult)
@@ -664,37 +661,26 @@ export function EventGuestFlow({
       return
     }
 
-    if (!mpPaymentSnapshot) {
+    if (!paymentSnapshot) {
       message.error(t('events.detail.guestReview.paymentPending'))
       return
     }
 
     try {
-      let orderBody
-      if (mpPaymentSnapshot.method === 'pix') {
-        orderBody = buildPixOrderFromSnapshot(resolvedCheckout, mpPaymentSnapshot)
-      } else {
-        const tokenResult = canCreateMpCardToken
-          ? await createCardToken({ ...mpPaymentSnapshot.card, ...cardSecrets })
-          : buildMockCardTokenResult(mpPaymentSnapshot.card)
-        orderBody = buildCardOrderFromSnapshot(
-          resolvedCheckout,
-          mpPaymentSnapshot,
-          tokenResult,
-        )
-      }
+      const finalizeResult = await finalizeGuestPayment(resolvedCheckout, paymentSnapshot, {
+        cardSecrets,
+        createCardToken: (form) => createCardToken(form),
+        canCreateCardToken: canCreateMpCardToken,
+      })
 
-      logGuestMpPaymentPayload(
-        buildGuestMpPaymentPayload(resolvedInvitationId, resolvedCheckout, {
-          snapshot: mpPaymentSnapshot,
-          orderBody,
-        }),
+      logGuestCheckoutPayload(
+        buildGuestCheckoutPayload(resolvedInvitationId, resolvedCheckout, finalizeResult),
       )
       clearDraft()
       setCardSecrets(createDefaultCardPaymentSecrets())
-      setMpPaymentSnapshot(null)
+      setPaymentSnapshot(null)
     } catch (error) {
-      console.error('[guest-mp-payment] finalize error', error)
+      console.error('[guest-checkout] finalize error', error)
       message.error(t('events.detail.guestMpPayment.validation.tokenError'))
     }
   }, [
@@ -707,7 +693,7 @@ export function EventGuestFlow({
     guestInvitation.ticket,
     guestSlots,
     invitationId,
-    mpPaymentSnapshot,
+    paymentSnapshot,
     t,
   ])
 
@@ -820,7 +806,7 @@ export function EventGuestFlow({
       case 'mp_payment':
         if (!checkout) return null
         return (
-          <EventGuestMpPaymentBlock
+          <PaymentBlock
             event={event}
             variant={mpPaymentVariant}
             checkout={checkout}
@@ -834,8 +820,8 @@ export function EventGuestFlow({
             onCardSecretsChange={setCardSecrets}
             onPaymentComplete={handlePaymentComplete}
             onBack={() => animateTo('gift')}
-            navigationFieldErrors={mpNavigationFieldErrors}
-            onNavigationFieldErrorsClear={() => setMpNavigationFieldErrors(undefined)}
+            navigationFieldErrors={paymentNavigationFieldErrors}
+            onNavigationFieldErrorsClear={() => setPaymentNavigationFieldErrors(undefined)}
           />
         )
       case 'message':
@@ -856,7 +842,7 @@ export function EventGuestFlow({
             variant={reviewVariant}
             guestSlots={guestSlots}
             checkout={checkout}
-            mpPaymentSnapshot={mpPaymentSnapshot}
+            paymentSnapshot={paymentSnapshot}
             cardPayment={cardPayment}
             coupleMessage={coupleMessage}
             fieldDefinitions={guestInvitation.fieldDefinitions}

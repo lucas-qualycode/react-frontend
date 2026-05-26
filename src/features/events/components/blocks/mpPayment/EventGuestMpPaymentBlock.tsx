@@ -16,7 +16,8 @@ import {
   type GuestInstallmentOption,
 } from './guestMpInstallments'
 import type { GuestCheckoutSnapshot } from '../../invitationFlow/lib/guestCheckoutSession'
-import type { GuestCardPaymentPersisted, GuestMpPaymentSnapshot } from './guestMpPaymentDraft'
+import type { GuestPaymentSnapshot } from '../payment/types'
+import type { GuestCardPaymentPersisted } from './guestMpPaymentDraft'
 import {
   buildCardPaymentSnapshot,
   buildPixPaymentSnapshot,
@@ -59,7 +60,7 @@ type Props = {
   onCardPaymentChange: (card: GuestCardPaymentPersisted) => void
   cardSecrets: GuestCardPaymentSecrets
   onCardSecretsChange: (secrets: GuestCardPaymentSecrets) => void
-  onPaymentComplete: (snapshot: GuestMpPaymentSnapshot) => void
+  onPaymentComplete: (snapshot: GuestPaymentSnapshot) => void
   onBack: () => void
   navigationFieldErrors?: CardFormValidation['fieldErrors']
   onNavigationFieldErrorsClear?: () => void

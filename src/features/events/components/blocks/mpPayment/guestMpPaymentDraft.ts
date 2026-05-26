@@ -96,9 +96,11 @@ export type GuestMpPaymentDraft = {
   orderBody: MpCreateOrderBody
 }
 
+/** @deprecated Use GuestCheckoutPayload from blocks/payment/types */
 export type GuestMpPaymentPayload = GuestCheckoutSnapshot & {
   invitation_id: string
   payment_provider: GuestPaymentProviderId
+  provider_checkout: MpCreateOrderBody
   mp_order: MpCreateOrderBody
 }
 
@@ -167,6 +169,7 @@ export function buildPixMpOrderBody(
   }
 }
 
+/** @deprecated Use buildGuestCheckoutPayload from blocks/payment/checkoutPayload */
 export function buildGuestMpPaymentPayload(
   invitationId: string,
   checkout: GuestCheckoutSnapshot,
@@ -181,13 +184,15 @@ export function buildGuestMpPaymentPayload(
     ...checkout,
     invitation_id: invitationId,
     payment_provider,
+    provider_checkout: draft.orderBody,
     mp_order: draft.orderBody,
   }
 }
 
+/** @deprecated Use logGuestCheckoutPayload from blocks/payment/checkoutPayload */
 export function logGuestMpPaymentPayload(payload: GuestMpPaymentPayload) {
   if (import.meta.env.DEV) {
-    console.info('[guest-mp-checkout]', payload)
+    console.info('[guest-checkout]', payload)
   }
 }
 

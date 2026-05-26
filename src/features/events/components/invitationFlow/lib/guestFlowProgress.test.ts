@@ -18,7 +18,7 @@ describe('guestFlowProgress', () => {
       confirmPhase: 'review',
       lastSavedGuestsFingerprint: 'fp',
       checkout,
-      mpPaymentSnapshot: false,
+      paymentSnapshot: false,
       messageSaved: true,
       maxProgressIndexReached: 4,
     })
@@ -35,7 +35,7 @@ describe('guestFlowProgress', () => {
       confirmPhase: 'form',
       lastSavedGuestsFingerprint: null,
       checkout: null,
-      mpPaymentSnapshot: false,
+      paymentSnapshot: false,
       messageSaved: false,
       maxProgressIndexReached: 0,
     })

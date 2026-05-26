@@ -3,7 +3,6 @@ import {
   CarryOutOutlined,
   CheckCircleOutlined,
   CopyOutlined,
-  CreditCardOutlined,
   EnvironmentOutlined,
   GiftOutlined,
   LinkOutlined,
@@ -26,19 +25,15 @@ import {
   formatReviewGuestHeading,
   type GuestConfirmFormSlot,
 } from '../../invitationFlow/lib/guestConfirmMock'
-import type { GuestMpPaymentSnapshot } from '../mpPayment/guestMpPaymentDraft'
 import { scheduleEventStart } from '../../invitationFlow/lib/scheduleEventZoned'
 import { GuestFlowActions } from '../../invitationFlow/shared/GuestFlowActions'
 import { GuestFlowBlockHeader } from '../../invitationFlow/shared/GuestFlowBlockHeader'
 import { GuestGiftProductCard } from '../gift/GuestGiftProductCard'
 import { GuestGiftSummaryBar } from '../gift/GuestGiftSummaryBar'
 import { GuestReviewSection } from './GuestReviewSection'
-import {
-  buildFallbackInstallmentOptions,
-  formatCardPaymentTotalReviewLabel,
-  resolveInstallmentDisplayAmounts,
-} from '../mpPayment/guestMpInstallments'
+import { GuestPaymentReviewSection } from '../payment/GuestPaymentReviewSection'
 import type { GuestCardPaymentPersisted } from '../mpPayment/guestMpPaymentDraft'
+import type { GuestPaymentSnapshot } from '../payment/types'
 import { useGuestGiftProducts } from '../gift/useGuestGiftProducts'
 import { guestPanelContentStyle, guestPanelShellClassName, guestPanelShellStyle } from '../../invitationFlow/shared/guestPanelLayout'
 import type { EventGuestReviewVariant } from '../../invitationFlow/types'
@@ -47,35 +42,12 @@ import './eventGuestReview.css'
 
 const { Text, Paragraph } = Typography
 
-const paymentPriceFormatter = new Intl.NumberFormat(undefined, {
-  style: 'currency',
-  currency: 'BRL',
-})
-
-function PaymentReviewField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="guest-review-payment-field">
-      <Text type="secondary" style={{ fontSize: 13 }}>
-        {label}
-      </Text>
-      <Text style={{ fontSize: 16 }}>{value}</Text>
-    </div>
-  )
-}
-
-function formatPaymentDocument(type: string, number: string): string {
-  const digits = number.replace(/\D/g, '')
-  if (!digits) return ''
-  const normalizedType = type.trim().toUpperCase()
-  return normalizedType ? `${normalizedType} ${digits}` : digits
-}
-
 type Props = {
   event: Event
   variant: EventGuestReviewVariant
   guestSlots: GuestConfirmFormSlot[]
   checkout: GuestCheckoutSnapshot | null
-  mpPaymentSnapshot: GuestMpPaymentSnapshot | null
+  paymentSnapshot: GuestPaymentSnapshot | null
   cardPayment: GuestCardPaymentPersisted
   coupleMessage: string
   fieldDefinitions: FieldDefinition[]
@@ -465,106 +437,12 @@ function MessageSection({
   )
 }
 
-function PaymentSection({
-  checkout,
-  mpPaymentSnapshot,
-  cardPayment,
-  editLabel,
-  onEdit,
-}: {
-  checkout: GuestCheckoutSnapshot | null
-  mpPaymentSnapshot: GuestMpPaymentSnapshot | null
-  cardPayment: GuestCardPaymentPersisted
-  editLabel?: string
-  onEdit?: () => void
-}) {
-  const { t, i18n } = useTranslation()
-  const totalCents = checkout?.total_cents ?? 0
-  const totalLabel = paymentPriceFormatter.format(totalCents / 100)
-
-  let body: ReactNode
-  if (totalCents <= 0) {
-    body = <Text type="secondary">{t('events.detail.guestReview.paymentNotRequired')}</Text>
-  } else if (!mpPaymentSnapshot) {
-    body = <Text type="secondary">{t('events.detail.guestReview.paymentPending')}</Text>
-  } else if (mpPaymentSnapshot.method === 'pix') {
-    body = (
-      <Flex vertical gap={10}>
-        <PaymentReviewField
-          label={t('events.detail.guestReview.paymentMethodLabel')}
-          value={t('events.detail.guestMpPayment.methodPix')}
-        />
-        <PaymentReviewField label={t('events.detail.guestGift.total')} value={totalLabel} />
-        <PaymentReviewField
-          label={t('events.detail.guestMpPayment.payerEmail')}
-          value={mpPaymentSnapshot.payer.email}
-        />
-      </Flex>
-    )
-  } else {
-    const card = { ...cardPayment, ...mpPaymentSnapshot.card }
-    const document = formatPaymentDocument(card.identificationType, card.identificationNumber)
-    const installmentOptions =
-      totalCents > 0
-        ? buildFallbackInstallmentOptions(totalCents, i18n.language, t)
-        : []
-    const { installments, installmentAmount, installmentTotalAmount } =
-      resolveInstallmentDisplayAmounts(card, totalCents, installmentOptions)
-    const methodLabel =
-      card.paymentTypeId === 'debit_card'
-        ? t('events.detail.guestMpPayment.methodDebitCard')
-        : t('events.detail.guestMpPayment.methodCreditCard')
-    const totalWithInstallmentsLabel = formatCardPaymentTotalReviewLabel(
-      installments,
-      installmentAmount,
-      installmentTotalAmount,
-      i18n.language,
-      t,
-    )
-
-    body = (
-      <Flex vertical gap={10}>
-        <PaymentReviewField
-          label={t('events.detail.guestReview.paymentMethodLabel')}
-          value={methodLabel}
-        />
-        <PaymentReviewField
-          label={t('events.detail.guestGift.total')}
-          value={totalWithInstallmentsLabel}
-        />
-        <PaymentReviewField
-          label={t('events.detail.guestMpPayment.payerEmail')}
-          value={card.payerEmail}
-        />
-        {document ? (
-          <PaymentReviewField
-            label={t('events.detail.guestMpPayment.payerDocument')}
-            value={document}
-          />
-        ) : null}
-      </Flex>
-    )
-  }
-
-  return (
-    <GuestReviewSection
-      id="guest-review-payment-heading"
-      icon={<CreditCardOutlined />}
-      title={t('events.detail.guestReview.sectionPayment')}
-      editLabel={editLabel}
-      onEdit={onEdit}
-    >
-      {body}
-    </GuestReviewSection>
-  )
-}
-
 export function EventGuestReviewBlock({
   event,
   variant,
   guestSlots,
   checkout,
-  mpPaymentSnapshot,
+  paymentSnapshot,
   cardPayment,
   coupleMessage,
   fieldDefinitions,
@@ -602,9 +480,9 @@ export function EventGuestReviewBlock({
           editLabel={sectionEditLabel}
           onEdit={onEditGifts}
         />
-        <PaymentSection
+        <GuestPaymentReviewSection
           checkout={checkout}
-          mpPaymentSnapshot={mpPaymentSnapshot}
+          paymentSnapshot={paymentSnapshot}
           cardPayment={cardPayment}
           editLabel={showPaymentEdit ? sectionEditLabel : undefined}
           onEdit={showPaymentEdit ? onEditPayment : undefined}

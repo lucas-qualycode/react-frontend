@@ -38,7 +38,7 @@ export function buildGuestFlowProgressCompletion(input: {
   confirmPhase: GuestConfirmPhase
   lastSavedGuestsFingerprint: string | null
   checkout: GuestCheckoutSnapshot | null
-  mpPaymentSnapshot: boolean
+  paymentSnapshot: boolean
   messageSaved: boolean
   maxProgressIndexReached: number
 }): GuestFlowProgressCompletion {
@@ -54,7 +54,7 @@ export function buildGuestFlowProgressCompletion(input: {
 
   const mp_payment =
     paymentSkipped ||
-    input.mpPaymentSnapshot ||
+    input.paymentSnapshot ||
     input.messageSaved ||
     input.maxProgressIndexReached >= PROGRESS_INDEX.mp_payment
 

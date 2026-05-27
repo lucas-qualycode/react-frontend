@@ -8,7 +8,7 @@ import { EventGuestMessageBlock } from '../blocks/message/EventGuestMessageBlock
 import { getDefaultGuestPaymentProvider } from '../blocks/payment/registry'
 import {
   buildGuestCheckoutPayload,
-  logGuestCheckoutPayload,
+  submitGuestCheckout,
 } from '../blocks/payment/checkoutPayload'
 import { finalizeGuestPayment } from '../blocks/payment/finalize'
 import type { GuestPaymentSnapshot } from '../blocks/payment/types'
@@ -159,6 +159,8 @@ export function EventGuestFlow({
   const [cardPayment, setCardPayment] = useState(defaultDraftState.cardPayment)
   const [cardSecrets, setCardSecrets] = useState(createDefaultCardPaymentSecrets)
   const [paymentSnapshot, setPaymentSnapshot] = useState<GuestPaymentSnapshot | null>(null)
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState(false)
+  const checkoutIdempotencyKeyRef = useRef<string | null>(null)
   const [guestsSaved, setGuestsSaved] = useState(defaultDraftState.guestsSaved ?? false)
   const [messageSaved, setMessageSaved] = useState(defaultDraftState.messageSaved ?? false)
   const [lastSavedGuestsFingerprint, setLastSavedGuestsFingerprint] = useState<string | null>(
@@ -682,6 +684,11 @@ export function EventGuestFlow({
       return
     }
 
+    if (!checkoutIdempotencyKeyRef.current) {
+      checkoutIdempotencyKeyRef.current = crypto.randomUUID()
+    }
+
+    setCheckoutSubmitting(true)
     try {
       const finalizeResult = await finalizeGuestPayment(resolvedCheckout, paymentSnapshot, {
         cardSecrets,
@@ -689,15 +696,32 @@ export function EventGuestFlow({
         canCreateCardToken: canCreateMpCardToken,
       })
 
-      logGuestCheckoutPayload(
-        buildGuestCheckoutPayload(resolvedInvitationId, resolvedCheckout, finalizeResult),
+      const payload = buildGuestCheckoutPayload(
+        resolvedInvitationId,
+        resolvedCheckout,
+        finalizeResult,
       )
+
+      await submitGuestCheckout(resolvedInvitationId, payload, {
+        idempotencyKey: checkoutIdempotencyKeyRef.current,
+        invitationAccess,
+      })
+
+      checkoutIdempotencyKeyRef.current = null
+      message.success(t('events.detail.guestReview.checkoutSuccess'))
       clearDraft()
       setCardSecrets(createDefaultCardPaymentSecrets())
       setPaymentSnapshot(null)
     } catch (error) {
-      console.error('[guest-checkout] finalize error', error)
-      message.error(t('events.detail.guestMpPayment.validation.tokenError'))
+      console.error('[guest-checkout] checkout error', error)
+      const detail = error instanceof Error ? error.message : ''
+      if (detail) {
+        message.error(detail)
+      } else {
+        message.error(t('events.detail.guestReview.checkoutError'))
+      }
+    } finally {
+      setCheckoutSubmitting(false)
     }
   }, [
     cardSecrets,
@@ -708,6 +732,7 @@ export function EventGuestFlow({
     guestInvitation.invitation,
     guestInvitation.ticket,
     guestSlots,
+    invitationAccess,
     invitationId,
     paymentSnapshot,
     t,
@@ -859,6 +884,7 @@ export function EventGuestFlow({
             }
             onEditMessage={handleReviewEditMessage}
             onConfirm={handleFinalConfirm}
+            confirmLoading={checkoutSubmitting}
           />
         )
     }

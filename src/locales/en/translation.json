@@ -321,6 +321,8 @@
         "edit": "Back to edit",
         "sectionEdit": "Edit",
         "confirm": "Confirm",
+        "checkoutSuccess": "Your order was submitted successfully.",
+        "checkoutError": "Could not complete checkout. Please try again.",
         "copyWhere": "Copy location",
         "copyWhereSuccess": "Location copied to clipboard",
         "copyWhereError": "Could not copy location",

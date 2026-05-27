@@ -321,6 +321,8 @@
         "edit": "Voltar para editar",
         "sectionEdit": "Editar",
         "confirm": "Confirmar",
+        "checkoutSuccess": "Seu pedido foi enviado com sucesso.",
+        "checkoutError": "Não foi possível concluir o pagamento. Tente novamente.",
         "copyWhere": "Copiar local",
         "copyWhereSuccess": "Local copiado para a área de transferência",
         "copyWhereError": "Não foi possível copiar o local",

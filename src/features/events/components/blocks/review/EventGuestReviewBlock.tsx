@@ -59,6 +59,7 @@ type Props = {
   onEditPayment?: () => void
   onEditMessage: () => void
   onConfirm: () => void
+  confirmLoading?: boolean
 }
 
 function ReviewDetailLabel({
@@ -471,6 +472,7 @@ export function EventGuestReviewBlock({
   onEditPayment,
   onEditMessage,
   onConfirm,
+  confirmLoading = false,
 }: Props) {
   const { t } = useTranslation()
   const sectionEditLabel = t('events.detail.guestReview.sectionEdit')
@@ -537,7 +539,13 @@ export function EventGuestReviewBlock({
           <Button size="large" onClick={onEdit}>
             {t('events.detail.guestReview.edit')}
           </Button>
-          <Button type="primary" size="large" onClick={onConfirm}>
+          <Button
+            type="primary"
+            size="large"
+            loading={confirmLoading}
+            disabled={confirmLoading}
+            onClick={onConfirm}
+          >
             {t('events.detail.guestReview.confirm')}
           </Button>
         </GuestFlowActions>

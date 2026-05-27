@@ -193,6 +193,8 @@ export function EventGuestFlow({
     Boolean(guestInvitation.invitation) &&
     Boolean(guestInvitation.ticket)
 
+  const resolvedInvitationId = invitationId ?? guestInvitation.invitation?.id ?? ''
+
   const draftState = useMemo(
     () => ({
       flowPath,
@@ -822,7 +824,7 @@ export function EventGuestFlow({
         return (
           <EventGuestGiftBlock
             event={event}
-            invitationId={invitationId}
+            invitationId={resolvedInvitationId}
             variant={giftVariant}
             ticket={guestInvitation.ticket}
             guestSlots={guestSlots}
@@ -872,7 +874,7 @@ export function EventGuestFlow({
         return (
           <EventGuestReviewBlock
             event={event}
-            invitationId={invitationId}
+            invitationId={resolvedInvitationId}
             variant={reviewVariant}
             guestSlots={guestSlots}
             checkout={checkout}

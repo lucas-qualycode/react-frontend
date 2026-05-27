@@ -5,10 +5,11 @@ import { RouterProvider } from 'react-router-dom'
 import '@/i18n/config'
 import { AuthProvider } from '@/app/auth/AuthContext'
 import { AppearanceThemeProvider } from '@/app/AppearanceThemeProvider'
-import { router } from '@/app/routes/index'
+import { createAppRouter } from '@/app/routes/index'
 import './index.css'
 
 const queryClient = new QueryClient()
+const router = createAppRouter(queryClient)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

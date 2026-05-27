@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  FIELD_DEFINITIONS_GC_MS,
+  FIELD_DEFINITIONS_STALE_MS,
+  readFieldDefinitionsCache,
+  writeFieldDefinitionsCache,
+} from '@/shared/api/fieldDefinitionsCache'
+import {
   createEvent,
   createInvitation,
   createLocation,
@@ -13,6 +19,7 @@ import {
   getInvitation,
   listEventProducts,
   listFieldDefinitions,
+  listInvitationProducts,
   listInvitations,
   listLocations,
   listSchedules,
@@ -273,12 +280,23 @@ function isGiftProduct(p: Product): boolean {
 }
 
 export function useEventGiftProducts(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['eventProducts', eventId, 'gift'],
+    queryFn: async (): Promise<Product[]> =>
+      listEventProducts(eventId!, { type: 'GIFT' }),
+    enabled: !!eventId,
+    select: (list) => list.filter(isGiftProduct),
+    staleTime: 30_000,
+  })
+}
+
+export function useInvitationGiftProducts(invitationId: string | undefined) {
   const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['eventProducts', eventId, 'gift', invitationAccess?.token ?? ''],
+    queryKey: ['invitationProducts', invitationId, 'gift', invitationAccess?.token ?? ''],
     queryFn: async (): Promise<Product[]> =>
-      listEventProducts(eventId!, { type: 'GIFT', invitationAccess }),
-    enabled: !!eventId,
+      listInvitationProducts(invitationId!, { type: 'GIFT', invitationAccess }),
+    enabled: !!invitationId && !!invitationAccess,
     select: (list) => list.filter(isGiftProduct),
     staleTime: 30_000,
   })
@@ -295,12 +313,23 @@ export function useEventMerchProducts(eventId: string | undefined) {
 }
 
 export function useEventTicketProducts(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['eventProducts', eventId, 'ticket'],
+    queryFn: async (): Promise<Product[]> =>
+      listEventProducts(eventId!, { type: 'TICKET' }),
+    enabled: !!eventId,
+    select: (list) => list.filter(isTicketProduct),
+    staleTime: 30_000,
+  })
+}
+
+export function useInvitationTicketProducts(invitationId: string | undefined) {
   const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['eventProducts', eventId, 'ticket', invitationAccess?.token ?? ''],
+    queryKey: ['invitationProducts', invitationId, 'ticket', invitationAccess?.token ?? ''],
     queryFn: async (): Promise<Product[]> =>
-      listEventProducts(eventId!, { type: 'TICKET', invitationAccess }),
-    enabled: !!eventId,
+      listInvitationProducts(invitationId!, { type: 'TICKET', invitationAccess }),
+    enabled: !!invitationId && !!invitationAccess,
     select: (list) => list.filter(isTicketProduct),
     staleTime: 30_000,
   })
@@ -315,14 +344,23 @@ export function useProductTags() {
   })
 }
 
+export const fieldDefinitionsQueryKey = ['fieldDefinitions'] as const
+
 export function useFieldDefinitions(enabled: boolean) {
-  const invitationAccess = useInvitationAccess()
+  const cached = readFieldDefinitionsCache()
+
   return useQuery({
-    queryKey: ['fieldDefinitions', invitationAccess?.token ?? ''],
-    queryFn: async (): Promise<FieldDefinition[]> =>
-      listFieldDefinitions(invitationAccess),
+    queryKey: fieldDefinitionsQueryKey,
+    queryFn: async (): Promise<FieldDefinition[]> => {
+      const data = await listFieldDefinitions()
+      writeFieldDefinitionsCache(data)
+      return data
+    },
     enabled,
-    staleTime: 60_000,
+    staleTime: FIELD_DEFINITIONS_STALE_MS,
+    gcTime: FIELD_DEFINITIONS_GC_MS,
+    initialData: cached?.data,
+    initialDataUpdatedAt: cached?.fetchedAt,
   })
 }
 

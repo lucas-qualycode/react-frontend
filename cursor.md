@@ -128,11 +128,16 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 
 ### Guest invitation flow (`/events/:id/invitation/:invitationId`)
 
-- **Route is not `Protected`** — guests open the magic link without Firebase.
+- **Routes are not `Protected`** — guests open the magic link without Firebase.
 - URL shape: **`/events/{eventId}/invitation/{invitationId}?token={access_token}`** (`features/events/lib/invitationAccessStorage.ts` helpers).
-- **`EventDetailPage`** reads `token` from search params and wraps content in **`InvitationAccessProvider`**; hooks (`useEvent`, `useInvitation`, `useFieldDefinitions`, ticket/gift products) pass **`invitation_id` + `token`** on GETs and **`X-Invitation-Token`** on writes via **`fetchApi(..., invitationAccess)`**.
+- **`invitationGuestLoader`** (`features/events/loaders/invitationGuestLoader.ts`) runs before the flow page: validates **`GET /events/{id}`** and **`GET /invitations/{id}`** with the token, seeds React Query cache, or **`redirect`**s to **`/events/{eventId}/invitation/{invitationId}/unavailable?reason=...`** (`required`, `invitation_expired`, `invitation_access_token_invalid`, `generic`). The heavy guest-flow bundle is not loaded on failure.
+- **`InvitationGuestFlowPage`** — loader-gated; **`InvitationAccessProvider`** + lazy **`EventDetailComposition`** / **`EventGuestFlow`**.
+- **`InvitationUnavailablePage`** — light page with **`GuestInvitationAccessErrorPanel`** only (no guest-flow imports).
+- Organizer **`events/:id`** (protected) still uses **`EventDetailPage`** without invitation token.
+- Hooks (`useEvent`, `useInvitation`, ticket/gift products) pass **`invitation_id` + `token`** on GETs and **`X-Invitation-Token`** on writes via **`fetchApi(..., invitationAccess)`**. Guest catalog uses **`GET /invitations/{id}/products`** (`useInvitationTicketProducts`, `useInvitationGiftProducts`); organizer event product lists use **`GET /products?parent_id=…`** (Firebase). **`useFieldDefinitions`** is public (no invite token); results are cached in **localStorage** (~24h stale) so guest/organizer flows avoid refetching on every refresh.
 - Organizers get **`access_token`** once on **POST `/invitations`** (create) or **`POST /invitations/{id}/access-token`** (refresh); token is stored in **`sessionStorage`** per invitation id for the invitations table **Link** / **Refresh link** actions (`EventInvitationsSection`).
 - **`POST /invitations/{id}/guest-submit`** requires the same token (`guestSubmitPersistence`).
+- Router factory: **`createAppRouter(queryClient)`** in **`app/routes/index.tsx`**; **`main.tsx`** passes the shared **`QueryClient`** into event routes for loader cache seeding.
 
 ### API types (`features/events/api.ts`)
 

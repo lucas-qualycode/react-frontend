@@ -20,6 +20,7 @@ const { Text } = Typography
 
 type Props = {
   event: Event
+  invitationId: string
   variant: EventGuestGiftVariant
   ticket: Product | null
   guestSlots: GuestConfirmFormSlot[]
@@ -247,6 +248,7 @@ function GiftReviewView({ selectedProducts, hasAttendingGuests, onBackToBrowse, 
 
 export function EventGuestGiftBlock({
   event,
+  invitationId,
   variant,
   ticket,
   guestSlots,
@@ -259,7 +261,7 @@ export function EventGuestGiftBlock({
   onBack,
   onGiftsConfirmed,
 }: Props) {
-  const { products, isLoading } = useGuestGiftProducts(event.id)
+  const { products, isLoading } = useGuestGiftProducts(invitationId)
 
   if (variant !== 'wedding') return null
 

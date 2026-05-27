@@ -1,17 +1,20 @@
 import { Button, Flex, Spin, Typography } from 'antd'
-import { useMemo } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { EventDetailComposition } from '../components/invitationFlow/EventDetailComposition'
 import { useEvent } from '@/features/events/hooks'
-import { InvitationAccessProvider } from '@/shared/api/InvitationAccessContext'
-import type { InvitationAccess } from '@/shared/api/invitationAccess'
+
+const EventDetailComposition = lazy(() =>
+  import('@/features/events/components/invitationFlow/EventDetailComposition').then((m) => ({
+    default: m.EventDetailComposition,
+  })),
+)
 
 const { Text } = Typography
 
-function EventDetailPageContent() {
+export function EventDetailPage() {
   const { t } = useTranslation()
-  const { id, invitationId } = useParams<{ id: string; invitationId?: string }>()
+  const { id } = useParams<{ id: string }>()
   const { data: event, isLoading, isError, refetch } = useEvent(id)
 
   return (
@@ -30,25 +33,16 @@ function EventDetailPageContent() {
       ) : null}
 
       {!isLoading && !isError && event ? (
-        <EventDetailComposition event={event} invitationId={invitationId} />
+        <Suspense
+          fallback={
+            <Flex align="center" justify="center" style={{ minHeight: 260, width: '100%' }}>
+              <Spin size="large" />
+            </Flex>
+          }
+        >
+          <EventDetailComposition event={event} />
+        </Suspense>
       ) : null}
     </Flex>
-  )
-}
-
-export function EventDetailPage() {
-  const { invitationId } = useParams<{ invitationId?: string }>()
-  const [searchParams] = useSearchParams()
-  const tokenFromUrl = searchParams.get('token')?.trim() ?? ''
-
-  const invitationAccess = useMemo((): InvitationAccess | null => {
-    if (!invitationId || !tokenFromUrl) return null
-    return { invitationId, token: tokenFromUrl }
-  }, [invitationId, tokenFromUrl])
-
-  return (
-    <InvitationAccessProvider value={invitationAccess}>
-      <EventDetailPageContent />
-    </InvitationAccessProvider>
   )
 }

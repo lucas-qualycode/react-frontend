@@ -3,6 +3,37 @@ export type InvitationAccess = {
   token: string
 }
 
+export type InvitationAccessFailureCode =
+  | 'invitation_expired'
+  | 'invitation_access_token_invalid'
+
+export class InvitationAccessFailure extends Error {
+  readonly code: InvitationAccessFailureCode
+
+  constructor(code: InvitationAccessFailureCode) {
+    super(code)
+    this.name = 'InvitationAccessFailure'
+    this.code = code
+  }
+}
+
+export function isInvitationAccessFailure(
+  error: unknown,
+): error is InvitationAccessFailure {
+  return error instanceof InvitationAccessFailure
+}
+
+export async function readApiErrorDetail(res: Response): Promise<string | null> {
+  try {
+    const j = (await res.json()) as { error?: unknown; detail?: unknown }
+    if (typeof j.detail === 'string') return j.detail
+    if (typeof j.error === 'string') return j.error
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
 export function appendInvitationAccessQuery(
   path: string,
   access?: InvitationAccess | null,

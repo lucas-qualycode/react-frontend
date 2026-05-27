@@ -45,6 +45,7 @@ const { Text, Paragraph } = Typography
 
 type Props = {
   event: Event
+  invitationId: string
   variant: EventGuestReviewVariant
   guestSlots: GuestConfirmFormSlot[]
   checkout: GuestCheckoutSnapshot | null
@@ -344,17 +345,18 @@ function resolveCheckoutProducts(
 }
 
 function GiftsSection({
+  invitationId,
   checkout,
   editLabel,
   onEdit,
 }: {
+  invitationId: string
   checkout: GuestCheckoutSnapshot | null
   editLabel: string
   onEdit: () => void
 }) {
   const { t } = useTranslation()
-  const eventId = checkout?.parent_id
-  const { products, isLoading } = useGuestGiftProducts(eventId)
+  const { products, isLoading } = useGuestGiftProducts(invitationId)
   const freeLabel = t('events.detail.guestGift.free')
 
   const giftLineItems = useMemo(
@@ -455,6 +457,7 @@ function MessageSection({
 
 export function EventGuestReviewBlock({
   event,
+  invitationId,
   variant,
   guestSlots,
   checkout,
@@ -510,6 +513,7 @@ export function EventGuestReviewBlock({
           everyoneDeclined={everyoneDeclined}
         />
         <GiftsSection
+          invitationId={invitationId}
           checkout={checkout}
           editLabel={sectionEditLabel}
           onEdit={onEditGifts}

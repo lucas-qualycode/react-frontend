@@ -193,8 +193,8 @@ export interface FieldDefinition {
   deleted?: boolean
   created_at: string
   updated_at: string
-  created_by: string
-  last_updated_by: string
+  created_by?: string
+  last_updated_by?: string
 }
 
 export interface Product {

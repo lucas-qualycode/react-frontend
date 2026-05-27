@@ -1,6 +1,8 @@
 import { fetchApi } from '@/shared/api/client'
 import {
   appendInvitationAccessQuery,
+  InvitationAccessFailure,
+  readApiErrorDetail,
   type InvitationAccess,
 } from '@/shared/api/invitationAccess'
 import type {
@@ -72,7 +74,16 @@ export async function getEvent(
 ): Promise<Event> {
   const path = appendInvitationAccessQuery(`events/${eventId}`, invitationAccess)
   const res = await fetchApi(path, undefined, invitationAccess)
-  if (!res.ok) throw new Error('Failed to load event')
+  if (!res.ok) {
+    const detail = await readApiErrorDetail(res)
+    if (
+      detail === 'invitation_expired' ||
+      detail === 'invitation_access_token_invalid'
+    ) {
+      throw new InvitationAccessFailure(detail)
+    }
+    throw new Error(detail ?? 'Failed to load event')
+  }
   return res.json() as Promise<Event>
 }
 
@@ -263,25 +274,19 @@ export type UpdateProductPayload = {
   tag_ids?: string[]
 }
 
-export async function listFieldDefinitions(
-  invitationAccess?: InvitationAccess | null,
-): Promise<FieldDefinition[]> {
+export async function listFieldDefinitions(): Promise<FieldDefinition[]> {
   const params = new URLSearchParams({
     deleted: 'false',
     active: 'true',
   })
-  const path = appendInvitationAccessQuery(
-    `field-definitions?${params.toString()}`,
-    invitationAccess,
-  )
-  const res = await fetchApi(path, undefined, invitationAccess)
+  const res = await fetchApi(`field-definitions?${params.toString()}`)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<FieldDefinition[]>
 }
 
 export async function listEventProducts(
   eventId: string,
-  opts?: { type?: ProductKind; invitationAccess?: InvitationAccess | null },
+  opts?: { type?: ProductKind },
 ): Promise<Product[]> {
   const params = new URLSearchParams({
     parent_id: eventId,
@@ -290,9 +295,25 @@ export async function listEventProducts(
   if (opts?.type) {
     params.set('type', opts.type)
   }
+  const res = await fetchApi(`products?${params.toString()}`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Product[]>
+}
+
+export async function listInvitationProducts(
+  invitationId: string,
+  opts?: { type?: ProductKind; invitationAccess?: InvitationAccess | null },
+): Promise<Product[]> {
+  const params = new URLSearchParams({
+    deleted: 'false',
+  })
+  if (opts?.type) {
+    params.set('type', opts.type)
+  }
   const path = appendInvitationAccessQuery(
-    `products?${params.toString()}`,
+    `invitations/${invitationId}/products?${params.toString()}`,
     opts?.invitationAccess,
+    { includeInvitationId: false },
   )
   const res = await fetchApi(path, undefined, opts?.invitationAccess)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
@@ -408,7 +429,16 @@ export async function getInvitation(
     { includeInvitationId: false },
   )
   const res = await fetchApi(path, undefined, invitationAccess)
-  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  if (!res.ok) {
+    const detail = await readApiErrorDetail(res)
+    if (
+      detail === 'invitation_expired' ||
+      detail === 'invitation_access_token_invalid'
+    ) {
+      throw new InvitationAccessFailure(detail)
+    }
+    throw new Error(detail ?? `Request failed (${res.status})`)
+  }
   return res.json() as Promise<Invitation>
 }
 

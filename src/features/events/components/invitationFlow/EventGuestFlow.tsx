@@ -793,6 +793,7 @@ export function EventGuestFlow({
         return (
           <EventGuestGiftBlock
             event={event}
+            invitationId={invitationId}
             variant={giftVariant}
             ticket={guestInvitation.ticket}
             guestSlots={guestSlots}
@@ -842,6 +843,7 @@ export function EventGuestFlow({
         return (
           <EventGuestReviewBlock
             event={event}
+            invitationId={invitationId}
             variant={reviewVariant}
             guestSlots={guestSlots}
             checkout={checkout}
@@ -873,11 +875,7 @@ export function EventGuestFlow({
   if (guestInvitation.isError) {
     return (
       <Flex vertical align="center" justify="center" gap={8} style={{ minHeight: 260, width: '100%', padding: 24 }}>
-        <Text type="danger">
-          {guestInvitation.missingInvitationId
-            ? t('events.detail.guestFlow.invitationRequired')
-            : t('events.detail.guestFlow.invitationLoadError')}
-        </Text>
+        <Text type="danger">{t('events.detail.guestFlow.invitationLoadError')}</Text>
       </Flex>
     )
   }

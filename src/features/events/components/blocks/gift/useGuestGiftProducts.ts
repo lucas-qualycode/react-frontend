@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
-import { useEventGiftProducts } from '@/features/events/hooks'
+import { useInvitationGiftProducts } from '@/features/events/hooks'
 import { USE_MOCK_GIFT_PRODUCTS, getMockGiftProducts } from './guestGiftMock'
 
-export function useGuestGiftProducts(eventId: string | undefined) {
-  const { data: apiProducts = [], isLoading } = useEventGiftProducts(
-    USE_MOCK_GIFT_PRODUCTS ? undefined : eventId,
+export function useGuestGiftProducts(invitationId: string | undefined) {
+  const { data: apiProducts = [], isLoading } = useInvitationGiftProducts(
+    USE_MOCK_GIFT_PRODUCTS ? undefined : invitationId,
   )
   const products = useMemo(() => {
     if (USE_MOCK_GIFT_PRODUCTS) return getMockGiftProducts()

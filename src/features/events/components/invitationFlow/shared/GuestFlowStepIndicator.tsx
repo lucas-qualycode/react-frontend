@@ -6,7 +6,7 @@ import {
   MessageOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GuestCheckoutSnapshot } from '../lib/guestCheckoutSession'
 import {
@@ -29,7 +29,7 @@ const PROGRESS_STEP_LABEL_KEY: Record<GuestFlowProgressStep, string> = {
   review: 'events.detail.guestFlow.progressStepReview',
 }
 
-const PROGRESS_STEP_ICON: Record<Exclude<GuestFlowProgressStep, 'review'>, JSX.Element> = {
+const PROGRESS_STEP_ICON: Record<Exclude<GuestFlowProgressStep, 'review'>, ReactNode> = {
   confirm: <TeamOutlined className="guest-flow-step-icon" aria-hidden />,
   gift: <GiftOutlined className="guest-flow-step-icon" aria-hidden />,
   mp_payment: <CreditCardOutlined className="guest-flow-step-icon" aria-hidden />,

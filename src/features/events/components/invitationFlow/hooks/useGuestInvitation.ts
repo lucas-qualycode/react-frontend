@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import type { FieldDefinition, Invitation, Product } from '@/shared/types/api'
 import {
-  useEventTicketProducts,
   useFieldDefinitions,
   useInvitation,
+  useInvitationTicketProducts,
 } from '@/features/events/hooks'
 import {
   USE_MOCK_INVITATION,
@@ -11,6 +11,7 @@ import {
   getMockGuestTicket,
   getMockInvitation,
 } from '../lib/guestInvitationMock'
+import { isInvitationAccessFailure } from '@/shared/api/invitationAccess'
 
 export function useGuestInvitation(
   eventId: string | undefined,
@@ -18,8 +19,8 @@ export function useGuestInvitation(
 ) {
   const invitationQuery = useInvitation(USE_MOCK_INVITATION ? undefined : invitationId)
   const fieldDefinitionsQuery = useFieldDefinitions(!USE_MOCK_INVITATION)
-  const ticketProductsQuery = useEventTicketProducts(
-    USE_MOCK_INVITATION ? undefined : eventId,
+  const ticketProductsQuery = useInvitationTicketProducts(
+    USE_MOCK_INVITATION ? undefined : invitationId,
   )
 
   const invitation = useMemo((): Invitation | null => {
@@ -42,11 +43,16 @@ export function useGuestInvitation(
 
   const missingInvitationId = !USE_MOCK_INVITATION && !invitationId
 
+  const invitationLoadError = invitationQuery.error
+  const invitationLoadFailureCode = isInvitationAccessFailure(invitationLoadError)
+    ? invitationLoadError.code
+    : null
+
   const isLoading =
     !USE_MOCK_INVITATION &&
     (invitationQuery.isLoading ||
       fieldDefinitionsQuery.isLoading ||
-      (!!eventId && ticketProductsQuery.isLoading))
+      (!!invitationId && ticketProductsQuery.isLoading))
 
   const isError =
     missingInvitationId ||
@@ -63,6 +69,7 @@ export function useGuestInvitation(
     isLoading,
     isError,
     missingInvitationId,
+    invitationLoadFailureCode,
     isMocked: USE_MOCK_INVITATION,
   }
 }

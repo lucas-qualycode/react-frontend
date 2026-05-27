@@ -265,7 +265,7 @@
         "successTitle": "Dados de pagamento salvos",
         "successBody": "Suas informações de pagamento estão prontas. A cobrança será concluída quando o checkout estiver conectado ao servidor.",
         "mockModeWarning": "Mercado Pago não está configurado. Adicione VITE_MERCADOPAGO_PUBLIC_KEY para habilitar pagamento com cartão.",
-        "httpsRequiredWarning": "Pagamento com cartão exige HTTPS. Em http://localhost usamos um token de teste na confirmação. Em produção use https:// ou rode o servidor de desenvolvimento com HTTPS para testar tokens reais.",
+        "httpsRequiredWarning": "Pagamento com cartão exige HTTPS. Em produção use https:// ou rode o servidor de desenvolvimento com HTTPS para testar cartão. O Pix continua disponível.",
         "pixHint": "O QR Code Pix aparece só depois de confirmar os dados do convite no último passo.",
         "brickError": "Não foi possível carregar o formulário de cartão. Tente novamente ou escolha Pix.",
         "brickLoading": "Carregando formulário de pagamento…",
@@ -283,7 +283,8 @@
           "chooseMethod": "Escolha uma forma de pagamento.",
           "formInvalid": "Revise os campos de pagamento.",
           "mpNotReady": "Aguarde o carregamento do Mercado Pago.",
-          "tokenError": "Não foi possível validar o cartão. Verifique os dados e tente novamente."
+          "tokenError": "Não foi possível validar o cartão. Verifique os dados e tente novamente.",
+          "cardTokenUnavailable": "Pagamento com cartão indisponível. Configure o Mercado Pago (VITE_MERCADOPAGO_PUBLIC_KEY) e use HTTPS, ou pague com Pix."
         }
       },
       "guestMessage": {

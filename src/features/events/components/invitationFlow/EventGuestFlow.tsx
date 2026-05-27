@@ -715,7 +715,11 @@ export function EventGuestFlow({
     } catch (error) {
       console.error('[guest-checkout] checkout error', error)
       const detail = error instanceof Error ? error.message : ''
-      if (detail) {
+      if (paymentSnapshot.method === 'card') {
+        message.error(
+          detail || t('events.detail.guestMpPayment.validation.tokenError'),
+        )
+      } else if (detail) {
         message.error(detail)
       } else {
         message.error(t('events.detail.guestReview.checkoutError'))

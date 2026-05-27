@@ -2,10 +2,7 @@ import {
   buildCardOrderFromSnapshot,
   buildPixOrderFromSnapshot,
 } from '../../blocks/mpPayment/guestMpPaymentForm'
-import {
-  buildMockCardTokenResult,
-  type GuestMpPaymentSnapshot,
-} from '../../blocks/mpPayment/guestMpPaymentDraft'
+import type { GuestMpPaymentSnapshot } from '../../blocks/mpPayment/guestMpPaymentDraft'
 import type { GuestCheckoutSnapshot } from '../../invitationFlow/lib/guestCheckoutSession'
 import { GUEST_PAYMENT_PROVIDER_MERCADOPAGO } from '../../invitationFlow/lib/guestPaymentProvider'
 import type {
@@ -38,9 +35,10 @@ export async function finalizeMercadoPagoGuestPayment(
       ...mpSnapshot.card,
       ...(context.cardSecrets ?? { cardNumber: '', securityCode: '' }),
     }
-    const tokenResult = context.canCreateCardToken && context.createCardToken
-      ? await context.createCardToken(cardForm)
-      : buildMockCardTokenResult(mpSnapshot.card)
+    if (!context.createCardToken) {
+      throw new Error('Mercado Pago card tokenization is not available')
+    }
+    const tokenResult = await context.createCardToken(cardForm)
     provider_checkout = buildCardOrderFromSnapshot(checkout, mpSnapshot, tokenResult)
   }
 

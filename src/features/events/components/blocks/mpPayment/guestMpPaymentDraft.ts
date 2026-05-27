@@ -196,10 +196,3 @@ export function logGuestMpPaymentPayload(payload: GuestMpPaymentPayload) {
   }
 }
 
-export function buildMockCardTokenResult(card: GuestCardPaymentPersisted): GuestMpCardTokenResult {
-  return {
-    token: 'mock_card_token_dev',
-    paymentMethodId: card.paymentMethodId || 'visa',
-    paymentTypeId: card.paymentTypeId || 'credit_card',
-  }
-}

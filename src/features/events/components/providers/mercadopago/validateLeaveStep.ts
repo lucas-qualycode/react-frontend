@@ -3,7 +3,6 @@ import {
   validateCardPaymentForm,
   type GuestCardPaymentFormState,
 } from '../../blocks/mpPayment/guestMpPaymentForm'
-import { canUseMercadoPagoCardTokenization } from '@/features/events/lib/mercadoPagoSecureContext'
 import type { LeaveStepValidationResult } from '../../invitationFlow/lib/guestFlowLeaveStepValidation'
 import type { GuestPaymentLeaveValidationInput } from '../../blocks/payment/types'
 
@@ -33,8 +32,7 @@ export function validateLeaveMercadoPagoPaymentStep(
   }
 
   const validation = validateCardPaymentForm(cardForm as GuestCardPaymentFormState, t, {
-    requirePaymentMethod:
-      isConfigured && isReady && canUseMercadoPagoCardTokenization(),
+    requirePaymentMethod: isConfigured && isReady,
   })
   if (!validation.valid) {
     message.error(t('events.detail.guestMpPayment.validation.formInvalid'))

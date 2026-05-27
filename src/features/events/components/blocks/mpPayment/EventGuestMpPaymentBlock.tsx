@@ -85,7 +85,6 @@ export function EventGuestMpPaymentBlock({
   const { t, i18n } = useTranslation()
   const {
     isConfigured,
-    supportsCardTokenization,
     isReady,
     error: mpLoadError,
     fetchIdentificationTypes,
@@ -436,12 +435,6 @@ export function EventGuestMpPaymentBlock({
 
       {isGuestCardPaymentMethod(method) && (
         <Flex vertical gap={12} style={{ width: '100%' }}>
-          {!isConfigured && (
-            <Alert type="warning" showIcon message={t('events.detail.guestMpPayment.mockModeWarning')} />
-          )}
-          {isConfigured && !supportsCardTokenization && (
-            <Alert type="warning" showIcon message={t('events.detail.guestMpPayment.httpsRequiredWarning')} />
-          )}
           {mpLoadError && <Alert type="error" showIcon message={mpLoadError} />}
 
           <GuestPaymentCardFlip

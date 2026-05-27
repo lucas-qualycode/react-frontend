@@ -7,7 +7,7 @@ import { buildGuestCheckoutSnapshot, type GuestCheckoutSnapshot } from '../../in
 import type { GuestConfirmFormSlot } from '../../invitationFlow/lib/guestConfirmMock'
 import { GuestGiftProductCard } from './GuestGiftProductCard'
 import { GuestGiftSummaryBar } from './GuestGiftSummaryBar'
-import { GIFT_PRODUCTS_PER_PAGE } from './guestGiftMock'
+const GIFT_PRODUCTS_PER_PAGE = 4
 import { useGuestGiftProducts } from './useGuestGiftProducts'
 import { GuestFlowActions } from '../../invitationFlow/shared/GuestFlowActions'
 import { GuestFlowBlockHeader } from '../../invitationFlow/shared/GuestFlowBlockHeader'

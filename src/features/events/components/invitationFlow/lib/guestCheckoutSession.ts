@@ -10,8 +10,8 @@ export type GuestCheckoutLineItem = {
   product_type: ProductKind
   name: string
   quantity: number
-  unit_price_cents: number
-  total_price_cents: number
+  unit_price: number
+  total_price: number
 }
 
 export type GuestCheckoutSnapshot = {
@@ -34,14 +34,14 @@ function lineItemFromProduct(
   product_type: ProductKind,
   name?: string,
 ): GuestCheckoutLineItem {
-  const unit_price_cents = product.is_free ? 0 : product.value
+  const unit_price = product.is_free ? 0 : product.value
   return {
     product_id: product.id,
     product_type,
     name: name ?? product.name,
     quantity: 1,
-    unit_price_cents,
-    total_price_cents: unit_price_cents,
+    unit_price,
+    total_price: unit_price,
   }
 }
 
@@ -51,17 +51,27 @@ export function normalizeCheckoutLineItem(raw: unknown): GuestCheckoutLineItem |
   const product_id = String(item.product_id ?? item.productId ?? '').trim()
   if (!product_id) return null
   const quantity = Number(item.quantity ?? 1)
-  const unit_price_cents = Number(item.unit_price_cents ?? item.unitPriceCents ?? 0)
-  const total_price_cents = Number(
-    item.total_price_cents ?? item.totalPriceCents ?? unit_price_cents * quantity,
+  const unit_price = Number(
+    item.unit_price ??
+      item.unitPrice ??
+      item.unit_price_cents ??
+      item.unitPriceCents ??
+      0,
+  )
+  const total_price = Number(
+    item.total_price ??
+      item.totalPrice ??
+      item.total_price_cents ??
+      item.totalPriceCents ??
+      unit_price * quantity,
   )
   return {
     product_id,
     product_type: normalizeProductKind(item.product_type ?? item.productType),
     name: String(item.name ?? ''),
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
-    unit_price_cents: Number.isFinite(unit_price_cents) ? unit_price_cents : 0,
-    total_price_cents: Number.isFinite(total_price_cents) ? total_price_cents : 0,
+    unit_price: Number.isFinite(unit_price) ? unit_price : 0,
+    total_price: Number.isFinite(total_price) ? total_price : 0,
   }
 }
 
@@ -85,7 +95,7 @@ export function normalizeCheckoutSnapshot(raw: unknown): GuestCheckoutSnapshot |
     items,
     total_cents: Number.isFinite(total_cents)
       ? total_cents
-      : items.reduce((sum, item) => sum + item.total_price_cents, 0),
+      : items.reduce((sum, item) => sum + item.total_price, 0),
     currency: 'BRL',
     ...(payment_provider ? { payment_provider } : {}),
   }
@@ -120,7 +130,7 @@ export function giftCheckoutLineItems(
 
 export function giftCheckoutTotalCents(checkout: GuestCheckoutSnapshot): number {
   return giftCheckoutLineItems(checkout).reduce(
-    (sum, item) => sum + item.total_price_cents,
+    (sum, item) => sum + item.total_price,
     0,
   )
 }
@@ -146,7 +156,7 @@ export function buildGuestCheckoutSnapshot(
     : []
   const gift_items = buildGiftLineItemsFromProducts(giftProducts)
   const items = [...ticket_items, ...gift_items]
-  const total_cents = items.reduce((sum, item) => sum + item.total_price_cents, 0)
+  const total_cents = items.reduce((sum, item) => sum + item.total_price, 0)
 
   return {
     parent_id,
@@ -169,8 +179,8 @@ export function refreshGuestCheckoutWithAttendingTickets(
     name: item.name,
     description: '',
     user_id: '',
-    is_free: item.unit_price_cents === 0,
-    value: item.unit_price_cents,
+    is_free: item.unit_price === 0,
+    value: item.unit_price,
     quantity: item.quantity,
     max_per_user: 1,
     active: true,
@@ -188,7 +198,7 @@ export function buildCheckoutSnapshotFromProducts(
   products: Product[],
 ): GuestCheckoutSnapshot {
   const items = buildGiftLineItemsFromProducts(products)
-  const total_cents = items.reduce((sum, item) => sum + item.total_price_cents, 0)
+  const total_cents = items.reduce((sum, item) => sum + item.total_price, 0)
   return {
     parent_id,
     items,

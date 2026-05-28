@@ -53,7 +53,7 @@ export function GuestMpPaymentGiftsSummary({ checkout }: Props) {
                 {giftLineItems.map((item) => (
                   <div key={item.product_id} className="guest-mp-payment-gifts-summary-row">
                     <Text>{item.name}</Text>
-                    <Text>{formatLinePrice(item.total_price_cents, freeLabel)}</Text>
+                    <Text>{formatLinePrice(item.total_price, freeLabel)}</Text>
                   </div>
                 ))}
               </div>

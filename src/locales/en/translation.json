@@ -331,6 +331,34 @@
         "externalLinkModalBody": "You are about to leave this page and open an external site. Partiiu does not control that destination — only continue if you trust the link.",
         "externalLinkModalOk": "Open link",
         "externalLinkModalCancel": "Cancel"
+      },
+      "guestPayment": {
+        "title": "Complete payment",
+        "subtitle": "Finish your payment to complete your confirmation.",
+        "pixInstructions": "Scan the QR code or copy the Pix code to pay.",
+        "qrAlt": "Pix QR code",
+        "copyPix": "Copy Pix code",
+        "copyPixSuccess": "Pix code copied",
+        "copyPixError": "Could not copy Pix code",
+        "expiresIn": "Expires in {{time}}",
+        "waitingPix": "Waiting for payment confirmation…",
+        "processingCard": "Processing payment…",
+        "failedTitle": "Payment not completed",
+        "failedDescription": "Your last payment attempt did not complete. Choose a method and try again.",
+        "payAgain": "Pay",
+        "missingCheckout": "Checkout details are missing. Return to your invitation and try again.",
+        "noPaymentTitle": "No payment in progress",
+        "noPaymentDescription": "We could not find an active payment for this invitation. Return to your invitation to start checkout again.",
+        "backToInvitation": "Back to invitation"
+      },
+      "guestConfirmed": {
+        "title": "You're all set",
+        "subtitle": "Your payment was confirmed. Here is a summary of your submission.",
+        "paymentSection": "Payment",
+        "status": "Status",
+        "method": "Method",
+        "totalPaid": "Total paid",
+        "reference": "Reference"
       }
     },
     "form": {

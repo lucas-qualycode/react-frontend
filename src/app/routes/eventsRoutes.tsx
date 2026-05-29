@@ -2,7 +2,8 @@ import { lazy } from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import type { RouteObject } from 'react-router-dom'
 import type { ComponentType, ReactNode } from 'react'
-import { createInvitationGuestLoader } from '@/features/events/loaders/invitationGuestLoader'
+import { createGuestInvitationLoader } from '@/features/events/loaders/invitationGuestLoader'
+import { redirectGuestInvitationCanonical } from '@/features/events/loaders/redirectGuestInvitationCanonical'
 import { SuspensePage } from './shell'
 
 const EventCreatePage = lazy(() =>
@@ -15,9 +16,9 @@ const EventDetailPage = lazy(() =>
     default: m.EventDetailPage,
   })),
 )
-const InvitationGuestFlowPage = lazy(() =>
-  import('@/features/events/pages/InvitationGuestFlowPage').then((m) => ({
-    default: m.InvitationGuestFlowPage,
+const InvitationGuestPage = lazy(() =>
+  import('@/features/events/pages/InvitationGuestPage').then((m) => ({
+    default: m.InvitationGuestPage,
   })),
 )
 const InvitationUnavailablePage = lazy(() =>
@@ -43,7 +44,7 @@ export function getEventsRoutes(
   Protected: ProtectedComponent,
   queryClient: QueryClient,
 ): RouteObject[] {
-  const invitationGuestLoader = createInvitationGuestLoader(queryClient)
+  const guestInvitationLoader = createGuestInvitationLoader(queryClient)
 
   return [
     {
@@ -63,11 +64,19 @@ export function getEventsRoutes(
       ),
     },
     {
+      path: 'events/:id/invitation/:invitationId/payment',
+      loader: redirectGuestInvitationCanonical,
+    },
+    {
+      path: 'events/:id/invitation/:invitationId/confirmed',
+      loader: redirectGuestInvitationCanonical,
+    },
+    {
       path: 'events/:id/invitation/:invitationId',
-      loader: invitationGuestLoader,
+      loader: guestInvitationLoader,
       element: (
         <SuspensePage>
-          <InvitationGuestFlowPage />
+          <InvitationGuestPage />
         </SuspensePage>
       ),
     },

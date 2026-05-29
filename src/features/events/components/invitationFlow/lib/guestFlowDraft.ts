@@ -7,7 +7,7 @@ import {
 } from '../../blocks/mpPayment/guestMpPaymentDraft'
 import type { EventGuestFlowStep } from '../types'
 
-export const GUEST_FLOW_DRAFT_VERSION = 3 as const
+export const GUEST_FLOW_DRAFT_VERSION = 4 as const
 export const GUEST_FLOW_DRAFT_STORAGE_PREFIX = 'partiiu:guest-flow:'
 export const GUEST_FLOW_DRAFT_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
 
@@ -34,6 +34,12 @@ export function paymentTypeIdForGuestMethod(
   return null
 }
 
+export type GuestPendingCheckout = {
+  paymentId: string
+  orderId: string
+  idempotencyKey?: string | null
+}
+
 export type GuestFlowDraft = {
   version: typeof GUEST_FLOW_DRAFT_VERSION
   invitationId: string
@@ -48,6 +54,7 @@ export type GuestFlowDraft = {
   giftPhase: GuestGiftPhase
   giftPage: number
   checkout: GuestCheckoutSnapshot | null
+  pendingCheckout?: GuestPendingCheckout | null
   coupleMessage: string
   paymentMethod: GuestPaymentMethodChoice | null
   pixPayerEmail: string
@@ -71,6 +78,7 @@ export function createDefaultGuestFlowDraftState(): GuestFlowDraftState {
     giftPhase: 'browse',
     giftPage: 0,
     checkout: null,
+    pendingCheckout: null,
     coupleMessage: '',
     paymentMethod: null,
     pixPayerEmail: '',

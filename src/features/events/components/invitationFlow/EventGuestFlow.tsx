@@ -19,8 +19,8 @@ import {
   refreshGuestCheckoutWithAttendingTickets,
   type GuestCheckoutSnapshot,
 } from './lib/guestCheckoutSession'
-import { createDefaultGuestFlowDraftState } from './lib/guestFlowDraft'
-import { loadGuestFlowDraft, mergeGuestSlotsWithDraft } from './lib/guestFlowDraftStorage'
+import { createDefaultGuestFlowDraftState, GUEST_FLOW_DRAFT_VERSION } from './lib/guestFlowDraft'
+import { loadGuestFlowDraft, mergeGuestSlotsWithDraft, saveGuestFlowDraft } from './lib/guestFlowDraftStorage'
 import {
   buildGuestFlowProgressCompletion,
   guestFlowProgressActiveIndex,
@@ -68,6 +68,7 @@ import {
   type EventGuestWelcomeVariant,
 } from './types'
 import { useInvitationAccess } from '@/shared/api/InvitationAccessContext'
+import { useGuestInvitationPhase } from '@/features/events/context/GuestInvitationPhaseContext'
 import { useGuestInvitation } from './hooks/useGuestInvitation'
 import './eventGuestFlow.css'
 
@@ -124,6 +125,7 @@ export function EventGuestFlow({
   reviewVariant,
 }: Props) {
   const { t } = useTranslation()
+  const { goToPayment } = useGuestInvitationPhase()
   const invitationAccess = useInvitationAccess()
   const guestInvitation = useGuestInvitation(event.id, invitationId)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -704,16 +706,32 @@ export function EventGuestFlow({
         finalizeResult,
       )
 
-      await submitGuestCheckout(resolvedInvitationId, payload, {
+      const result = await submitGuestCheckout(resolvedInvitationId, payload, {
         idempotencyKey: checkoutIdempotencyKeyRef.current,
         invitationAccess,
       })
 
+      const idempotencyKey = checkoutIdempotencyKeyRef.current ?? crypto.randomUUID()
+      saveGuestFlowDraft({
+        version: GUEST_FLOW_DRAFT_VERSION,
+        invitationId: resolvedInvitationId,
+        eventId: event.id,
+        updatedAt: new Date().toISOString(),
+        ...draftState,
+        pendingCheckout: {
+          paymentId: result.payment_id,
+          orderId: result.order_id,
+          idempotencyKey,
+        },
+      })
+
       checkoutIdempotencyKeyRef.current = null
-      message.success(t('events.detail.guestReview.checkoutSuccess'))
-      clearDraft()
       setCardSecrets(createDefaultCardPaymentSecrets())
       setPaymentSnapshot(null)
+      goToPayment({
+        paymentId: result.payment_id,
+        orderId: result.order_id,
+      })
     } catch (error) {
       console.error('[guest-checkout] checkout error', error)
       const detail = error instanceof Error ? error.message : ''
@@ -732,12 +750,14 @@ export function EventGuestFlow({
   }, [
     cardSecrets,
     checkout,
-    clearDraft,
     canCreateMpCardToken,
     createCardToken,
+    draftState,
+    event.id,
     guestInvitation.invitation,
     guestInvitation.ticket,
     guestSlots,
+    goToPayment,
     invitationAccess,
     invitationId,
     paymentSnapshot,

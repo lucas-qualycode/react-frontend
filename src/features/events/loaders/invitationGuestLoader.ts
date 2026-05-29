@@ -1,19 +1,21 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { redirect, type LoaderFunctionArgs } from 'react-router-dom'
 import { getEvent, getInvitation } from '@/features/events/api'
+import { fetchActiveCheckout } from '@/features/events/components/blocks/payment/checkoutPayload'
 import {
   isInvitationAccessFailure,
   type InvitationAccess,
   type InvitationAccessFailureCode,
 } from '@/shared/api/invitationAccess'
 import type { Event, Invitation } from '@/shared/types/api'
+import {
+  guestInvitationPath,
+  isLegacyGuestInvitationPath,
+  resolveGuestInvitationPhase,
+  type GuestInvitationLoaderData,
+} from './guestInvitationRoutes'
 
-export type InvitationGuestLoaderData = {
-  eventId: string
-  invitationId: string
-  invitationAccess: InvitationAccess
-  event: Event
-}
+export type { GuestInvitationLoaderData } from './guestInvitationRoutes'
 
 type UnavailableReason = InvitationAccessFailureCode | 'required' | 'generic'
 
@@ -47,27 +49,33 @@ function resolveAccessFailureReason(errors: unknown[]): UnavailableReason {
   return 'generic'
 }
 
-export function createInvitationGuestLoader(queryClient: QueryClient) {
+export function createGuestInvitationLoader(queryClient: QueryClient) {
   return async ({
     params,
     request,
-  }: LoaderFunctionArgs): Promise<InvitationGuestLoaderData> => {
+  }: LoaderFunctionArgs): Promise<GuestInvitationLoaderData> => {
     const eventId = params.id?.trim() ?? ''
     const invitationId = params.invitationId?.trim() ?? ''
     if (!eventId || !invitationId) {
       throw redirect('/')
     }
 
-    const token = new URL(request.url).searchParams.get('token')?.trim() ?? ''
+    const requestUrl = new URL(request.url)
+    if (isLegacyGuestInvitationPath(requestUrl.pathname)) {
+      throw redirect(guestInvitationPath(eventId, invitationId) + requestUrl.search)
+    }
+
+    const token = requestUrl.searchParams.get('token')?.trim() ?? ''
     if (!token) {
       redirectUnavailable(eventId, invitationId, 'required')
     }
 
     const invitationAccess: InvitationAccess = { invitationId, token }
 
-    const [eventResult, invitationResult] = await Promise.allSettled([
+    const [eventResult, invitationResult, activeResult] = await Promise.allSettled([
       getEvent(eventId, invitationAccess),
       getInvitation(invitationId, invitationAccess),
+      fetchActiveCheckout(invitationId, invitationAccess),
     ])
 
     const rejections: unknown[] = []
@@ -85,14 +93,29 @@ export function createInvitationGuestLoader(queryClient: QueryClient) {
     const event = (eventResult as PromiseFulfilledResult<Event>).value
     const invitation = (invitationResult as PromiseFulfilledResult<Invitation>).value
 
+    let activeCheckout = null
+    if (activeResult.status === 'fulfilled') {
+      activeCheckout = activeResult.value
+    }
+
     queryClient.setQueryData(['event', eventId, token], event)
     queryClient.setQueryData(['invitation', invitationId, token], invitation)
+    if (activeCheckout) {
+      queryClient.setQueryData(['activeCheckout', invitationId, token], activeCheckout)
+    }
+
+    const phase = resolveGuestInvitationPhase(activeCheckout)
 
     return {
       eventId,
       invitationId,
       invitationAccess,
       event,
+      invitation,
+      activeCheckout,
+      phase,
     }
   }
 }
+
+export const createInvitationGuestLoader = createGuestInvitationLoader

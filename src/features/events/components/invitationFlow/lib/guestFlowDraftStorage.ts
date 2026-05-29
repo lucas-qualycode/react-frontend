@@ -130,6 +130,7 @@ export function normalizeGuestFlowDraft(draft: GuestFlowDraft): GuestFlowDraft {
     paymentMethod,
     cardPayment,
     checkout,
+    pendingCheckout: draft.pendingCheckout ?? null,
   }
 }
 
@@ -195,6 +196,18 @@ export function resolveGuestFlowStepFromDraft(draft: GuestFlowDraft): EventGuest
 
   const checkout =
     draft.checkout && draft.checkout.parent_id === draft.eventId ? draft.checkout : null
+
+  if (draft.pendingCheckout) {
+    if (step === 'mp_payment') return 'review'
+    if (
+      checkout &&
+      checkout.total_cents > 0 &&
+      (step === 'message' || step === 'review')
+    ) {
+      return step
+    }
+  }
+
   if (
     checkout &&
     checkout.total_cents > 0 &&

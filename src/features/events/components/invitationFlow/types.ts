@@ -17,6 +17,8 @@ export type EventGuestGiftVariant = 'wedding'
 
 export type EventGuestMpPaymentVariant = 'wedding'
 
+export type EventGuestPaymentVariant = 'wedding'
+
 export type EventGuestMessageVariant = 'wedding'
 
 export type EventGuestReviewVariant = 'wedding'

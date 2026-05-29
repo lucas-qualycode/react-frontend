@@ -62,6 +62,8 @@ type Props = {
   onCardSecretsChange: (secrets: GuestCardPaymentSecrets) => void
   onPaymentComplete: (snapshot: GuestPaymentSnapshot) => void
   onBack: () => void
+  showActions?: boolean
+  embedded?: boolean
   navigationFieldErrors?: CardFormValidation['fieldErrors']
   onNavigationFieldErrorsClear?: () => void
 }
@@ -79,6 +81,8 @@ export function EventGuestMpPaymentBlock({
   onCardSecretsChange,
   onPaymentComplete,
   onBack,
+  embedded = false,
+  showActions = !embedded,
   navigationFieldErrors,
   onNavigationFieldErrorsClear,
 }: Props) {
@@ -366,15 +370,17 @@ export function EventGuestMpPaymentBlock({
 
   if (variant !== 'wedding') return null
 
-  return (
-    <GuestFlowContentPanel panelSize="fit">
-      <GuestFlowBlockHeader
-        icon={<CreditCardOutlined />}
-        title={t('events.detail.guestMpPayment.title')}
-        subtitle={t('events.detail.guestMpPayment.subtitle')}
-      />
+  const content = (
+    <>
+      {!embedded ? (
+        <GuestFlowBlockHeader
+          icon={<CreditCardOutlined />}
+          title={t('events.detail.guestMpPayment.title')}
+          subtitle={t('events.detail.guestMpPayment.subtitle')}
+        />
+      ) : null}
 
-      <GuestMpPaymentGiftsSummary checkout={checkout} />
+      {!embedded ? <GuestMpPaymentGiftsSummary checkout={checkout} /> : null}
 
       <Flex vertical gap={10} style={{ width: '100%' }}>
         <Text strong>{t('events.detail.guestMpPayment.chooseMethod')}</Text>
@@ -520,9 +526,11 @@ export function EventGuestMpPaymentBlock({
 
       {method === 'pix' && (
         <Flex vertical gap={12} style={{ width: '100%' }}>
-          <Text type="secondary" style={{ fontSize: 15, lineHeight: 1.6 }}>
-            {t('events.detail.guestMpPayment.pixHint')}
-          </Text>
+          {!embedded ? (
+            <Text type="secondary" style={{ fontSize: 15, lineHeight: 1.6 }}>
+              {t('events.detail.guestMpPayment.pixHint')}
+            </Text>
+          ) : null}
           <GuestFlowBorderField
             label={t('events.detail.guestMpPayment.payerEmail')}
             required
@@ -534,14 +542,26 @@ export function EventGuestMpPaymentBlock({
         </Flex>
       )}
 
-      <GuestFlowActions>
-        <Button size="large" onClick={onBack}>
-          {t('events.detail.guestMpPayment.back')}
-        </Button>
-        <Button type="primary" size="large" onClick={handleContinue} disabled={!method}>
-          {t('events.detail.guestMpPayment.continue')}
-        </Button>
-      </GuestFlowActions>
-    </GuestFlowContentPanel>
+      {showActions ? (
+        <GuestFlowActions>
+          <Button size="large" onClick={onBack}>
+            {t('events.detail.guestMpPayment.back')}
+          </Button>
+          <Button type="primary" size="large" onClick={handleContinue} disabled={!method}>
+            {t('events.detail.guestMpPayment.continue')}
+          </Button>
+        </GuestFlowActions>
+      ) : null}
+    </>
   )
+
+  if (embedded) {
+    return (
+      <Flex vertical align="center" gap={24} style={{ width: '100%' }}>
+        {content}
+      </Flex>
+    )
+  }
+
+  return <GuestFlowContentPanel panelSize="fit">{content}</GuestFlowContentPanel>
 }

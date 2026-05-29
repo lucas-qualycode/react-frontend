@@ -331,6 +331,34 @@
         "externalLinkModalBody": "Você será redirecionado para outro site. A Partiiu não controla esse endereço — continue apenas se confiar no link.",
         "externalLinkModalOk": "Abrir link",
         "externalLinkModalCancel": "Cancelar"
+      },
+      "guestPayment": {
+        "title": "Concluir pagamento",
+        "subtitle": "Finalize o pagamento para concluir sua confirmação.",
+        "pixInstructions": "Escaneie o QR code ou copie o código Pix para pagar.",
+        "qrAlt": "QR code Pix",
+        "copyPix": "Copiar código Pix",
+        "copyPixSuccess": "Código Pix copiado",
+        "copyPixError": "Não foi possível copiar o código Pix",
+        "expiresIn": "Expira em {{time}}",
+        "waitingPix": "Aguardando confirmação do pagamento…",
+        "processingCard": "Processando pagamento…",
+        "failedTitle": "Pagamento não concluído",
+        "failedDescription": "Sua última tentativa de pagamento não foi concluída. Escolha um método e tente novamente.",
+        "payAgain": "Pagar",
+        "missingCheckout": "Os dados do checkout estão ausentes. Volte ao convite e tente novamente.",
+        "noPaymentTitle": "Nenhum pagamento em andamento",
+        "noPaymentDescription": "Não encontramos um pagamento ativo para este convite. Volte ao convite para iniciar o checkout novamente.",
+        "backToInvitation": "Voltar ao convite"
+      },
+      "guestConfirmed": {
+        "title": "Tudo certo",
+        "subtitle": "Seu pagamento foi confirmado. Aqui está um resumo da sua confirmação.",
+        "paymentSection": "Pagamento",
+        "status": "Status",
+        "method": "Método",
+        "totalPaid": "Total pago",
+        "reference": "Referência"
       }
     },
     "form": {

@@ -140,6 +140,8 @@ export interface InvitationGuestSlot {
   updated_at: string
 }
 
+export type InvitationWizardStep = 'guests' | 'gifts' | 'message' | 'finished'
+
 export interface Invitation {
   id: string
   event_id: string
@@ -154,6 +156,7 @@ export interface Invitation {
   updated_at: string
   guest_slot_count?: number
   guest_slots?: InvitationGuestSlot[]
+  wizard_step?: InvitationWizardStep | null
   metadata?: Record<string, unknown>
   tags?: EventTagEmbed[]
 }

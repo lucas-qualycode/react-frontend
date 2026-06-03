@@ -17,10 +17,10 @@ import {
   mergeDraftWithServerState,
   readGuestMessageFromInvitation,
 } from '../lib/guestFlowRsvpHydration'
+import { resolveWizardStepFromInvitation } from '../lib/resolveWizardStep'
 import {
   clearGuestFlowDraft,
   loadGuestFlowDraft,
-  resolveGuestFlowStepFromDraft,
   saveGuestFlowDraft,
 } from '../lib/guestFlowDraftStorage'
 
@@ -52,6 +52,16 @@ function buildDraftFromState(
   }
 }
 
+function resolveInitialWizardStep(
+  invitation: Invitation,
+  draft: GuestFlowDraft | null,
+): GuestFlowHydrationPayload['activeStep'] {
+  if (draft?.flowPath === 'decline') {
+    return 'guests'
+  }
+  return resolveWizardStepFromInvitation(invitation)
+}
+
 function hydrationFromDraft(
   draft: GuestFlowDraft,
   invitation: Invitation,
@@ -73,7 +83,7 @@ function hydrationFromDraft(
     guestSlots,
     confirmPhase,
     confirmGuestIndex,
-    activeStep: resolveGuestFlowStepFromDraft(draft),
+    activeStep: resolveInitialWizardStep(invitation, draft),
     cardPayment: {
       ...createDefaultCardPaymentPersisted(),
       ...draft.cardPayment,
@@ -91,7 +101,7 @@ function hydrationWithoutDraft(
 
   return {
     ...createDefaultGuestFlowDraftState(),
-    activeStep: 'welcome',
+    activeStep: resolveInitialWizardStep(invitation, null),
     guestSlots: buildInitialGuestConfirmSlots(invitation, ticket),
     coupleMessage: savedMessage,
     guestsSaved: serverFlags.guestsSaved,

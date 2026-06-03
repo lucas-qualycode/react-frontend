@@ -111,6 +111,7 @@ export function getMockInvitation(eventId: string): Invitation {
     updated_at: '',
     guest_slot_count: guestSlots.length,
     guest_slots: guestSlots,
+    wizard_step: 'guests',
   }
 }
 
@@ -120,4 +121,18 @@ export function getMockGuestTicket(): Product {
 
 export function getMockGuestFieldDefinitions(): FieldDefinition[] {
   return MOCK_FIELD_DEFINITIONS
+}
+
+export function getMockInvitationGuestView(eventId: string) {
+  const invitation = getMockInvitation(eventId)
+  return {
+    invitation,
+    guest_slots: (invitation.guest_slots ?? []).map((slot) => ({
+      ...slot,
+      field_values: slot.field_values ?? {},
+      attending: slot.attending !== false,
+      user_product: null,
+    })),
+    user_products: { tickets: [], gifts: [] },
+  }
 }

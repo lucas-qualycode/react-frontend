@@ -6,43 +6,32 @@ import {
 } from './guestFlowProgress'
 
 describe('guestFlowProgress', () => {
-  it('marks filled steps as completed and navigable when user is on an earlier step', () => {
-    const checkout = {
-      parent_id: 'e1',
-      total_cents: 0,
-      items: [],
-      currency: 'BRL' as const,
-    }
+  it('marks filled steps as completed but only the current step is navigable', () => {
     const completion = buildGuestFlowProgressCompletion({
-      guestsSaved: true,
+      guestsConfirmed: true,
       confirmPhase: 'review',
-      lastSavedGuestsFingerprint: 'fp',
-      checkout,
-      paymentSnapshot: false,
+      giftsCompleted: true,
       messageSaved: true,
-      maxProgressIndexReached: 4,
+      maxProgressIndexReached: 3,
     })
 
-    expect(guestFlowProgressStepStatus('gift', 'confirm', checkout, completion)).toBe('completed')
-    expect(guestFlowProgressStepCanNavigate('message', 'confirm', checkout, completion)).toBe(
-      true,
-    )
-    expect(guestFlowProgressStepStatus('review', 'confirm', checkout, completion)).toBe('upcoming')
-    expect(guestFlowProgressStepCanNavigate('review', 'confirm', checkout, completion)).toBe(true)
+    expect(guestFlowProgressStepStatus('gifts', 'guests', completion)).toBe('completed')
+    expect(guestFlowProgressStepCanNavigate('message', 'guests', completion)).toBe(false)
+    expect(guestFlowProgressStepCanNavigate('guests', 'guests', completion)).toBe(true)
+    expect(guestFlowProgressStepStatus('finished', 'guests', completion)).toBe('upcoming')
+    expect(guestFlowProgressStepCanNavigate('finished', 'guests', completion)).toBe(false)
   })
 
   it('keeps upcoming steps disabled when not filled', () => {
     const completion = buildGuestFlowProgressCompletion({
-      guestsSaved: false,
+      guestsConfirmed: false,
       confirmPhase: 'form',
-      lastSavedGuestsFingerprint: null,
-      checkout: null,
-      paymentSnapshot: false,
+      giftsCompleted: false,
       messageSaved: false,
       maxProgressIndexReached: 0,
     })
 
-    expect(guestFlowProgressStepStatus('gift', 'confirm', null, completion)).toBe('upcoming')
-    expect(guestFlowProgressStepCanNavigate('gift', 'confirm', null, completion)).toBe(false)
+    expect(guestFlowProgressStepStatus('gifts', 'guests', completion)).toBe('upcoming')
+    expect(guestFlowProgressStepCanNavigate('gifts', 'guests', completion)).toBe(false)
   })
 })

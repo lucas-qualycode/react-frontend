@@ -2,10 +2,10 @@ import type { CSSProperties } from 'react'
 import type { EventGuestFlowStep } from '../types'
 
 export const GUEST_FLOW_CONTENT_PANEL_STEPS: EventGuestFlowStep[] = [
-  'confirm',
-  'gift',
-  'mp_payment',
+  'guests',
+  'gifts',
   'message',
+  'finished',
 ]
 
 export function guestFlowStepUsesContentPanel(step: EventGuestFlowStep) {
@@ -13,7 +13,7 @@ export function guestFlowStepUsesContentPanel(step: EventGuestFlowStep) {
 }
 
 export function guestFlowStepUsesStableContentPanel(step: EventGuestFlowStep) {
-  return guestFlowStepUsesContentPanel(step) && step !== 'confirm'
+  return guestFlowStepUsesContentPanel(step) && step !== 'guests'
 }
 
 export const guestPanelShellStyle: CSSProperties = {

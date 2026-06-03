@@ -5,6 +5,7 @@ import {
   readApiErrorDetail,
   type InvitationAccess,
 } from '@/shared/api/invitationAccess'
+import { isInvitationGuestView } from '@/features/events/components/invitationFlow/lib/guestInvitationApi'
 import type {
   Event,
   EventPrimaryCategory,
@@ -13,6 +14,7 @@ import type {
   FulfillmentType,
   Invitation,
   InvitationDestinationType,
+  InvitationGuestSlotStatus,
   Location,
   Product,
   ProductKind,
@@ -439,56 +441,17 @@ export async function getInvitation(
     }
     throw new Error(detail ?? `Request failed (${res.status})`)
   }
-  return res.json() as Promise<Invitation>
-}
-
-export type SubmitGuestInvitationGuestRow = {
-  id?: string
-  first_name: string
-  required_field_ids: string[]
-  field_values: Record<string, string>
-  attending: boolean
-}
-
-export type SubmitGuestInvitationPayload = {
-  message?: string
-  guests?: SubmitGuestInvitationGuestRow[]
-}
-
-export async function submitGuestInvitation(
-  invitationId: string,
-  payload: SubmitGuestInvitationPayload,
-  invitationAccess?: InvitationAccess | null,
-): Promise<Invitation> {
-  const body: Record<string, unknown> = {}
-  if (payload.message !== undefined) {
-    body.message = payload.message
+  const data = (await res.json()) as unknown
+  if (isInvitationGuestView(data)) {
+    return {
+      ...data.invitation,
+      guest_slots: data.guest_slots.map(({ user_product: _up, ...slot }) => ({
+        ...slot,
+        status: slot.status as InvitationGuestSlotStatus,
+      })),
+    }
   }
-  if (payload.guests !== undefined) {
-    body.guests = payload.guests.map((g) => {
-      const row: Record<string, unknown> = {
-        first_name: (g.first_name ?? '').trim(),
-        required_field_ids: g.required_field_ids ?? [],
-        field_values: g.field_values ?? {},
-        attending: g.attending !== false,
-      }
-      if (g.id) {
-        row.id = g.id
-      }
-      return row
-    })
-  }
-  const res = await fetchApi(
-    `invitations/${invitationId}/guest-submit`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
-    invitationAccess,
-  )
-  if (!res.ok) throw new Error(await apiErrorMessage(res))
-  return res.json() as Promise<Invitation>
+  return data as Invitation
 }
 
 export type UpdateInvitationPayload = {

@@ -7,8 +7,9 @@ import {
 } from '../../blocks/mpPayment/guestMpPaymentDraft'
 import type { EventGuestFlowStep } from '../types'
 
-export const GUEST_FLOW_DRAFT_VERSION = 4 as const
+export const GUEST_FLOW_DRAFT_VERSION = 5 as const
 export const GUEST_FLOW_DRAFT_STORAGE_PREFIX = 'partiiu:guest-flow:'
+export const GUEST_WIZARD_STEP_STORAGE_PREFIX = 'partiiu:wizard-step:'
 export const GUEST_FLOW_DRAFT_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
 
 export type GuestFlowPath = 'attend' | 'decline'
@@ -92,4 +93,8 @@ export function createDefaultGuestFlowDraftState(): GuestFlowDraftState {
 
 export function guestFlowDraftStorageKey(invitationId: string): string {
   return `${GUEST_FLOW_DRAFT_STORAGE_PREFIX}${invitationId}`
+}
+
+export function guestWizardStepStorageKey(invitationId: string): string {
+  return `${GUEST_WIZARD_STEP_STORAGE_PREFIX}${invitationId}`
 }

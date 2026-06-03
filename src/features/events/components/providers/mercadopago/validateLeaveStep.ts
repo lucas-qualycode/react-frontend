@@ -15,18 +15,18 @@ export function validateLeaveMercadoPagoPaymentStep(
 
   if (!method) {
     message.warning(t('events.detail.guestMpPayment.validation.chooseMethod'))
-    return { ok: false, step: 'mp_payment', fieldErrors: {} }
+    return { ok: false, step: 'gifts', fieldErrors: {} }
   }
 
   if (method === 'pix') {
     const email = pixPayerEmail.trim()
     if (!email) {
       message.error(t('events.detail.guestMpPayment.validation.required'))
-      return { ok: false, step: 'mp_payment', fieldErrors: {} }
+      return { ok: false, step: 'gifts', fieldErrors: {} }
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       message.error(t('events.detail.guestMpPayment.validation.emailInvalid'))
-      return { ok: false, step: 'mp_payment', fieldErrors: {} }
+      return { ok: false, step: 'gifts', fieldErrors: {} }
     }
     return { ok: true }
   }
@@ -36,12 +36,12 @@ export function validateLeaveMercadoPagoPaymentStep(
   })
   if (!validation.valid) {
     message.error(t('events.detail.guestMpPayment.validation.formInvalid'))
-    return { ok: false, step: 'mp_payment', fieldErrors: validation.fieldErrors }
+    return { ok: false, step: 'gifts', fieldErrors: validation.fieldErrors }
   }
 
   if (isConfigured && !isReady) {
     message.error(t('events.detail.guestMpPayment.validation.mpNotReady'))
-    return { ok: false, step: 'mp_payment', fieldErrors: {} }
+    return { ok: false, step: 'gifts', fieldErrors: {} }
   }
 
   return { ok: true }

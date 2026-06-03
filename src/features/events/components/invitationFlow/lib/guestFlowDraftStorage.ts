@@ -13,6 +13,7 @@ import {
   guestFlowDraftStorageKey,
 } from './guestFlowDraft'
 import { GUEST_FLOW_STEP_INDEX, type EventGuestFlowStep } from '../types'
+import { migrateLegacyWizardStep } from './wizardStepStorage'
 
 export function mergeGuestSlotsWithDraft(
   initialSlots: GuestConfirmFormSlot[],
@@ -45,32 +46,6 @@ export function mergeGuestSlotsWithDraft(
       attending: draft.attending ?? initial.attending,
     }
   })
-}
-
-export function loadGuestFlowDraft(
-  invitationId: string,
-  eventId: string,
-): GuestFlowDraft | null {
-  if (typeof localStorage === 'undefined') return null
-
-  try {
-    const raw = localStorage.getItem(guestFlowDraftStorageKey(invitationId))
-    if (!raw) return null
-
-    const parsed = JSON.parse(raw) as GuestFlowDraft
-    if (parsed.version !== GUEST_FLOW_DRAFT_VERSION) return null
-    if (parsed.invitationId !== invitationId || parsed.eventId !== eventId) return null
-
-    const updatedAt = Date.parse(parsed.updatedAt)
-    if (Number.isNaN(updatedAt) || Date.now() - updatedAt > GUEST_FLOW_DRAFT_MAX_AGE_MS) {
-      clearGuestFlowDraft(invitationId)
-      return null
-    }
-
-    return normalizeGuestFlowDraft(parsed)
-  } catch {
-    return null
-  }
 }
 
 function normalizeLegacyPaymentMethod(
@@ -126,11 +101,37 @@ export function normalizeGuestFlowDraft(draft: GuestFlowDraft): GuestFlowDraft {
 
   return {
     ...rest,
+    activeStep: migrateLegacyWizardStep(String(rest.activeStep)),
     coupleMessage,
     paymentMethod,
     cardPayment,
     checkout,
-    pendingCheckout: draft.pendingCheckout ?? null,
+  }
+}
+
+export function loadGuestFlowDraft(
+  invitationId: string,
+  eventId: string,
+): GuestFlowDraft | null {
+  if (typeof localStorage === 'undefined') return null
+
+  try {
+    const raw = localStorage.getItem(guestFlowDraftStorageKey(invitationId))
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as GuestFlowDraft
+    if (parsed.version !== GUEST_FLOW_DRAFT_VERSION && parsed.version !== 4) return null
+    if (parsed.invitationId !== invitationId || parsed.eventId !== eventId) return null
+
+    const updatedAt = Date.parse(parsed.updatedAt)
+    if (Number.isNaN(updatedAt) || Date.now() - updatedAt > GUEST_FLOW_DRAFT_MAX_AGE_MS) {
+      clearGuestFlowDraft(invitationId)
+      return null
+    }
+
+    return normalizeGuestFlowDraft(parsed)
+  } catch {
+    return null
   }
 }
 
@@ -140,7 +141,7 @@ export function saveGuestFlowDraft(draft: GuestFlowDraft): void {
   try {
     localStorage.setItem(guestFlowDraftStorageKey(draft.invitationId), JSON.stringify(draft))
   } catch {
-    // quota exceeded or private mode
+    /* quota exceeded or private mode */
   }
 }
 
@@ -150,19 +151,15 @@ export function clearGuestFlowDraft(invitationId: string): void {
   try {
     localStorage.removeItem(guestFlowDraftStorageKey(invitationId))
   } catch {
-    // ignore
+    /* ignore */
   }
 }
 
 export function resolveGuestFlowStepFromDraft(draft: GuestFlowDraft): EventGuestFlowStep {
-  if (draft.flowPath === 'decline') {
-    return 'confirm'
-  }
+  let step = migrateLegacyWizardStep(String(draft.activeStep))
 
-  let step = draft.activeStep
-
-  if ((step as string) === 'decline') {
-    step = 'confirm'
+  if (draft.flowPath === 'decline' && step === 'welcome') {
+    return 'guests'
   }
 
   if (step === 'welcome') {
@@ -178,42 +175,12 @@ export function resolveGuestFlowStepFromDraft(draft: GuestFlowDraft): EventGuest
         Object.values(slot.fieldValues).some((v) => v.trim().length > 0),
     )
 
-  if (!hasGuestProgress && GUEST_FLOW_STEP_INDEX[step] > GUEST_FLOW_STEP_INDEX.confirm) {
-    return 'confirm'
+  if (!hasGuestProgress && GUEST_FLOW_STEP_INDEX[step] > GUEST_FLOW_STEP_INDEX.guests) {
+    return 'guests'
   }
 
-  if (!draft.checkout && GUEST_FLOW_STEP_INDEX[step] >= GUEST_FLOW_STEP_INDEX.mp_payment) {
-    step = 'gift'
-  }
-
-  if (draft.checkout && draft.checkout.total_cents === 0 && step === 'mp_payment') {
-    step = 'message'
-  }
-
-  if (step === 'mp_payment' && !draft.checkout) {
-    step = 'gift'
-  }
-
-  const checkout =
-    draft.checkout && draft.checkout.parent_id === draft.eventId ? draft.checkout : null
-
-  if (draft.pendingCheckout) {
-    if (step === 'mp_payment') return 'review'
-    if (
-      checkout &&
-      checkout.total_cents > 0 &&
-      (step === 'message' || step === 'review')
-    ) {
-      return step
-    }
-  }
-
-  if (
-    checkout &&
-    checkout.total_cents > 0 &&
-    (step === 'message' || step === 'review')
-  ) {
-    return 'mp_payment'
+  if (!draft.checkout && step === 'gifts' && draft.giftPhase === 'review') {
+    return 'gifts'
   }
 
   return step

@@ -1,19 +1,22 @@
 export type EventDetailBlockId =
   | 'guest_background'
   | 'guest_welcome'
-  | 'guest_confirm'
-  | 'guest_gift'
-  | 'guest_mp_payment'
+  | 'guest_guests'
+  | 'guest_gifts'
   | 'guest_message'
-  | 'guest_review'
+  | 'guest_finished'
 
 export type EventGuestBackgroundVariant = 'wedding'
 
 export type EventGuestWelcomeVariant = 'wedding'
 
-export type EventGuestConfirmVariant = 'wedding'
+export type EventGuestGuestsVariant = 'wedding'
 
-export type EventGuestGiftVariant = 'wedding'
+export type EventGuestConfirmVariant = EventGuestGuestsVariant
+
+export type EventGuestGiftsVariant = 'wedding'
+
+export type EventGuestGiftVariant = EventGuestGiftsVariant
 
 export type EventGuestMpPaymentVariant = 'wedding'
 
@@ -21,23 +24,25 @@ export type EventGuestPaymentVariant = 'wedding'
 
 export type EventGuestMessageVariant = 'wedding'
 
-export type EventGuestReviewVariant = 'wedding'
+export type EventGuestFinishedVariant = 'wedding'
+
+export type EventGuestReviewVariant = EventGuestFinishedVariant
 
 export type EventDetailSlot = { blockId: 'guest_welcome'; variant: EventGuestWelcomeVariant }
 
 export type EventGuestFlowStep =
   | 'welcome'
-  | 'confirm'
-  | 'gift'
-  | 'mp_payment'
+  | 'guests'
+  | 'gifts'
   | 'message'
-  | 'review'
+  | 'finished'
 
 export const GUEST_FLOW_STEP_INDEX: Record<EventGuestFlowStep, number> = {
   welcome: 0,
-  confirm: 1,
-  gift: 2,
-  mp_payment: 3,
-  message: 4,
-  review: 5,
+  guests: 1,
+  gifts: 2,
+  message: 3,
+  finished: 4,
 }
+
+export type GuestGiftsSubView = 'catalog' | 'payment' | 'payment_poll'

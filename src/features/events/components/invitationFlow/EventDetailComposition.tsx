@@ -21,11 +21,10 @@ export function EventDetailComposition({ event, invitationId }: Props) {
               invitationId={invitationId}
               backgroundVariant="wedding"
               welcomeVariant={slot.variant}
-              confirmVariant="wedding"
-              giftVariant="wedding"
-              mpPaymentVariant="wedding"
+              guestsVariant="wedding"
+              giftsVariant="wedding"
               messageVariant="wedding"
-              reviewVariant="wedding"
+              finishedVariant="wedding"
             />
           )
         }

@@ -135,6 +135,17 @@ export function giftCheckoutTotalCents(checkout: GuestCheckoutSnapshot): number 
   )
 }
 
+export function giftOnlyCheckoutSnapshot(
+  checkout: GuestCheckoutSnapshot,
+): GuestCheckoutSnapshot {
+  const items = giftCheckoutLineItems(checkout)
+  return {
+    ...checkout,
+    items,
+    total_cents: items.reduce((sum, item) => sum + item.total_price, 0),
+  }
+}
+
 export function splitCheckoutItemsByType(
   items: GuestCheckoutLineItem[],
   _ticket_id: string | undefined,

@@ -3,7 +3,7 @@ import { Button, Empty, Flex, Modal, Spin, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Event, Product } from '@/shared/types/api'
-import { buildGuestCheckoutSnapshot, type GuestCheckoutSnapshot } from '../../invitationFlow/lib/guestCheckoutSession'
+import { buildCheckoutSnapshotFromProducts, type GuestCheckoutSnapshot } from '../../invitationFlow/lib/guestCheckoutSession'
 import type { GuestConfirmFormSlot } from '../../invitationFlow/lib/guestConfirmMock'
 import { GuestGiftProductCard } from './GuestGiftProductCard'
 import { GuestGiftSummaryBar } from './GuestGiftSummaryBar'
@@ -30,7 +30,9 @@ type Props = {
   onPhaseChange: (phase: GuestGiftPhase) => void
   page: number
   onPageChange: (page: number) => void
-  onBack: () => void
+  onBack?: () => void
+  editFromFinished?: boolean
+  onCancelEdit?: () => void
   onGiftsConfirmed: (snapshot: GuestCheckoutSnapshot) => void
 }
 
@@ -41,7 +43,8 @@ type BrowseProps = {
   totalCents: number
   onToggle: (productId: string) => void
   onPageChange: (page: number) => void
-  onBack: () => void
+  onBack?: () => void
+  backLabel?: string
   onContinue: () => void
 }
 
@@ -53,6 +56,7 @@ function GiftBrowseView({
   onToggle,
   onPageChange,
   onBack,
+  backLabel,
   onContinue,
 }: BrowseProps) {
   const { t } = useTranslation()
@@ -154,9 +158,11 @@ function GiftBrowseView({
       )}
 
       <GuestFlowActions>
-        <Button size="large" onClick={onBack}>
-          {t('events.detail.guestGift.back')}
-        </Button>
+        {onBack ? (
+          <Button size="large" onClick={onBack}>
+            {backLabel ?? t('events.detail.guestGift.back')}
+          </Button>
+        ) : null}
         <Button type="primary" size="large" onClick={onContinue} disabled={products.length === 0}>
           {t('events.detail.guestGift.continue')}
         </Button>
@@ -259,8 +265,11 @@ export function EventGuestGiftBlock({
   page,
   onPageChange,
   onBack,
+  editFromFinished = false,
+  onCancelEdit,
   onGiftsConfirmed,
 }: Props) {
+  const { t } = useTranslation()
   const { products, isLoading } = useGuestGiftProducts(invitationId)
 
   if (variant !== 'wedding') return null
@@ -299,7 +308,10 @@ export function EventGuestGiftBlock({
           totalCents={totalCents}
           onToggle={toggleProduct}
           onPageChange={onPageChange}
-          onBack={onBack}
+          onBack={editFromFinished && onCancelEdit ? onCancelEdit : onBack}
+          backLabel={
+            editFromFinished ? t('events.detail.guestFinished.cancelEdit') : undefined
+          }
           onContinue={() => onPhaseChange('review')}
         />
       ) : (
@@ -309,7 +321,7 @@ export function EventGuestGiftBlock({
           onBackToBrowse={() => onPhaseChange('browse')}
           onConfirm={() => {
             onGiftsConfirmed(
-              buildGuestCheckoutSnapshot(event.id, ticket, guestSlots, selectedProducts),
+              buildCheckoutSnapshotFromProducts(event.id, selectedProducts),
             )
           }}
         />

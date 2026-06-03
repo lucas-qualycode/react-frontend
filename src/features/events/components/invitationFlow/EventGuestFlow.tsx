@@ -1,37 +1,29 @@
-import { Flex, Spin, Typography, message } from 'antd'
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Alert, Button, Flex, Spin, Typography, message } from 'antd'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLoaderData } from 'react-router-dom'
 import type { Event } from '@/shared/types/api'
 import { EventGuestConfirmBlock } from '../blocks/confirm/EventGuestConfirmBlock'
+import { EventGuestFinishedBlock } from '../blocks/finished/EventGuestFinishedBlock'
 import { EventGuestGiftBlock } from '../blocks/gift/EventGuestGiftBlock'
 import { EventGuestMessageBlock } from '../blocks/message/EventGuestMessageBlock'
 import { getDefaultGuestPaymentProvider } from '../blocks/payment/registry'
-import {
-  buildGuestCheckoutPayload,
-  submitGuestCheckout,
-} from '../blocks/payment/checkoutPayload'
+import { buildGuestCheckoutPayload } from '../blocks/payment/checkoutPayload'
 import { finalizeGuestPayment } from '../blocks/payment/finalize'
 import type { GuestPaymentSnapshot } from '../blocks/payment/types'
-import { EventGuestReviewBlock } from '../blocks/review/EventGuestReviewBlock'
 import { EventGuestBackgroundBlock } from '../blocks/background/EventGuestBackgroundBlock'
 import { EventGuestWelcomeBlock } from '../blocks/welcome/EventGuestWelcomeBlock'
 import {
-  refreshGuestCheckoutWithAttendingTickets,
+  giftOnlyCheckoutSnapshot,
   type GuestCheckoutSnapshot,
 } from './lib/guestCheckoutSession'
-import { createDefaultGuestFlowDraftState, GUEST_FLOW_DRAFT_VERSION } from './lib/guestFlowDraft'
-import { loadGuestFlowDraft, mergeGuestSlotsWithDraft, saveGuestFlowDraft } from './lib/guestFlowDraftStorage'
+import { createDefaultGuestFlowDraftState } from './lib/guestFlowDraft'
+import { loadGuestFlowDraft, mergeGuestSlotsWithDraft } from './lib/guestFlowDraftStorage'
 import {
   buildGuestFlowProgressCompletion,
   guestFlowProgressActiveIndex,
-  guestFlowProgressNavigationTarget,
   guestFlowShowsProgressIndicator,
-  type GuestFlowProgressStep,
 } from './lib/guestFlowProgress'
-import {
-  validateLeaveGuestFlowStep,
-  type LeaveStepValidationFailure,
-} from './lib/guestFlowLeaveStepValidation'
 import type { GuestSlotValidationResult } from './lib/guestConfirmMock'
 import type { CardFormValidation } from '../blocks/mpPayment/guestMpPaymentForm'
 import { createDefaultCardPaymentSecrets } from '../blocks/mpPayment/guestMpPaymentForm'
@@ -40,36 +32,42 @@ import {
   markAllGuestsNotAttending,
   type GuestConfirmFormSlot,
 } from './lib/guestConfirmMock'
-import {
-  buildGuestMessageSubmitPayload,
-  buildGuestSlotsSubmitPayload,
-  fingerprintGuestSlotsSubmitPayload,
-  guestMessageUnchanged,
-  guestSlotsSubmitUnchanged,
-} from './lib/guestSubmitPayload'
-import {
-  persistGuestMessageInBackground,
-  persistGuestSlotsInBackground,
-} from './lib/guestSubmitPersistence'
+import { buildGuestMessageSubmitPayload, buildGuestSlotsSubmitPayload, fingerprintGuestSlotsSubmitPayload } from './lib/guestSubmitPayload'
 import { readGuestMessageFromInvitation } from './lib/guestFlowRsvpHydration'
+import {
+  confirmGuests,
+  guestInvitationErrorMessage,
+  patchInvitationMessage,
+  submitGiftCheckout,
+  type GiftCheckoutResponse,
+  type GuestPaymentStatusResponse,
+} from './lib/guestInvitationApi'
+import { mergeInvitationGuestSlots } from './lib/invitationGuestSlots'
+import { flowStepFromWizardStep } from './lib/resolveWizardStep'
+import { formatPixExpiryCountdown } from './lib/formatPixExpiryCountdown'
 import { useMercadoPago } from '@/features/events/hooks/useMercadoPago'
 import { GuestFlowStepIndicator } from './shared/GuestFlowStepIndicator'
+import { GuestFlowContentPanel } from './shared/GuestFlowContentPanel'
 import { guestFlowStepUsesContentPanel } from './shared/guestPanelLayout'
 import { useGuestFlowDraft, type GuestFlowHydrationPayload } from './hooks/useGuestFlowDraft'
+import { useTicketFulfillmentPoll } from './hooks/useTicketFulfillmentPoll'
+import { useGiftPaymentPoll } from './hooks/useGiftPaymentPoll'
+import { useResumePendingGiftPayment } from './hooks/useResumePendingGiftPayment'
+import { useInvalidateInvitationPayments } from './hooks/useInvitationPayments'
 import {
   GUEST_FLOW_STEP_INDEX,
   type EventGuestBackgroundVariant,
-  type EventGuestConfirmVariant,
+  type EventGuestFinishedVariant,
   type EventGuestFlowStep,
-  type EventGuestGiftVariant,
+  type EventGuestGiftsVariant,
+  type EventGuestGuestsVariant,
   type EventGuestMessageVariant,
-  type EventGuestMpPaymentVariant,
-  type EventGuestReviewVariant,
   type EventGuestWelcomeVariant,
+  type GuestGiftsSubView,
 } from './types'
 import { useInvitationAccess } from '@/shared/api/InvitationAccessContext'
-import { useGuestInvitationPhase } from '@/features/events/context/GuestInvitationPhaseContext'
 import { useGuestInvitation } from './hooks/useGuestInvitation'
+import type { GuestInvitationLoaderData } from '@/features/events/loaders/guestInvitationRoutes'
 import './eventGuestFlow.css'
 
 const { Text } = Typography
@@ -79,11 +77,10 @@ type Props = {
   invitationId?: string
   backgroundVariant: EventGuestBackgroundVariant
   welcomeVariant: EventGuestWelcomeVariant
-  confirmVariant: EventGuestConfirmVariant
-  giftVariant: EventGuestGiftVariant
-  mpPaymentVariant: EventGuestMpPaymentVariant
+  guestsVariant: EventGuestGuestsVariant
+  giftsVariant: EventGuestGiftsVariant
   messageVariant: EventGuestMessageVariant
-  reviewVariant: EventGuestReviewVariant
+  finishedVariant: EventGuestFinishedVariant
 }
 
 const TRANSITION_MS = 500
@@ -113,21 +110,33 @@ function easeOutCubic(t: number) {
   return 1 - (1 - t) ** 3
 }
 
+function giftStatusToCheckoutOutcome(status: GuestPaymentStatusResponse): GiftCheckoutResponse {
+  return {
+    order_id: status.order_id,
+    payment_id: status.payment_id,
+    payment_status: status.payment_status,
+    payment_method: status.payment_method ?? null,
+    next_action: status.next_action,
+    total_cents: status.total_cents ?? null,
+    pix: status.pix ?? null,
+  }
+}
+
 export function EventGuestFlow({
   event,
   invitationId,
   backgroundVariant,
   welcomeVariant,
-  confirmVariant,
-  giftVariant,
-  mpPaymentVariant,
+  guestsVariant,
+  giftsVariant,
   messageVariant,
-  reviewVariant,
+  finishedVariant: _finishedVariant,
 }: Props) {
   const { t } = useTranslation()
-  const { goToPayment } = useGuestInvitationPhase()
+  const { pendingGiftPayment } = useLoaderData() as GuestInvitationLoaderData
   const invitationAccess = useInvitationAccess()
   const guestInvitation = useGuestInvitation(event.id, invitationId)
+  const invalidateInvitationPayments = useInvalidateInvitationPayments()
   const viewportRef = useRef<HTMLDivElement>(null)
   const stepsRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -135,6 +144,7 @@ export function EventGuestFlow({
   const animatingRef = useRef(false)
   const activeStepRef = useRef<EventGuestFlowStep>('welcome')
   const transitionRef = useRef<SlideTransition | null>(null)
+  const checkoutIdempotencyKeyRef = useRef<string | null>(null)
 
   const defaultDraftState = createDefaultGuestFlowDraftState()
 
@@ -154,16 +164,17 @@ export function EventGuestFlow({
   )
   const [giftPhase, setGiftPhase] = useState(defaultDraftState.giftPhase)
   const [giftPage, setGiftPage] = useState(defaultDraftState.giftPage)
+  const [giftsSubView, setGiftsSubView] = useState<GuestGiftsSubView>('catalog')
+  const [giftsBootstrap, setGiftsBootstrap] = useState<'ready' | 'resolving'>('ready')
   const [checkout, setCheckout] = useState<GuestCheckoutSnapshot | null>(defaultDraftState.checkout)
   const [coupleMessage, setCoupleMessage] = useState(defaultDraftState.coupleMessage)
   const [paymentMethod, setPaymentMethod] = useState(defaultDraftState.paymentMethod)
   const [pixPayerEmail, setPixPayerEmail] = useState(defaultDraftState.pixPayerEmail)
   const [cardPayment, setCardPayment] = useState(defaultDraftState.cardPayment)
   const [cardSecrets, setCardSecrets] = useState(createDefaultCardPaymentSecrets)
-  const [paymentSnapshot, setPaymentSnapshot] = useState<GuestPaymentSnapshot | null>(null)
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false)
-  const checkoutIdempotencyKeyRef = useRef<string | null>(null)
-  const [guestsSaved, setGuestsSaved] = useState(defaultDraftState.guestsSaved ?? false)
+  const [guestsConfirmed, setGuestsConfirmed] = useState(defaultDraftState.guestsSaved ?? false)
+  const [giftsCompleted, setGiftsCompleted] = useState(false)
   const [messageSaved, setMessageSaved] = useState(defaultDraftState.messageSaved ?? false)
   const [lastSavedGuestsFingerprint, setLastSavedGuestsFingerprint] = useState<string | null>(
     defaultDraftState.lastSavedGuestsFingerprint ?? null,
@@ -172,6 +183,10 @@ export function EventGuestFlow({
     defaultDraftState.lastSavedMessage ?? null,
   )
   const [maxProgressIndexReached, setMaxProgressIndexReached] = useState(0)
+  const [guestsConfirmLoading, setGuestsConfirmLoading] = useState(false)
+  const [pendingTicketSlotIds, setPendingTicketSlotIds] = useState<string[]>([])
+  const [giftPaymentId, setGiftPaymentId] = useState<string | null>(null)
+  const [giftCheckoutOutcome, setGiftCheckoutOutcome] = useState<GiftCheckoutResponse | null>(null)
   const [confirmValidationHighlight, setConfirmValidationHighlight] =
     useState<GuestSlotValidationResult | null>(null)
   const [confirmValidationGuestIndex, setConfirmValidationGuestIndex] = useState<number | undefined>(
@@ -180,6 +195,11 @@ export function EventGuestFlow({
   const [paymentNavigationFieldErrors, setPaymentNavigationFieldErrors] = useState<
     CardFormValidation['fieldErrors'] | undefined
   >(undefined)
+  const [messageSubmitting, setMessageSubmitting] = useState(false)
+  const [guestEditReturnStep, setGuestEditReturnStep] = useState<EventGuestFlowStep | null>(null)
+  const guestEditReturnStepRef = useRef<EventGuestFlowStep | null>(null)
+  guestEditReturnStepRef.current = guestEditReturnStep
+
   const guestPaymentProvider = useMemo(() => getDefaultGuestPaymentProvider(), [])
   const PaymentBlock = guestPaymentProvider.PaymentBlock
   const {
@@ -197,6 +217,21 @@ export function EventGuestFlow({
 
   const resolvedInvitationId = invitationId ?? guestInvitation.invitation?.id ?? ''
 
+  const applyPendingGiftPayment = useCallback((status: GuestPaymentStatusResponse) => {
+    setGiftPaymentId(status.payment_id)
+    setGiftCheckoutOutcome(giftStatusToCheckoutOutcome(status))
+    setGiftsSubView('payment_poll')
+  }, [])
+
+  const pendingCheckout = useMemo(() => {
+    if (activeStep !== 'gifts' || !giftPaymentId || giftsSubView !== 'payment_poll') return null
+    return {
+      paymentId: giftPaymentId,
+      orderId: giftCheckoutOutcome?.order_id ?? '',
+      idempotencyKey: checkoutIdempotencyKeyRef.current,
+    }
+  }, [activeStep, giftCheckoutOutcome?.order_id, giftPaymentId, giftsSubView])
+
   const draftState = useMemo(
     () => ({
       flowPath,
@@ -208,11 +243,12 @@ export function EventGuestFlow({
       giftPhase,
       giftPage,
       checkout,
+      pendingCheckout,
       coupleMessage,
       paymentMethod,
       pixPayerEmail,
       cardPayment,
-      guestsSaved,
+      guestsSaved: guestsConfirmed,
       messageSaved,
       lastSavedGuestsFingerprint,
       lastSavedMessage,
@@ -227,11 +263,12 @@ export function EventGuestFlow({
       giftPhase,
       giftPage,
       checkout,
+      pendingCheckout,
       coupleMessage,
       paymentMethod,
       pixPayerEmail,
       cardPayment,
-      guestsSaved,
+      guestsConfirmed,
       messageSaved,
       lastSavedGuestsFingerprint,
       lastSavedMessage,
@@ -254,16 +291,28 @@ export function EventGuestFlow({
     setPixPayerEmail(payload.pixPayerEmail)
     setCardPayment(payload.cardPayment)
     setCardSecrets(createDefaultCardPaymentSecrets())
-    setPaymentSnapshot(null)
-    setGuestsSaved(payload.guestsSaved ?? false)
+    setGuestsConfirmed(payload.guestsSaved ?? false)
+    setGiftsCompleted(GUEST_FLOW_STEP_INDEX[payload.activeStep] >= GUEST_FLOW_STEP_INDEX.message)
     setMessageSaved(payload.messageSaved ?? false)
     setLastSavedGuestsFingerprint(payload.lastSavedGuestsFingerprint ?? null)
     setLastSavedMessage(payload.lastSavedMessage ?? null)
+    setGiftsSubView('catalog')
+    setGiftPaymentId(null)
+    setGiftCheckoutOutcome(null)
+    setPendingTicketSlotIds([])
+    if (payload.activeStep === 'gifts' && pendingGiftPayment) {
+      applyPendingGiftPayment(pendingGiftPayment)
+      setGiftsBootstrap('ready')
+    } else if (payload.activeStep === 'gifts') {
+      setGiftsBootstrap('resolving')
+    } else {
+      setGiftsBootstrap('ready')
+    }
     const progressIdx = guestFlowProgressActiveIndex(payload.activeStep)
     setMaxProgressIndexReached(progressIdx >= 0 ? progressIdx : 0)
-  }, [])
+  }, [applyPendingGiftPayment, pendingGiftPayment])
 
-  const { clearDraft } = useGuestFlowDraft({
+  useGuestFlowDraft({
     invitationId,
     eventId: event.id,
     invitation: guestInvitation.invitation,
@@ -308,28 +357,19 @@ export function EventGuestFlow({
   transitionRef.current = transition
 
   const progressDisplayStep = transition ? transition.to : activeStep
-  const showProgressIndicator = guestFlowShowsProgressIndicator(progressDisplayStep)
+  const showProgressIndicator =
+    guestFlowShowsProgressIndicator(progressDisplayStep) && guestEditReturnStep === null
 
   const progressCompletion = useMemo(
     () =>
       buildGuestFlowProgressCompletion({
-        guestsSaved,
+        guestsConfirmed,
         confirmPhase,
-        lastSavedGuestsFingerprint,
-        checkout,
-        paymentSnapshot: paymentSnapshot !== null,
+        giftsCompleted,
         messageSaved,
         maxProgressIndexReached,
       }),
-    [
-      guestsSaved,
-      confirmPhase,
-      lastSavedGuestsFingerprint,
-      checkout,
-      paymentSnapshot,
-      messageSaved,
-      maxProgressIndexReached,
-    ],
+    [guestsConfirmed, confirmPhase, giftsCompleted, messageSaved, maxProgressIndexReached],
   )
 
   const syncViewportHeight = useCallback(() => {
@@ -361,7 +401,7 @@ export function EventGuestFlow({
 
   useLayoutEffect(() => {
     applySlideLayout()
-  }, [activeStep, transition, showProgressIndicator, applySlideLayout, event.id, event.name, event.description])
+  }, [activeStep, transition, showProgressIndicator, applySlideLayout, event.id, event.name, event.description, giftsSubView])
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current
@@ -377,7 +417,7 @@ export function EventGuestFlow({
     if (steps) observer.observe(steps)
 
     return () => observer.disconnect()
-  }, [applySlideLayout, activeStep, transition, showProgressIndicator])
+  }, [applySlideLayout, activeStep, transition, showProgressIndicator, giftsSubView])
 
   const animateTo = useCallback(
     (target: EventGuestFlowStep) => {
@@ -440,6 +480,181 @@ export function EventGuestFlow({
     [activeStep, slideWidth, syncViewportHeight],
   )
 
+  const animateToBackendWizardStep = useCallback(
+    (wizardStep: string | null | undefined) => {
+      animateTo(flowStepFromWizardStep(wizardStep))
+    },
+    [animateTo],
+  )
+
+  const hydrateGuestSlotsFromGuestView = useCallback(() => {
+    const invitation = guestInvitation.invitation
+    const ticket = guestInvitation.ticket
+    const guestView = guestInvitation.guestView
+    if (!invitation || !ticket || !guestView) return false
+
+    const merged = mergeInvitationGuestSlots(invitation, guestView.guest_slots)
+    setGuestSlots(buildInitialGuestConfirmSlots(merged, ticket))
+    return true
+  }, [guestInvitation.guestView, guestInvitation.invitation, guestInvitation.ticket])
+
+  const handleEditGuestsFromFinished = useCallback(() => {
+    if (!hydrateGuestSlotsFromGuestView()) return
+    setConfirmPhase('review')
+    setConfirmGuestIndex(0)
+    setConfirmValidationHighlight(null)
+    setConfirmValidationGuestIndex(undefined)
+    setGuestEditReturnStep('finished')
+    animateTo('guests')
+  }, [animateTo, hydrateGuestSlotsFromGuestView])
+
+  const resetGiftEditState = useCallback(() => {
+    setSelectedProductIds([])
+    setGiftPhase('browse')
+    setGiftPage(0)
+    setGiftsSubView('catalog')
+    setCheckout(null)
+    setGiftPaymentId(null)
+    setGiftCheckoutOutcome(null)
+    checkoutIdempotencyKeyRef.current = null
+    setCardSecrets(createDefaultCardPaymentSecrets())
+    setGiftsBootstrap('ready')
+  }, [])
+
+  const handleEditGiftsFromFinished = useCallback(() => {
+    resetGiftEditState()
+    setGuestEditReturnStep('finished')
+    animateTo('gifts')
+  }, [animateTo, resetGiftEditState])
+
+  const handleCancelGuestEdit = useCallback(() => {
+    hydrateGuestSlotsFromGuestView()
+    setConfirmPhase('review')
+    setConfirmGuestIndex(0)
+    setConfirmValidationHighlight(null)
+    setConfirmValidationGuestIndex(undefined)
+    const returnStep = guestEditReturnStepRef.current
+    setGuestEditReturnStep(null)
+    if (returnStep) {
+      animateTo(returnStep)
+    }
+  }, [animateTo, hydrateGuestSlotsFromGuestView])
+
+  const handleCancelGiftEdit = useCallback(() => {
+    resetGiftEditState()
+    const returnStep = guestEditReturnStepRef.current
+    setGuestEditReturnStep(null)
+    if (returnStep) {
+      animateTo(returnStep)
+    }
+  }, [animateTo, resetGiftEditState])
+
+  const ticketPoll = useTicketFulfillmentPoll({
+    invitationId: resolvedInvitationId,
+    invitationAccess,
+    pendingSlotIds: pendingTicketSlotIds,
+    enabled: pendingTicketSlotIds.length > 0,
+    onComplete: (view) => {
+      const ticket = guestInvitation.ticket
+      if (ticket) {
+        setGuestSlots(
+          buildInitialGuestConfirmSlots(
+            mergeInvitationGuestSlots(view.invitation, view.guest_slots),
+            ticket,
+          ),
+        )
+      }
+      void guestInvitation.refetchGuestView()
+      invalidateInvitationPayments()
+      setPendingTicketSlotIds([])
+      setGuestsConfirmLoading(false)
+      const returnStep = guestEditReturnStepRef.current
+      if (returnStep) {
+        setGuestEditReturnStep(null)
+        animateTo(returnStep)
+        return
+      }
+      animateToBackendWizardStep(view.invitation.wizard_step)
+    },
+  })
+
+  useEffect(() => {
+    if (ticketPoll.state !== 'timeout') return
+    message.warning(t('events.detail.guestFlow.ticketPollTimeout'))
+    setPendingTicketSlotIds([])
+    setGuestsConfirmLoading(false)
+    animateToBackendWizardStep('gifts')
+  }, [animateToBackendWizardStep, t, ticketPoll.state])
+
+  const handleResumePendingGiftPayment = useCallback(
+    (paymentId: string, status: GuestPaymentStatusResponse) => {
+      applyPendingGiftPayment(status)
+    },
+    [applyPendingGiftPayment],
+  )
+
+  useResumePendingGiftPayment({
+    invitationId: resolvedInvitationId,
+    invitationAccess,
+    enabled: giftsBootstrap === 'resolving' && draftHydrated,
+    onResume: handleResumePendingGiftPayment,
+    onComplete: () => setGiftsBootstrap('ready'),
+  })
+
+  const giftPaymentPoll = useGiftPaymentPoll({
+    invitationId: resolvedInvitationId,
+    invitationAccess,
+    paymentId: giftPaymentId,
+    enabled: giftsSubView === 'payment_poll' && Boolean(giftPaymentId),
+    onTerminal: async (outcome) => {
+      if (outcome.payment_status.toUpperCase() === 'APPROVED') {
+        setGiftsCompleted(true)
+        setGiftPaymentId(null)
+        setGiftCheckoutOutcome(null)
+        setGiftsSubView('catalog')
+        setCardSecrets(createDefaultCardPaymentSecrets())
+        checkoutIdempotencyKeyRef.current = null
+        invalidateInvitationPayments()
+        const refetchResult = await guestInvitation.refetchGuestView()
+        const returnStep = guestEditReturnStepRef.current
+        if (returnStep) {
+          setGuestEditReturnStep(null)
+          animateTo(returnStep)
+          return
+        }
+        animateToBackendWizardStep(
+          refetchResult.data?.invitation.wizard_step ?? guestInvitation.invitation?.wizard_step,
+        )
+        return
+      }
+      message.error(outcome.failure?.message ?? t('events.detail.guestPayment.failedDescription'))
+      setGiftsSubView('payment')
+    },
+  })
+
+  const pixExpiresAt = giftPaymentPoll.pix?.expires_at ?? giftCheckoutOutcome?.pix?.expires_at ?? null
+  const [pixRemainingSeconds, setPixRemainingSeconds] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!pixExpiresAt || giftsSubView !== 'payment_poll') {
+      setPixRemainingSeconds(null)
+      return
+    }
+
+    const update = () => {
+      const expiryMs = Date.parse(pixExpiresAt)
+      if (Number.isNaN(expiryMs)) {
+        setPixRemainingSeconds(null)
+        return
+      }
+      setPixRemainingSeconds(Math.max(0, Math.floor((expiryMs - Date.now()) / 1000)))
+    }
+
+    update()
+    const intervalId = window.setInterval(update, 30_000)
+    return () => window.clearInterval(intervalId)
+  }, [giftsSubView, pixExpiresAt])
+
   const handleCannotAttend = useCallback(() => {
     const invitation = guestInvitation.invitation
     const ticket = guestInvitation.ticket
@@ -457,312 +672,251 @@ export function EventGuestFlow({
     setConfirmGuestIndex(Math.max(0, declinedSlots.length - 1))
     setConfirmValidationHighlight(null)
     setConfirmValidationGuestIndex(undefined)
-    animateTo('confirm')
+    animateTo('guests')
   }, [animateTo, guestInvitation.invitation, guestInvitation.ticket, guestSlots])
 
   useLayoutEffect(() => () => cancelAnimationFrame(frameRef.current), [])
 
-  const handleAttendanceConfirmed = useCallback(() => {
-    animateTo('gift')
-
-    const resolvedInvitationId = invitationId ?? guestInvitation.invitation?.id
+  const handleAttendanceConfirmed = useCallback(async () => {
+    const resolvedId = invitationId ?? guestInvitation.invitation?.id
     const ticket = guestInvitation.ticket
-    if (!resolvedInvitationId || !ticket) return
+    if (!resolvedId || !ticket) return
 
-    const payload = buildGuestSlotsSubmitPayload(guestSlots)
-    const fingerprint = fingerprintGuestSlotsSubmitPayload(payload)
-    if (guestSlotsSubmitUnchanged(payload, lastSavedGuestsFingerprint)) return
-
-    persistGuestSlotsInBackground(
-      resolvedInvitationId,
-      payload,
-      (invitation) => {
-        setGuestsSaved(true)
-        setLastSavedGuestsFingerprint(fingerprint)
-        setGuestSlots(buildInitialGuestConfirmSlots(invitation, ticket))
-      },
-      t('events.detail.guestFlow.saveGuestsFailed'),
-      invitationAccess,
-    )
+    setGuestsConfirmLoading(true)
+    try {
+      const payload = buildGuestSlotsSubmitPayload(guestSlots)
+      const result = await confirmGuests(resolvedId, payload, invitationAccess)
+      setGuestsConfirmed(true)
+      setLastSavedGuestsFingerprint(fingerprintGuestSlotsSubmitPayload(payload))
+      if (result.pending_ticket_slot_ids.length > 0) {
+        setPendingTicketSlotIds(result.pending_ticket_slot_ids)
+        return
+      }
+      const refetchResult = await guestInvitation.refetchGuestView()
+      const refreshedInvitation = refetchResult.data?.invitation ?? guestInvitation.invitation
+      const refreshedGuestView = refetchResult.data ?? guestInvitation.guestView
+      if (refreshedInvitation && refreshedGuestView) {
+        setGuestSlots(
+          buildInitialGuestConfirmSlots(
+            mergeInvitationGuestSlots(refreshedInvitation, refreshedGuestView.guest_slots),
+            ticket,
+          ),
+        )
+      } else if (refreshedInvitation) {
+        setGuestSlots(buildInitialGuestConfirmSlots(refreshedInvitation, ticket))
+      }
+      invalidateInvitationPayments()
+      setGuestsConfirmLoading(false)
+      const returnStep = guestEditReturnStepRef.current
+      if (returnStep) {
+        setGuestEditReturnStep(null)
+        animateTo(returnStep)
+        return
+      }
+      animateToBackendWizardStep(result.wizard_step ?? refreshedInvitation?.wizard_step)
+    } catch (error) {
+      setGuestsConfirmLoading(false)
+      message.error(guestInvitationErrorMessage(error, t))
+    }
   }, [
-    animateTo,
-    guestInvitation.invitation,
-    guestInvitation.ticket,
-    guestSlots,
-    invitationId,
-    invitationAccess,
-    lastSavedGuestsFingerprint,
-    t,
+      animateTo,
+      animateToBackendWizardStep,
+      guestInvitation,
+      guestSlots,
+      invalidateInvitationPayments,
+      invitationAccess,
+      invitationId,
+      t,
   ])
 
   const handleGiftsConfirmed = useCallback(
-    (snapshot: GuestCheckoutSnapshot) => {
-      setCheckout(snapshot)
-      setPaymentSnapshot(null)
-      if (snapshot.total_cents > 0) {
-        animateTo('mp_payment')
+    async (snapshot: GuestCheckoutSnapshot) => {
+      const returnStep = guestEditReturnStepRef.current
+      if (returnStep && snapshot.items.length === 0) {
+        setGuestEditReturnStep(null)
+        animateTo(returnStep)
         return
       }
-      animateTo('message')
+
+      setCheckout(snapshot)
+      setGiftCheckoutOutcome(null)
+      setGiftPaymentId(null)
+      if (snapshot.total_cents > 0) {
+        setGiftsSubView('payment')
+        return
+      }
+
+      const resolvedId = invitationId ?? guestInvitation.invitation?.id
+      if (!resolvedId) return
+
+      if (!checkoutIdempotencyKeyRef.current) {
+        checkoutIdempotencyKeyRef.current = crypto.randomUUID()
+      }
+
+      try {
+        const payload = buildGuestCheckoutPayload(resolvedId, snapshot, {
+          payment_provider: snapshot.payment_provider ?? 'mercadopago',
+          provider_checkout: {},
+        })
+        await submitGiftCheckout(resolvedId, payload, {
+          idempotencyKey: checkoutIdempotencyKeyRef.current,
+          invitationAccess,
+        })
+        invalidateInvitationPayments()
+        checkoutIdempotencyKeyRef.current = null
+        const refetchResult = await guestInvitation.refetchGuestView()
+        setGiftsCompleted(true)
+        if (returnStep) {
+          setGuestEditReturnStep(null)
+          animateTo(returnStep)
+          return
+        }
+        animateToBackendWizardStep(
+          refetchResult.data?.invitation.wizard_step ?? guestInvitation.invitation?.wizard_step,
+        )
+      } catch (error) {
+        message.error(guestInvitationErrorMessage(error, t))
+      }
     },
-    [animateTo],
+    [
+      animateTo,
+      animateToBackendWizardStep,
+      guestInvitation,
+      invalidateInvitationPayments,
+      invitationAccess,
+      invitationId,
+      t,
+    ],
   )
 
-  const handlePaymentComplete = useCallback(
-    (snapshot: GuestPaymentSnapshot) => {
-      setPaymentSnapshot(snapshot)
+  const handleGiftPaymentComplete = useCallback(
+    async (snapshot: GuestPaymentSnapshot) => {
+      const resolvedId = invitationId ?? guestInvitation.invitation?.id
+      if (!resolvedId || !checkout) return
+
       if (snapshot.method === 'card') {
         setCardPayment(snapshot.card)
       }
       setCheckout((prev) =>
         prev ? { ...prev, payment_provider: snapshot.payment_provider } : prev,
       )
-      animateTo('message')
-    },
-    [animateTo],
-  )
 
-  const handleMessageContinue = useCallback(() => {
-    animateTo('review')
+      if (!checkoutIdempotencyKeyRef.current) {
+        checkoutIdempotencyKeyRef.current = crypto.randomUUID()
+      }
 
-    const resolvedInvitationId = invitationId ?? guestInvitation.invitation?.id
-    if (!resolvedInvitationId) return
-
-    const trimmed = coupleMessage.trim()
-    if (guestMessageUnchanged(trimmed, lastSavedMessage)) return
-
-    persistGuestMessageInBackground(
-      resolvedInvitationId,
-      buildGuestMessageSubmitPayload(trimmed),
-      (invitation) => {
-        setMessageSaved(true)
-        setLastSavedMessage(trimmed)
-        const fromServer = readGuestMessageFromInvitation(invitation)
-        if (fromServer) {
-          setCoupleMessage(fromServer)
+      setCheckoutSubmitting(true)
+      try {
+        const resolvedCheckout = giftOnlyCheckoutSnapshot(checkout)
+        const finalizeResult = await finalizeGuestPayment(resolvedCheckout, snapshot, {
+          cardSecrets,
+          createCardToken: (form) => createCardToken(form),
+          canCreateCardToken: canCreateMpCardToken,
+        })
+        const payload = buildGuestCheckoutPayload(resolvedId, resolvedCheckout, finalizeResult)
+        const result = await submitGiftCheckout(resolvedId, payload, {
+          idempotencyKey: checkoutIdempotencyKeyRef.current,
+          invitationAccess,
+        })
+        invalidateInvitationPayments()
+        setGiftCheckoutOutcome(result)
+        setGiftPaymentId(result.payment_id)
+        if (result.payment_status.toUpperCase() === 'APPROVED') {
+          setGiftsCompleted(true)
+          setGiftPaymentId(null)
+          setGiftCheckoutOutcome(null)
+          setGiftsSubView('catalog')
+          checkoutIdempotencyKeyRef.current = null
+          setCardSecrets(createDefaultCardPaymentSecrets())
+          const refetchResult = await guestInvitation.refetchGuestView()
+          const returnStep = guestEditReturnStepRef.current
+          if (returnStep) {
+            setGuestEditReturnStep(null)
+            animateTo(returnStep)
+            return
+          }
+          animateToBackendWizardStep(
+            refetchResult.data?.invitation.wizard_step ?? guestInvitation.invitation?.wizard_step,
+          )
+          return
         }
-      },
-      t('events.detail.guestFlow.saveMessageFailed'),
-      invitationAccess,
-    )
-  }, [
-    animateTo,
-    coupleMessage,
-    guestInvitation.invitation,
-    invitationId,
-    invitationAccess,
-    lastSavedMessage,
-    t,
-  ])
-
-  const handleReviewEditGuests = useCallback(() => {
-    setConfirmPhase('form')
-    setConfirmGuestIndex(0)
-    animateTo('confirm')
-  }, [animateTo])
-
-  const handleReviewEditGifts = useCallback(() => {
-    setGiftPhase('browse')
-    animateTo('gift')
-  }, [animateTo])
-
-  const handleReviewEditPayment = useCallback(() => {
-    animateTo('mp_payment')
-  }, [animateTo])
-
-  const handleReviewEditMessage = useCallback(() => {
-    animateTo('message')
-  }, [animateTo])
-
-  const applyLeaveStepValidationFailure = useCallback((failure: LeaveStepValidationFailure) => {
-    if (failure.step === 'confirm') {
-      setConfirmValidationHighlight(failure.validation)
-      setConfirmValidationGuestIndex(failure.guestIndex)
-      if (confirmPhase !== 'form') {
-        setConfirmPhase('form')
+        setGiftsSubView('payment_poll')
+      } catch (error) {
+        message.error(guestInvitationErrorMessage(error, t))
+      } finally {
+        setCheckoutSubmitting(false)
       }
-      return
-    }
-    if (failure.step === 'mp_payment') {
-      setPaymentNavigationFieldErrors(failure.fieldErrors)
-    }
-  }, [confirmPhase])
-
-  const tryLeaveCurrentStepForNavigation = useCallback(
-    (targetStep: EventGuestFlowStep): boolean => {
-      const leaveResult = validateLeaveGuestFlowStep({
-        activeStep,
-        targetStep,
-        slots: guestSlots,
-        confirmPhase,
-        confirmGuestIndex,
-        fieldDefinitions: guestInvitation.fieldDefinitions ?? [],
-        checkout,
-        paymentMethod,
-        pixPayerEmail,
-        cardPaymentForm: { ...cardPayment, ...cardSecrets },
-        mercadoPagoLeaveDeps: { isConfigured: isMpConfigured, isReady: isMpReady },
-        t,
-      })
-      if (leaveResult.ok) {
-        setConfirmValidationHighlight(null)
-        setConfirmValidationGuestIndex(undefined)
-        setPaymentNavigationFieldErrors(undefined)
-        return true
-      }
-      applyLeaveStepValidationFailure(leaveResult)
-      return false
     },
     [
-      activeStep,
-      applyLeaveStepValidationFailure,
-      cardPayment,
+      canCreateMpCardToken,
       cardSecrets,
       checkout,
-      confirmGuestIndex,
-      confirmPhase,
-      guestInvitation.fieldDefinitions,
-      guestSlots,
-      isMpConfigured,
-      isMpReady,
-      paymentMethod,
-      pixPayerEmail,
+      createCardToken,
+      guestInvitation,
+      invalidateInvitationPayments,
+      invitationAccess,
+      invitationId,
+      animateTo,
       t,
     ],
   )
 
-  const handleProgressWelcomeClick = useCallback(() => {
-    if (!tryLeaveCurrentStepForNavigation('welcome')) return
-    animateTo('welcome')
-  }, [animateTo, tryLeaveCurrentStepForNavigation])
+  const handleMessageContinue = useCallback(async () => {
+    const resolvedId = invitationId ?? guestInvitation.invitation?.id
+    if (!resolvedId) return
 
-  const handleProgressStepClick = useCallback(
-    (progressStep: GuestFlowProgressStep) => {
-      const target = guestFlowProgressNavigationTarget(progressStep, checkout)
-      if (!tryLeaveCurrentStepForNavigation(target)) return
-
-      if (progressStep === 'confirm') {
-        setConfirmPhase('review')
-      } else if (progressStep === 'gift') {
-        setGiftPhase('review')
-      }
-
-      animateTo(target)
-    },
-    [animateTo, checkout, tryLeaveCurrentStepForNavigation],
-  )
-
-  const handleMessageBack = useCallback(() => {
-    if (checkout && checkout.total_cents > 0) {
-      animateTo('mp_payment')
-      return
-    }
-    animateTo('gift')
-  }, [animateTo, checkout])
-
-  const handleFinalConfirm = useCallback(async () => {
-    if (!checkout) {
-      clearDraft()
-      return
-    }
-
-    const resolvedInvitationId = invitationId ?? guestInvitation.invitation?.id
-    if (!resolvedInvitationId) {
-      message.error(t('events.detail.guestReview.paymentPending'))
-      return
-    }
-
-    const ticket = guestInvitation.ticket
-    const resolvedCheckout =
-      ticket && guestSlots.length > 0
-        ? refreshGuestCheckoutWithAttendingTickets(checkout, ticket, guestSlots)
-        : checkout
-
-    if (resolvedCheckout.total_cents <= 0) {
-      clearDraft()
-      return
-    }
-
-    if (!paymentSnapshot) {
-      message.error(t('events.detail.guestReview.paymentPending'))
-      return
-    }
-
-    if (!checkoutIdempotencyKeyRef.current) {
-      checkoutIdempotencyKeyRef.current = crypto.randomUUID()
-    }
-
-    setCheckoutSubmitting(true)
+    setMessageSubmitting(true)
     try {
-      const finalizeResult = await finalizeGuestPayment(resolvedCheckout, paymentSnapshot, {
-        cardSecrets,
-        createCardToken: (form) => createCardToken(form),
-        canCreateCardToken: canCreateMpCardToken,
-      })
-
-      const payload = buildGuestCheckoutPayload(
-        resolvedInvitationId,
-        resolvedCheckout,
-        finalizeResult,
-      )
-
-      const result = await submitGuestCheckout(resolvedInvitationId, payload, {
-        idempotencyKey: checkoutIdempotencyKeyRef.current,
+      const trimmed = coupleMessage.trim()
+      const invitation = await patchInvitationMessage(
+        resolvedId,
+        buildGuestMessageSubmitPayload(trimmed).message,
         invitationAccess,
-      })
-
-      const idempotencyKey = checkoutIdempotencyKeyRef.current ?? crypto.randomUUID()
-      saveGuestFlowDraft({
-        version: GUEST_FLOW_DRAFT_VERSION,
-        invitationId: resolvedInvitationId,
-        eventId: event.id,
-        updatedAt: new Date().toISOString(),
-        ...draftState,
-        pendingCheckout: {
-          paymentId: result.payment_id,
-          orderId: result.order_id,
-          idempotencyKey,
-        },
-      })
-
-      checkoutIdempotencyKeyRef.current = null
-      setCardSecrets(createDefaultCardPaymentSecrets())
-      setPaymentSnapshot(null)
-      goToPayment({
-        paymentId: result.payment_id,
-        orderId: result.order_id,
-      })
-    } catch (error) {
-      console.error('[guest-checkout] checkout error', error)
-      const detail = error instanceof Error ? error.message : ''
-      if (paymentSnapshot.method === 'card') {
-        message.error(
-          detail || t('events.detail.guestMpPayment.validation.tokenError'),
-        )
-      } else if (detail) {
-        message.error(detail)
-      } else {
-        message.error(t('events.detail.guestReview.checkoutError'))
+      )
+      setMessageSaved(true)
+      setLastSavedMessage(trimmed)
+      const fromServer = readGuestMessageFromInvitation(invitation)
+      if (fromServer) {
+        setCoupleMessage(fromServer)
       }
+      await guestInvitation.refetchGuestView()
+      animateToBackendWizardStep(invitation.wizard_step)
+    } catch (error) {
+      message.error(guestInvitationErrorMessage(error, t))
     } finally {
-      setCheckoutSubmitting(false)
+      setMessageSubmitting(false)
     }
   }, [
-    cardSecrets,
-    checkout,
-    canCreateMpCardToken,
-    createCardToken,
-    draftState,
-    event.id,
-    guestInvitation.invitation,
-    guestInvitation.ticket,
-    guestSlots,
-    goToPayment,
+    animateToBackendWizardStep,
+    coupleMessage,
+    guestInvitation,
     invitationAccess,
     invitationId,
-    paymentSnapshot,
     t,
   ])
+
+  const handleGiftsBack = useCallback(() => {
+    if (giftsSubView === 'payment') {
+      setGiftsSubView('catalog')
+      return
+    }
+    if (giftsSubView === 'payment_poll') {
+      setGiftsSubView('payment')
+    }
+  }, [giftsSubView])
+
+  const handleCopyGiftPix = useCallback(async () => {
+    const code = giftPaymentPoll.pix?.copy_paste_code ?? giftCheckoutOutcome?.pix?.copy_paste_code
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      message.success(t('events.detail.guestPayment.copyPixSuccess'))
+    } catch {
+      message.error(t('events.detail.guestPayment.copyPixError'))
+    }
+  }, [giftCheckoutOutcome?.pix?.copy_paste_code, giftPaymentPoll.pix?.copy_paste_code, t])
+
+  const guestsStepBusy = guestsConfirmLoading || ticketPoll.state === 'polling'
 
   const visibleSteps = transition ? panelsDuringTransition(transition) : [activeStep]
 
@@ -779,6 +933,68 @@ export function EventGuestFlow({
     ...(slideWidth > 0
       ? ({ '--guest-flow-slide-width': `${slideWidth}px` } as CSSProperties)
       : {}),
+  }
+
+  const renderGiftPaymentPoll = () => {
+    const pix = giftPaymentPoll.pix ?? giftCheckoutOutcome?.pix
+    const totalCents =
+      giftPaymentPoll.outcome?.total_cents ??
+      giftCheckoutOutcome?.total_cents ??
+      checkout?.total_cents ??
+      0
+    const amountLabel = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(totalCents / 100)
+    const countdownLabel =
+      pixRemainingSeconds !== null ? formatPixExpiryCountdown(pixRemainingSeconds, t) : null
+    const pollFailed =
+      giftPaymentPoll.state === 'failed' || giftPaymentPoll.state === 'cancelled'
+
+    return (
+      <GuestFlowContentPanel panelSize="stable">
+        <Flex vertical align="center" gap={16} style={{ width: '100%' }}>
+          {pollFailed ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={t('events.detail.guestPayment.failedTitle')}
+              description={t('events.detail.guestPayment.failedDescription')}
+            />
+          ) : (
+            <>
+              <Text strong style={{ fontSize: 18 }}>
+                {amountLabel}
+              </Text>
+              {pix?.qr_code_base64 ? (
+                <img
+                  className="guest-payment-qr"
+                  src={`data:image/png;base64,${pix.qr_code_base64}`}
+                  alt={t('events.detail.guestPayment.qrAlt')}
+                />
+              ) : null}
+              {pix?.copy_paste_code ? (
+                <Button type="primary" size="large" onClick={() => void handleCopyGiftPix()}>
+                  {t('events.detail.guestPayment.copyPix')}
+                </Button>
+              ) : null}
+              {countdownLabel ? (
+                <Text type="secondary">
+                  {t('events.detail.guestPayment.expiresIn', { time: countdownLabel })}
+                </Text>
+              ) : null}
+              <Flex align="center" gap={8}>
+                <Spin size="small" />
+                <Text>{t('events.detail.guestPayment.waitingPix')}</Text>
+              </Flex>
+            </>
+          )}
+          <Button size="large" onClick={handleGiftsBack}>
+            {t('events.detail.guestMpPayment.back')}
+          </Button>
+        </Flex>
+      </GuestFlowContentPanel>
+    )
   }
 
   const renderStep = (flowStep: EventGuestFlowStep) => {
@@ -803,49 +1019,85 @@ export function EventGuestFlow({
                   ),
                 )
               }
-              animateTo('confirm')
+              animateTo('guests')
             }}
           />
         )
-      case 'confirm':
+      case 'guests':
         if (!guestInvitation.invitation || !guestInvitation.ticket || guestSlots.length === 0) {
           return null
         }
         return (
-          <EventGuestConfirmBlock
-            key={guestInvitation.invitation.id}
-            event={event}
-            variant={confirmVariant}
-            invitation={guestInvitation.invitation}
-            ticket={guestInvitation.ticket}
-            fieldDefinitions={guestInvitation.fieldDefinitions}
-            slots={guestSlots}
-            onSlotsChange={(next) => {
-              setConfirmValidationHighlight(null)
-              setConfirmValidationGuestIndex(undefined)
-              setGuestSlots(next)
-            }}
-            phase={confirmPhase}
-            onPhaseChange={setConfirmPhase}
-            currentIndex={confirmGuestIndex}
-            onCurrentIndexChange={setConfirmGuestIndex}
-            onBack={() => animateTo('welcome')}
-            onReviewBackToForm={handleConfirmReviewBackToForm}
-            onAttendanceConfirmed={handleAttendanceConfirmed}
-            validationHighlight={confirmValidationHighlight}
-            validationHighlightGuestIndex={confirmValidationGuestIndex}
-            onValidationHighlightClear={() => {
-              setConfirmValidationHighlight(null)
-              setConfirmValidationGuestIndex(undefined)
-            }}
-          />
+          <Spin spinning={guestsStepBusy} tip={t('events.detail.guestFlow.confirmingGuests')}>
+            <EventGuestConfirmBlock
+              key={guestInvitation.invitation.id}
+              event={event}
+              variant={guestsVariant}
+              invitation={guestInvitation.invitation}
+              ticket={guestInvitation.ticket}
+              fieldDefinitions={guestInvitation.fieldDefinitions}
+              slots={guestSlots}
+              onSlotsChange={(next) => {
+                setConfirmValidationHighlight(null)
+                setConfirmValidationGuestIndex(undefined)
+                setGuestSlots(next)
+              }}
+              phase={confirmPhase}
+              onPhaseChange={setConfirmPhase}
+              currentIndex={confirmGuestIndex}
+              onCurrentIndexChange={setConfirmGuestIndex}
+              onReviewBackToForm={handleConfirmReviewBackToForm}
+              onAttendanceConfirmed={() => void handleAttendanceConfirmed()}
+              editFromFinished={guestEditReturnStep !== null}
+              onCancelEdit={handleCancelGuestEdit}
+              validationHighlight={confirmValidationHighlight}
+              validationHighlightGuestIndex={confirmValidationGuestIndex}
+              onValidationHighlightClear={() => {
+                setConfirmValidationHighlight(null)
+                setConfirmValidationGuestIndex(undefined)
+              }}
+            />
+          </Spin>
         )
-      case 'gift':
+      case 'gifts':
+        if (giftsBootstrap === 'resolving') {
+          return (
+            <Flex align="center" justify="center" style={{ minHeight: 260, width: '100%' }}>
+              <Spin size="large" />
+            </Flex>
+          )
+        }
+        if (giftsSubView === 'payment' && checkout) {
+          return (
+            <Spin spinning={checkoutSubmitting}>
+              <PaymentBlock
+                event={event}
+                variant="wedding"
+                checkout={checkout}
+                method={paymentMethod}
+                onMethodChange={setPaymentMethod}
+                pixPayerEmail={pixPayerEmail}
+                onPixPayerEmailChange={setPixPayerEmail}
+                cardPayment={cardPayment}
+                onCardPaymentChange={setCardPayment}
+                cardSecrets={cardSecrets}
+                onCardSecretsChange={setCardSecrets}
+                onPaymentComplete={(snapshot) => void handleGiftPaymentComplete(snapshot)}
+                onBack={handleGiftsBack}
+                navigationFieldErrors={paymentNavigationFieldErrors}
+                onNavigationFieldErrorsClear={() => setPaymentNavigationFieldErrors(undefined)}
+              />
+            </Spin>
+          )
+        }
+        if (giftsSubView === 'payment_poll') {
+          return renderGiftPaymentPoll()
+        }
         return (
           <EventGuestGiftBlock
             event={event}
             invitationId={resolvedInvitationId}
-            variant={giftVariant}
+            variant={giftsVariant}
             ticket={guestInvitation.ticket}
             guestSlots={guestSlots}
             selectedProductIds={selectedProductIds}
@@ -854,63 +1106,34 @@ export function EventGuestFlow({
             onPhaseChange={setGiftPhase}
             page={giftPage}
             onPageChange={setGiftPage}
-            onBack={() => animateTo('confirm')}
+            editFromFinished={guestEditReturnStep !== null}
+            onCancelEdit={handleCancelGiftEdit}
             onGiftsConfirmed={handleGiftsConfirmed}
-          />
-        )
-      case 'mp_payment':
-        if (!checkout) return null
-        return (
-          <PaymentBlock
-            event={event}
-            variant={mpPaymentVariant}
-            checkout={checkout}
-            method={paymentMethod}
-            onMethodChange={setPaymentMethod}
-            pixPayerEmail={pixPayerEmail}
-            onPixPayerEmailChange={setPixPayerEmail}
-            cardPayment={cardPayment}
-            onCardPaymentChange={setCardPayment}
-            cardSecrets={cardSecrets}
-            onCardSecretsChange={setCardSecrets}
-            onPaymentComplete={handlePaymentComplete}
-            onBack={() => animateTo('gift')}
-            navigationFieldErrors={paymentNavigationFieldErrors}
-            onNavigationFieldErrorsClear={() => setPaymentNavigationFieldErrors(undefined)}
           />
         )
       case 'message':
         return (
-          <EventGuestMessageBlock
+          <Spin spinning={messageSubmitting}>
+            <EventGuestMessageBlock
             event={event}
             variant={messageVariant}
             message={coupleMessage}
             onMessageChange={setCoupleMessage}
-            onBack={handleMessageBack}
-            onContinue={handleMessageContinue}
+            onContinue={() => void handleMessageContinue()}
           />
+          </Spin>
         )
-      case 'review':
+      case 'finished':
         return (
-          <EventGuestReviewBlock
+          <EventGuestFinishedBlock
             event={event}
             invitationId={resolvedInvitationId}
-            variant={reviewVariant}
-            guestSlots={guestSlots}
-            checkout={checkout}
-            paymentSnapshot={paymentSnapshot}
-            cardPayment={cardPayment}
-            coupleMessage={coupleMessage}
+            invitationAccess={invitationAccess}
+            guestView={guestInvitation.guestView}
             fieldDefinitions={guestInvitation.fieldDefinitions}
-            onEdit={() => animateTo('welcome')}
-            onEditGuests={handleReviewEditGuests}
-            onEditGifts={handleReviewEditGifts}
-            onEditPayment={
-              checkout && checkout.total_cents > 0 ? handleReviewEditPayment : undefined
-            }
-            onEditMessage={handleReviewEditMessage}
-            onConfirm={handleFinalConfirm}
-            confirmLoading={checkoutSubmitting}
+            loading={guestInvitation.isLoading}
+            onEditGuests={handleEditGuestsFromFinished}
+            onEditGifts={giftsVariant === 'wedding' ? handleEditGiftsFromFinished : undefined}
           />
         )
     }
@@ -943,10 +1166,7 @@ export function EventGuestFlow({
         <div ref={stepsRef}>
           <GuestFlowStepIndicator
             activeStep={progressDisplayStep}
-            checkout={checkout}
             completion={progressCompletion}
-            onWelcomeClick={handleProgressWelcomeClick}
-            onStepClick={handleProgressStepClick}
           />
         </div>
       ) : null}

@@ -1,6 +1,5 @@
 import {
   CheckCircleOutlined,
-  CreditCardOutlined,
   GiftOutlined,
   HeartOutlined,
   MessageOutlined,
@@ -8,11 +7,9 @@ import {
 } from '@ant-design/icons'
 import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GuestCheckoutSnapshot } from '../lib/guestCheckoutSession'
 import {
   GUEST_FLOW_PROGRESS_STEPS,
   guestFlowProgressConnectorFilled,
-  guestFlowProgressStepCanNavigate,
   guestFlowProgressStepStatus,
   guestFlowShowsProgressIndicator,
   type GuestFlowProgressCompletion,
@@ -22,34 +19,26 @@ import type { EventGuestFlowStep } from '../types'
 import '../eventGuestFlowSteps.css'
 
 const PROGRESS_STEP_LABEL_KEY: Record<GuestFlowProgressStep, string> = {
-  confirm: 'events.detail.guestFlow.progressStepConfirm',
-  gift: 'events.detail.guestFlow.progressStepGift',
-  mp_payment: 'events.detail.guestFlow.progressStepPayment',
+  guests: 'events.detail.guestFlow.progressStepConfirm',
+  gifts: 'events.detail.guestFlow.progressStepGift',
   message: 'events.detail.guestFlow.progressStepMessage',
-  review: 'events.detail.guestFlow.progressStepReview',
+  finished: 'events.detail.guestFlow.progressStepFinished',
 }
 
-const PROGRESS_STEP_ICON: Record<Exclude<GuestFlowProgressStep, 'review'>, ReactNode> = {
-  confirm: <TeamOutlined className="guest-flow-step-icon" aria-hidden />,
-  gift: <GiftOutlined className="guest-flow-step-icon" aria-hidden />,
-  mp_payment: <CreditCardOutlined className="guest-flow-step-icon" aria-hidden />,
+const PROGRESS_STEP_ICON: Record<Exclude<GuestFlowProgressStep, 'finished'>, ReactNode> = {
+  guests: <TeamOutlined className="guest-flow-step-icon" aria-hidden />,
+  gifts: <GiftOutlined className="guest-flow-step-icon" aria-hidden />,
   message: <MessageOutlined className="guest-flow-step-icon" aria-hidden />,
 }
 
 type Props = {
   activeStep: EventGuestFlowStep
-  checkout: GuestCheckoutSnapshot | null
   completion: GuestFlowProgressCompletion
-  onWelcomeClick: () => void
-  onStepClick: (step: GuestFlowProgressStep) => void
 }
 
 export function GuestFlowStepIndicator({
   activeStep,
-  checkout,
   completion,
-  onWelcomeClick,
-  onStepClick,
 }: Props) {
   const { t } = useTranslation()
 
@@ -68,31 +57,24 @@ export function GuestFlowStepIndicator({
             type="button"
             className="guest-flow-step-button guest-flow-step-node guest-flow-step-node--completed guest-flow-step-node--welcome"
             aria-label={t('events.detail.guestFlow.progressStepWelcome')}
-            onClick={onWelcomeClick}
+            disabled
           >
             <HeartOutlined className="guest-flow-step-welcome-icon" aria-hidden />
           </button>
         </li>
         <li className="guest-flow-step-connector guest-flow-step-connector--filled" aria-hidden />
         {GUEST_FLOW_PROGRESS_STEPS.map((step, index) => {
-          const status = guestFlowProgressStepStatus(step, activeStep, checkout, completion)
+          const status = guestFlowProgressStepStatus(step, activeStep, completion)
           const connectorFilled =
-            guestFlowProgressConnectorFilled(step, activeStep, checkout, completion) &&
+            guestFlowProgressConnectorFilled(step, activeStep, completion) &&
             index < GUEST_FLOW_PROGRESS_STEPS.length - 1
-          const canNavigate = guestFlowProgressStepCanNavigate(
-            step,
-            activeStep,
-            checkout,
-            completion,
-          )
           const stepLabel = t(PROGRESS_STEP_LABEL_KEY[step])
-
-          const isReviewStep = step === 'review'
+          const isFinishedStep = step === 'finished'
           const nodeClassName = [
             'guest-flow-step-button',
             'guest-flow-step-node',
             `guest-flow-step-node--${status}`,
-            isReviewStep ? 'guest-flow-step-node--review' : '',
+            isFinishedStep ? 'guest-flow-step-node--review' : '',
           ]
             .filter(Boolean)
             .join(' ')
@@ -105,13 +87,10 @@ export function GuestFlowStepIndicator({
                   className={nodeClassName}
                   aria-current={status === 'current' ? 'step' : undefined}
                   aria-label={stepLabel}
-                  disabled={!canNavigate}
-                  onClick={() => onStepClick(step)}
+                  disabled
                 >
-                  {isReviewStep ? (
+                  {isFinishedStep ? (
                     <CheckCircleOutlined className="guest-flow-step-review-icon" aria-hidden />
-                  ) : status === 'completed' ? (
-                    PROGRESS_STEP_ICON[step]
                   ) : (
                     PROGRESS_STEP_ICON[step]
                   )}

@@ -17,13 +17,19 @@ export type GuestRsvpPersistFlags = {
 }
 
 export function readGuestMessageFromInvitation(invitation: Invitation): string {
-  const raw = invitation.metadata?.[GUEST_MESSAGE_METADATA_KEY]
-  return typeof raw === 'string' ? raw.trim() : ''
+  const metadata = invitation.metadata ?? {}
+  const fromMessage = metadata[GUEST_MESSAGE_METADATA_KEY]
+  if (typeof fromMessage === 'string' && fromMessage.trim()) {
+    return fromMessage.trim()
+  }
+  const legacy = metadata.guest_message
+  return typeof legacy === 'string' ? legacy.trim() : ''
 }
 
 export function invitationHasPersistedGuestRsvp(invitation: Invitation): boolean {
   const slots = invitation.guest_slots ?? []
   return slots.some((slot) => {
+    if (slot.id && slot.first_name?.trim()) return true
     if (slot.attending === false) return true
     const values = slot.field_values ?? {}
     return Object.values(values).some((v) => Boolean(String(v).trim()))

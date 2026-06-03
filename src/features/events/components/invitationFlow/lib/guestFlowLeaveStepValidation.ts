@@ -7,7 +7,7 @@ import {
   type GuestConfirmFormSlot,
 } from './guestConfirmMock'
 import { guestFlowShowsProgressIndicator, type GuestFlowProgressStep } from './guestFlowProgress'
-import type { EventGuestFlowStep } from '../types'
+import type { EventGuestFlowStep, GuestGiftsSubView } from '../types'
 import type { GuestCardPaymentFormState } from '../../blocks/mpPayment/guestMpPaymentForm'
 import { getDefaultGuestPaymentProvider } from '../../blocks/payment/registry'
 import type { MercadoPagoLeaveValidationDeps } from '../../blocks/payment/types'
@@ -22,7 +22,7 @@ export function eventGuestFlowStepToProgressStep(
   return step as GuestFlowProgressStep
 }
 
-function validateLeaveConfirmStep(
+function validateLeaveGuestsStep(
   slots: GuestConfirmFormSlot[],
   confirmPhase: GuestConfirmPhase,
   confirmGuestIndex: number,
@@ -35,7 +35,7 @@ function validateLeaveConfirmStep(
     const result = validateGuestSlot(current)
     if (result.valid) return { ok: true }
     showGuestConfirmValidationMessage(t, result, fieldDefinitions)
-    return { ok: false, step: 'confirm', validation: result, guestIndex: confirmGuestIndex }
+    return { ok: false, step: 'guests', validation: result, guestIndex: confirmGuestIndex }
   }
 
   const firstInvalid = findFirstInvalidGuestSlotIndex(slots)
@@ -43,7 +43,7 @@ function validateLeaveConfirmStep(
   showGuestConfirmValidationMessage(t, firstInvalid.result, fieldDefinitions)
   return {
     ok: false,
-    step: 'confirm',
+    step: 'guests',
     validation: firstInvalid.result,
     guestIndex: firstInvalid.index,
   }
@@ -52,6 +52,7 @@ function validateLeaveConfirmStep(
 export function validateLeaveGuestFlowStep(input: {
   activeStep: EventGuestFlowStep
   targetStep: EventGuestFlowStep
+  giftsSubView: GuestGiftsSubView
   slots: GuestConfirmFormSlot[]
   confirmPhase: GuestConfirmPhase
   confirmGuestIndex: number
@@ -68,23 +69,30 @@ export function validateLeaveGuestFlowStep(input: {
   }
 
   switch (input.activeStep) {
-    case 'confirm':
-      return validateLeaveConfirmStep(
+    case 'guests':
+      return validateLeaveGuestsStep(
         input.slots,
         input.confirmPhase,
         input.confirmGuestIndex,
         input.fieldDefinitions,
         input.t,
       )
-    case 'mp_payment':
-      if (!input.checkout) return { ok: true }
-      return getDefaultGuestPaymentProvider().validateLeaveStep({
-        method: input.paymentMethod,
-        pixPayerEmail: input.pixPayerEmail,
-        cardForm: input.cardPaymentForm,
-        mercadoPago: input.mercadoPagoLeaveDeps,
-        t: input.t as (key: string) => string,
-      })
+    case 'gifts':
+      if (input.giftsSubView !== 'payment' || !input.checkout) return { ok: true }
+      {
+        const paymentLeave = getDefaultGuestPaymentProvider().validateLeaveStep({
+          method: input.paymentMethod,
+          pixPayerEmail: input.pixPayerEmail,
+          cardForm: input.cardPaymentForm,
+          mercadoPago: input.mercadoPagoLeaveDeps,
+          t: input.t as (key: string) => string,
+        })
+        if (paymentLeave.ok) return paymentLeave
+        if (paymentLeave.step === 'gifts') {
+          return { ok: false, step: 'gifts', fieldErrors: paymentLeave.fieldErrors }
+        }
+        return paymentLeave
+      }
     default:
       return { ok: true }
   }

@@ -35,9 +35,11 @@ type Props = {
   onPhaseChange: (phase: GuestConfirmPhase) => void
   currentIndex: number
   onCurrentIndexChange: (index: number) => void
-  onBack: () => void
+  onBack?: () => void
   onReviewBackToForm: () => void
   onAttendanceConfirmed: () => void
+  editFromFinished?: boolean
+  onCancelEdit?: () => void
   validationHighlight?: GuestSlotValidationResult | null
   validationHighlightGuestIndex?: number
   onValidationHighlightClear?: () => void
@@ -49,7 +51,8 @@ type FormViewProps = {
   currentIndex: number
   fieldDefinitions: FieldDefinition[]
   validation: GuestSlotValidationResult | null
-  onBack: () => void
+  onBack?: () => void
+  backLabel?: string
   onContinue: () => void
   onPrevGuest: () => void
   onNextGuest: () => void
@@ -64,6 +67,7 @@ function GuestConfirmFormView({
   fieldDefinitions,
   validation,
   onBack,
+  backLabel,
   onContinue,
   onPrevGuest,
   onNextGuest,
@@ -158,9 +162,11 @@ function GuestConfirmFormView({
       </Flex>
 
       <GuestFlowActions>
-        <Button size="large" onClick={onBack}>
-          {t('events.detail.guestConfirm.back')}
-        </Button>
+        {onBack ? (
+          <Button size="large" onClick={onBack}>
+            {backLabel ?? t('events.detail.guestConfirm.back')}
+          </Button>
+        ) : null}
         <Button type="primary" size="large" onClick={onContinue}>
           {t('events.detail.guestConfirm.continue')}
         </Button>
@@ -174,9 +180,16 @@ type ReviewViewProps = {
   fieldDefinitions: FieldDefinition[]
   onBack: () => void
   onConfirm: () => void
+  backLabel: string
 }
 
-function GuestConfirmReviewView({ slots, fieldDefinitions, onBack, onConfirm }: ReviewViewProps) {
+function GuestConfirmReviewView({
+  slots,
+  fieldDefinitions,
+  onBack,
+  onConfirm,
+  backLabel,
+}: ReviewViewProps) {
   const { t } = useTranslation()
   const everyoneDeclined = allGuestsNotAttending(slots)
 
@@ -221,7 +234,7 @@ function GuestConfirmReviewView({ slots, fieldDefinitions, onBack, onConfirm }: 
 
       <GuestFlowActions>
         <Button size="large" onClick={onBack}>
-          {t('events.detail.guestConfirm.reviewBack')}
+          {backLabel}
         </Button>
         <Button type="primary" size="large" onClick={onConfirm}>
           {t('events.detail.guestConfirm.reviewConfirm')}
@@ -244,6 +257,8 @@ export function EventGuestConfirmBlock({
   onBack,
   onReviewBackToForm,
   onAttendanceConfirmed,
+  editFromFinished = false,
+  onCancelEdit,
   validationHighlight,
   validationHighlightGuestIndex,
   onValidationHighlightClear,
@@ -307,8 +322,15 @@ export function EventGuestConfirmBlock({
       setValidation(null)
       return
     }
-    onBack()
+    if (editFromFinished && onCancelEdit) {
+      onCancelEdit()
+      setValidation(null)
+      return
+    }
+    onBack?.()
   }
+
+  const reviewBackLabel = t('events.detail.guestConfirm.reviewBack')
 
   const handlePrevGuest = () => {
     onCurrentIndexChange(Math.max(0, currentIndex - 1))
@@ -353,7 +375,12 @@ export function EventGuestConfirmBlock({
           currentIndex={currentIndex}
           fieldDefinitions={fieldDefinitions}
           validation={displayValidation}
-          onBack={handleFormBack}
+          onBack={currentIndex > 0 || editFromFinished ? handleFormBack : undefined}
+          backLabel={
+            editFromFinished && currentIndex === 0
+              ? t('events.detail.guestFinished.cancelEdit')
+              : undefined
+          }
           onContinue={handleContinue}
           onPrevGuest={handlePrevGuest}
           onNextGuest={handleNextGuest}
@@ -366,6 +393,7 @@ export function EventGuestConfirmBlock({
           fieldDefinitions={fieldDefinitions}
           onBack={handleReviewBack}
           onConfirm={onAttendanceConfirmed}
+          backLabel={reviewBackLabel}
         />
       )}
     </GuestFlowContentPanel>

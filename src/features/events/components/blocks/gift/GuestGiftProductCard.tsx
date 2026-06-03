@@ -5,7 +5,7 @@ import './eventGuestGift.css'
 const priceFormatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'BRL' })
 
 export function formatGuestGiftProductPrice(product: Product, freeLabel: string) {
-  if (product.is_free) return freeLabel
+  if (product.is_free || product.value === 0) return freeLabel
   return priceFormatter.format(product.value / 100)
 }
 

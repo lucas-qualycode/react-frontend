@@ -1,17 +1,21 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { redirect, type LoaderFunctionArgs } from 'react-router-dom'
-import { getEvent, getInvitation } from '@/features/events/api'
-import { fetchActiveCheckout } from '@/features/events/components/blocks/payment/checkoutPayload'
+import { getEvent } from '@/features/events/api'
+import {
+  fetchInvitationGuestView,
+  fetchInvitationPayments,
+  resolvePendingGiftPaymentFromList,
+} from '@/features/events/components/invitationFlow/lib/guestInvitationApi'
+import { invitationPaymentsQueryKey } from '@/features/events/components/invitationFlow/hooks/useInvitationPayments'
 import {
   isInvitationAccessFailure,
   type InvitationAccess,
   type InvitationAccessFailureCode,
 } from '@/shared/api/invitationAccess'
-import type { Event, Invitation } from '@/shared/types/api'
+import type { Event } from '@/shared/types/api'
 import {
   guestInvitationPath,
   isLegacyGuestInvitationPath,
-  resolveGuestInvitationPhase,
   type GuestInvitationLoaderData,
 } from './guestInvitationRoutes'
 
@@ -72,18 +76,18 @@ export function createGuestInvitationLoader(queryClient: QueryClient) {
 
     const invitationAccess: InvitationAccess = { invitationId, token }
 
-    const [eventResult, invitationResult, activeResult] = await Promise.allSettled([
+    const [eventResult, guestViewResult, paymentsResult] = await Promise.allSettled([
       getEvent(eventId, invitationAccess),
-      getInvitation(invitationId, invitationAccess),
-      fetchActiveCheckout(invitationId, invitationAccess),
+      fetchInvitationGuestView(invitationId, invitationAccess),
+      fetchInvitationPayments(invitationId, invitationAccess),
     ])
 
     const rejections: unknown[] = []
     if (eventResult.status === 'rejected') {
       rejections.push(eventResult.reason)
     }
-    if (invitationResult.status === 'rejected') {
-      rejections.push(invitationResult.reason)
+    if (guestViewResult.status === 'rejected') {
+      rejections.push(guestViewResult.reason)
     }
 
     if (rejections.length > 0) {
@@ -91,29 +95,31 @@ export function createGuestInvitationLoader(queryClient: QueryClient) {
     }
 
     const event = (eventResult as PromiseFulfilledResult<Event>).value
-    const invitation = (invitationResult as PromiseFulfilledResult<Invitation>).value
-
-    let activeCheckout = null
-    if (activeResult.status === 'fulfilled') {
-      activeCheckout = activeResult.value
-    }
+    const guestView = (guestViewResult as PromiseFulfilledResult<Awaited<ReturnType<typeof fetchInvitationGuestView>>>).value
+    const payments =
+      paymentsResult.status === 'fulfilled' ? paymentsResult.value.payments : []
+    const resumePendingGift = guestView.invitation.wizard_step === 'gifts'
+    const pendingGiftPayment = await resolvePendingGiftPaymentFromList(
+      payments,
+      invitationId,
+      invitationAccess,
+      { fetchStatus: resumePendingGift },
+    )
 
     queryClient.setQueryData(['event', eventId, token], event)
-    queryClient.setQueryData(['invitation', invitationId, token], invitation)
-    if (activeCheckout) {
-      queryClient.setQueryData(['activeCheckout', invitationId, token], activeCheckout)
-    }
-
-    const phase = resolveGuestInvitationPhase(activeCheckout)
+    queryClient.setQueryData(['invitationGuestView', invitationId, token], guestView)
+    queryClient.setQueryData(['invitation', invitationId, token], guestView.invitation)
+    queryClient.setQueryData(invitationPaymentsQueryKey(invitationId, token), payments)
 
     return {
       eventId,
       invitationId,
       invitationAccess,
       event,
-      invitation,
-      activeCheckout,
-      phase,
+      invitation: guestView.invitation,
+      guestView,
+      payments,
+      pendingGiftPayment,
     }
   }
 }

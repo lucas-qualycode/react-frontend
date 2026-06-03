@@ -1,6 +1,7 @@
 import { EditOutlined } from '@ant-design/icons'
 import { Button, Card, Tooltip, Typography } from 'antd'
 import type { ReactNode } from 'react'
+import './eventGuestReview.css'
 
 const { Title } = Typography
 

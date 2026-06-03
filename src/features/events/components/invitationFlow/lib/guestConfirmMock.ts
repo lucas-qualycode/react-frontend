@@ -51,10 +51,15 @@ export function buildInitialGuestConfirmSlots(
   invitation: Invitation,
   ticket: Product,
 ): GuestConfirmFormSlot[] {
-  const count = Math.max(1, invitation.guest_slot_count ?? invitation.guest_slots?.length ?? 1)
+  const existingSlots = invitation.guest_slots ?? []
+  const count = Math.max(
+    1,
+    invitation.guest_slot_count ?? 0,
+    existingSlots.length,
+  )
 
   return Array.from({ length: count }, (_, index) => {
-    const inv = invitation.guest_slots?.[index]
+    const inv = existingSlots[index]
     const firstName = (inv?.first_name ?? '').trim()
     const requiredFieldIds = resolveGuestRequiredFieldIds(inv, ticket)
 

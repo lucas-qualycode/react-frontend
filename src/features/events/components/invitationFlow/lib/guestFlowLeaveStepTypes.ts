@@ -3,12 +3,12 @@ import type { GuestSlotValidationResult } from './guestConfirmMock'
 
 export type LeaveStepValidationFailure =
   | {
-      step: 'confirm'
+      step: 'guests'
       validation: GuestSlotValidationResult
       guestIndex: number
     }
   | {
-      step: 'mp_payment'
+      step: 'gifts'
       fieldErrors: CardFormValidation['fieldErrors']
     }
 

@@ -18,7 +18,7 @@ type Props = {
   variant: EventGuestMessageVariant
   message: string
   onMessageChange: (message: string) => void
-  onBack: () => void
+  onBack?: () => void
   onContinue: () => void
 }
 
@@ -58,9 +58,11 @@ export function EventGuestMessageBlock({
         </Flex>
 
         <GuestFlowActions>
-          <Button size="large" onClick={onBack}>
-            {t('events.detail.guestMessage.back')}
-          </Button>
+          {onBack ? (
+            <Button size="large" onClick={onBack}>
+              {t('events.detail.guestMessage.back')}
+            </Button>
+          ) : null}
           <Button type="primary" size="large" onClick={onContinue}>
             {t('events.detail.guestMessage.continue')}
           </Button>

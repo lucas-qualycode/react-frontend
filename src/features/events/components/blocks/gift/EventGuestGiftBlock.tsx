@@ -22,7 +22,6 @@ type Props = {
   event: Event
   invitationId: string
   variant: EventGuestGiftVariant
-  ticket: Product | null
   guestSlots: GuestConfirmFormSlot[]
   selectedProductIds: string[]
   onSelectedProductIdsChange: (ids: string[]) => void
@@ -256,7 +255,6 @@ export function EventGuestGiftBlock({
   event,
   invitationId,
   variant,
-  ticket,
   guestSlots,
   selectedProductIds,
   onSelectedProductIdsChange,

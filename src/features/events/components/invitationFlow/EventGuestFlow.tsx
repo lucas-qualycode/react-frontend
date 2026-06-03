@@ -202,12 +202,7 @@ export function EventGuestFlow({
 
   const guestPaymentProvider = useMemo(() => getDefaultGuestPaymentProvider(), [])
   const PaymentBlock = guestPaymentProvider.PaymentBlock
-  const {
-    isConfigured: isMpConfigured,
-    isReady: isMpReady,
-    canCreateCardToken: canCreateMpCardToken,
-    createCardToken,
-  } = useMercadoPago()
+  const { canCreateCardToken: canCreateMpCardToken, createCardToken } = useMercadoPago()
 
   const invitationReady =
     !guestInvitation.isLoading &&
@@ -587,7 +582,7 @@ export function EventGuestFlow({
   }, [animateToBackendWizardStep, t, ticketPoll.state])
 
   const handleResumePendingGiftPayment = useCallback(
-    (paymentId: string, status: GuestPaymentStatusResponse) => {
+    (_paymentId: string, status: GuestPaymentStatusResponse) => {
       applyPendingGiftPayment(status)
     },
     [applyPendingGiftPayment],
@@ -1098,7 +1093,6 @@ export function EventGuestFlow({
             event={event}
             invitationId={resolvedInvitationId}
             variant={giftsVariant}
-            ticket={guestInvitation.ticket}
             guestSlots={guestSlots}
             selectedProductIds={selectedProductIds}
             onSelectedProductIdsChange={setSelectedProductIds}

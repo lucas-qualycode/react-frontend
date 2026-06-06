@@ -32,13 +32,13 @@ function validateLeaveGuestsStep(
   if (confirmPhase === 'form') {
     const current = slots[confirmGuestIndex]
     if (!current) return { ok: true }
-    const result = validateGuestSlot(current)
+    const result = validateGuestSlot(current, fieldDefinitions)
     if (result.valid) return { ok: true }
     showGuestConfirmValidationMessage(t, result, fieldDefinitions)
     return { ok: false, step: 'guests', validation: result, guestIndex: confirmGuestIndex }
   }
 
-  const firstInvalid = findFirstInvalidGuestSlotIndex(slots)
+  const firstInvalid = findFirstInvalidGuestSlotIndex(slots, fieldDefinitions)
   if (!firstInvalid) return { ok: true }
   showGuestConfirmValidationMessage(t, firstInvalid.result, fieldDefinitions)
   return {

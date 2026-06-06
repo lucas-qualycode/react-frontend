@@ -15,8 +15,10 @@ import { createDefaultCardPaymentPersisted } from '../../blocks/mpPayment/guestM
 import {
   buildRsvpPersistFlagsFromInvitation,
   mergeDraftWithServerState,
+  readGuestEmailFromInvitation,
   readGuestMessageFromInvitation,
 } from '../lib/guestFlowRsvpHydration'
+import { resolveMessagePhase } from '../lib/guestMessageEmail'
 import { resolveWizardStepFromInvitation } from '../lib/resolveWizardStep'
 import {
   clearGuestFlowDraft,
@@ -98,12 +100,17 @@ function hydrationWithoutDraft(
 ): GuestFlowHydrationPayload {
   const serverFlags = buildRsvpPersistFlagsFromInvitation(invitation, ticket)
   const savedMessage = readGuestMessageFromInvitation(invitation)
+  const savedEmail = readGuestEmailFromInvitation(invitation)
+  const guestEmail = savedEmail
+  const messagePhase = resolveMessagePhase({ guestEmail, giftCapturedEmail: '' })
 
   return {
     ...createDefaultGuestFlowDraftState(),
     activeStep: resolveInitialWizardStep(invitation, null),
     guestSlots: buildInitialGuestConfirmSlots(invitation, ticket),
     coupleMessage: savedMessage,
+    guestEmail,
+    messagePhase,
     guestsSaved: serverFlags.guestsSaved,
     messageSaved: serverFlags.messageSaved,
     lastSavedGuestsFingerprint: serverFlags.lastSavedGuestsFingerprint,

@@ -185,6 +185,9 @@
         "paymentsEmpty": "No payments recorded.",
         "paymentItemCount_one": "{{count}} item",
         "paymentItemCount_other": "{{count}} items",
+        "paymentDateApproved": "Paid on {{date}}",
+        "paymentDatePending": "Started on {{date}}",
+        "paymentDateOther": "{{date}}",
         "paymentItemsEmpty": "No items linked to this payment.",
         "paymentItemGuest": "Guest: {{name}}",
         "paymentItemQuantity_one": "Qty {{count}}",
@@ -239,6 +242,12 @@
         "fieldsLabel": "Additional information",
         "fieldsPlaceholder": "Select fields to fill for this guest",
         "fieldPlaceholder": "Your answer",
+        "fieldPlaceholderCpf": "000.000.000-00",
+        "fieldPlaceholderEmail": "name@example.com",
+        "fieldPlaceholderPhone": "(00) 00000-0000",
+        "fieldPlaceholderAge": "0",
+        "fieldPlaceholderBirthDate": "DD/MM/YYYY",
+        "fieldPlaceholderFullName": "Full name",
         "back": "Back",
         "continue": "Continue",
         "reviewContinue": "Review details",
@@ -253,7 +262,15 @@
         "reviewBack": "Edit",
         "reviewConfirm": "Continue",
         "validationNameRequired": "Please enter the guest's first name.",
-        "validationFieldsRequired": "Please fill in: {{fields}}"
+        "validationFieldsRequired": "Please fill in: {{fields}}",
+        "validation": {
+          "required": "Please fill in {{label}}.",
+          "cpfInvalid": "Enter a valid CPF for {{label}}.",
+          "emailInvalid": "Enter a valid email for {{label}}.",
+          "phoneInvalid": "Enter a valid phone number for {{label}} (10 or 11 digits).",
+          "ageInvalid": "Enter a valid age for {{label}} (0 or greater).",
+          "birthDateInvalid": "Enter a valid birth date for {{label}} (before today, DD/MM/YYYY)."
+        }
       },
       "guestGift": {
         "title": "Gift list",
@@ -335,6 +352,12 @@
         }
       },
       "guestMessage": {
+        "emailTitle": "Your email",
+        "emailSubtitle": "We'll only use this email to reach you about this invitation.",
+        "emailLabel": "Email",
+        "emailPlaceholder": "you@example.com",
+        "emailValidationRequired": "Please enter your email to continue.",
+        "emailValidationInvalid": "Please enter a valid email address.",
         "title": "Message to the couple",
         "subtitle": "Leave a special note for the couple (optional).",
         "fieldLabel": "Your message",

@@ -1,4 +1,6 @@
+import type { FieldDefinition } from '@/shared/types/api'
 import type { GuestConfirmFormSlot } from './guestConfirmMock'
+import { findFullNameFieldId } from './guestConfirmFieldUtils'
 
 export type SubmitGuestSlotPayload = {
   id?: string
@@ -14,6 +16,7 @@ export type SubmitGuestSlotsPayload = {
 
 export type SubmitGuestMessagePayload = {
   message: string
+  email: string
 }
 
 function stableStringify(value: unknown): string {
@@ -32,11 +35,17 @@ function stableStringify(value: unknown): string {
 
 export function buildGuestSlotsSubmitPayload(
   guestSlots: GuestConfirmFormSlot[],
+  fieldDefinitions: FieldDefinition[] = [],
 ): SubmitGuestSlotsPayload {
   return {
     guests: guestSlots.map((slot) => {
+      const presetFirstName = slot.firstName.trim()
+      const fullNameFieldId = findFullNameFieldId(slot.requiredFieldIds, fieldDefinitions)
+      const fullNameValue = fullNameFieldId
+        ? (slot.fieldValues[fullNameFieldId]?.trim() ?? '')
+        : ''
       const row: SubmitGuestSlotPayload = {
-        first_name: slot.firstName.trim(),
+        first_name: presetFirstName || fullNameValue,
         required_field_ids: [...slot.requiredFieldIds],
         field_values: Object.fromEntries(
           Object.entries(slot.fieldValues).map(([k, v]) => [k, (v ?? '').trim()]),
@@ -51,16 +60,25 @@ export function buildGuestSlotsSubmitPayload(
   }
 }
 
-export function buildGuestMessageSubmitPayload(message: string): SubmitGuestMessagePayload {
-  return { message: message.trim() }
+export function buildGuestMessageSubmitPayload(
+  messageText: string,
+  email: string,
+): SubmitGuestMessagePayload {
+  return {
+    message: messageText.trim(),
+    email: email.trim(),
+  }
 }
 
 export function fingerprintGuestSlotsSubmitPayload(payload: SubmitGuestSlotsPayload): string {
   return stableStringify(payload)
 }
 
-export function fingerprintGuestMessage(message: string): string {
-  return message.trim()
+export function fingerprintGuestMessagePayload(payload: SubmitGuestMessagePayload): string {
+  return stableStringify({
+    message: payload.message.trim(),
+    email: payload.email.trim().toLowerCase(),
+  })
 }
 
 export function guestSlotsSubmitUnchanged(
@@ -71,10 +89,22 @@ export function guestSlotsSubmitUnchanged(
   return fingerprintGuestSlotsSubmitPayload(payload) === lastSavedFingerprint
 }
 
+export function guestMessageSubmitUnchanged(
+  payload: SubmitGuestMessagePayload,
+  lastSavedFingerprint: string | null | undefined,
+): boolean {
+  if (!lastSavedFingerprint) return false
+  return fingerprintGuestMessagePayload(payload) === lastSavedFingerprint
+}
+
+export function fingerprintGuestMessage(messageText: string): string {
+  return messageText.trim()
+}
+
 export function guestMessageUnchanged(
-  message: string,
+  messageText: string,
   lastSavedMessage: string | null | undefined,
 ): boolean {
   if (lastSavedMessage === null || lastSavedMessage === undefined) return false
-  return fingerprintGuestMessage(message) === lastSavedMessage
+  return fingerprintGuestMessage(messageText) === lastSavedMessage
 }

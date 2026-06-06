@@ -32,8 +32,15 @@ import {
   markAllGuestsNotAttending,
   type GuestConfirmFormSlot,
 } from './lib/guestConfirmMock'
-import { buildGuestMessageSubmitPayload, buildGuestSlotsSubmitPayload, fingerprintGuestSlotsSubmitPayload } from './lib/guestSubmitPayload'
-import { readGuestMessageFromInvitation } from './lib/guestFlowRsvpHydration'
+import { buildGuestMessageSubmitPayload, buildGuestSlotsSubmitPayload, fingerprintGuestMessagePayload, fingerprintGuestSlotsSubmitPayload } from './lib/guestSubmitPayload'
+import { readGuestEmailFromInvitation, readGuestMessageFromInvitation } from './lib/guestFlowRsvpHydration'
+import {
+  isValidGuestEmail,
+  resolveGiftCapturedEmailFromSnapshot,
+  resolveSubmitGuestEmail,
+  showGuestMessageEmailInvalidError,
+  showGuestMessageEmailValidationError,
+} from './lib/guestMessageEmail'
 import {
   confirmGuests,
   guestInvitationErrorMessage,
@@ -168,6 +175,10 @@ export function EventGuestFlow({
   const [giftsBootstrap, setGiftsBootstrap] = useState<'ready' | 'resolving'>('ready')
   const [checkout, setCheckout] = useState<GuestCheckoutSnapshot | null>(defaultDraftState.checkout)
   const [coupleMessage, setCoupleMessage] = useState(defaultDraftState.coupleMessage)
+  const [guestEmail, setGuestEmail] = useState(defaultDraftState.guestEmail)
+  const [messagePhase, setMessagePhase] = useState(defaultDraftState.messagePhase)
+  const [giftCapturedEmail, setGiftCapturedEmail] = useState(defaultDraftState.giftCapturedEmail)
+  const [messageEmailSubStepSkipped, setMessageEmailSubStepSkipped] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState(defaultDraftState.paymentMethod)
   const [pixPayerEmail, setPixPayerEmail] = useState(defaultDraftState.pixPayerEmail)
   const [cardPayment, setCardPayment] = useState(defaultDraftState.cardPayment)
@@ -240,6 +251,9 @@ export function EventGuestFlow({
       checkout,
       pendingCheckout,
       coupleMessage,
+      guestEmail,
+      messagePhase,
+      giftCapturedEmail,
       paymentMethod,
       pixPayerEmail,
       cardPayment,
@@ -260,6 +274,9 @@ export function EventGuestFlow({
       checkout,
       pendingCheckout,
       coupleMessage,
+      guestEmail,
+      messagePhase,
+      giftCapturedEmail,
       paymentMethod,
       pixPayerEmail,
       cardPayment,
@@ -282,6 +299,12 @@ export function EventGuestFlow({
     setGiftPage(payload.giftPage)
     setCheckout(payload.checkout)
     setCoupleMessage(payload.coupleMessage)
+    setGuestEmail(payload.guestEmail)
+    setMessagePhase(payload.messagePhase)
+    setGiftCapturedEmail(payload.giftCapturedEmail)
+    setMessageEmailSubStepSkipped(
+      isValidGuestEmail(payload.guestEmail) || isValidGuestEmail(payload.giftCapturedEmail),
+    )
     setPaymentMethod(payload.paymentMethod)
     setPixPayerEmail(payload.pixPayerEmail)
     setCardPayment(payload.cardPayment)
@@ -307,6 +330,18 @@ export function EventGuestFlow({
     setMaxProgressIndexReached(progressIdx >= 0 ? progressIdx : 0)
   }, [applyPendingGiftPayment, pendingGiftPayment])
 
+  const prevActiveStepRef = useRef(activeStep)
+
+  useEffect(() => {
+    const prev = prevActiveStepRef.current
+    prevActiveStepRef.current = activeStep
+    if (activeStep !== 'message' || prev === 'message') return
+    const resolvedEmail = resolveSubmitGuestEmail(guestEmail, giftCapturedEmail)
+    const skipped = isValidGuestEmail(resolvedEmail)
+    setMessageEmailSubStepSkipped(skipped)
+    setMessagePhase(skipped ? 'compose' : 'email')
+  }, [activeStep, giftCapturedEmail, guestEmail])
+
   useGuestFlowDraft({
     invitationId,
     eventId: event.id,
@@ -323,9 +358,10 @@ export function EventGuestFlow({
     const invitation = guestInvitation.invitation
     const ticket = guestInvitation.ticket
     if (!draftHydrated || !invitationReady || !invitation || !ticket || guestSlots.length > 0) return
-    setGuestSlots(buildInitialGuestConfirmSlots(invitation, ticket))
+    setGuestSlots(buildInitialGuestConfirmSlots(invitation, ticket, guestInvitation.fieldDefinitions))
   }, [
     draftHydrated,
+    guestInvitation.fieldDefinitions,
     guestInvitation.invitation,
     guestInvitation.ticket,
     guestSlots.length,
@@ -340,7 +376,11 @@ export function EventGuestFlow({
     const draftKey = invitationId ?? invitation.id
     const stored = loadGuestFlowDraft(draftKey, event.id)
     if (stored?.guestSlots?.length) {
-      const initial = buildInitialGuestConfirmSlots(invitation, ticket)
+      const initial = buildInitialGuestConfirmSlots(
+        invitation,
+        ticket,
+        guestInvitation.fieldDefinitions,
+      )
       setGuestSlots(mergeGuestSlotsWithDraft(initial, stored.guestSlots))
     }
 
@@ -489,9 +529,9 @@ export function EventGuestFlow({
     if (!invitation || !ticket || !guestView) return false
 
     const merged = mergeInvitationGuestSlots(invitation, guestView.guest_slots)
-    setGuestSlots(buildInitialGuestConfirmSlots(merged, ticket))
+    setGuestSlots(buildInitialGuestConfirmSlots(merged, ticket, guestInvitation.fieldDefinitions))
     return true
-  }, [guestInvitation.guestView, guestInvitation.invitation, guestInvitation.ticket])
+  }, [guestInvitation.fieldDefinitions, guestInvitation.guestView, guestInvitation.invitation, guestInvitation.ticket])
 
   const handleEditGuestsFromFinished = useCallback(() => {
     if (!hydrateGuestSlotsFromGuestView()) return
@@ -556,6 +596,7 @@ export function EventGuestFlow({
           buildInitialGuestConfirmSlots(
             mergeInvitationGuestSlots(view.invitation, view.guest_slots),
             ticket,
+            guestInvitation.fieldDefinitions,
           ),
         )
       }
@@ -658,7 +699,7 @@ export function EventGuestFlow({
     const baseSlots =
       guestSlots.length > 0
         ? guestSlots
-        : buildInitialGuestConfirmSlots(invitation, ticket)
+        : buildInitialGuestConfirmSlots(invitation, ticket, guestInvitation.fieldDefinitions)
     const declinedSlots = markAllGuestsNotAttending(baseSlots)
 
     setFlowPath('decline')
@@ -679,7 +720,7 @@ export function EventGuestFlow({
 
     setGuestsConfirmLoading(true)
     try {
-      const payload = buildGuestSlotsSubmitPayload(guestSlots)
+      const payload = buildGuestSlotsSubmitPayload(guestSlots, guestInvitation.fieldDefinitions)
       const result = await confirmGuests(resolvedId, payload, invitationAccess)
       setGuestsConfirmed(true)
       setLastSavedGuestsFingerprint(fingerprintGuestSlotsSubmitPayload(payload))
@@ -695,10 +736,17 @@ export function EventGuestFlow({
           buildInitialGuestConfirmSlots(
             mergeInvitationGuestSlots(refreshedInvitation, refreshedGuestView.guest_slots),
             ticket,
+            guestInvitation.fieldDefinitions,
           ),
         )
       } else if (refreshedInvitation) {
-        setGuestSlots(buildInitialGuestConfirmSlots(refreshedInvitation, ticket))
+        setGuestSlots(
+          buildInitialGuestConfirmSlots(
+            refreshedInvitation,
+            ticket,
+            guestInvitation.fieldDefinitions,
+          ),
+        )
       }
       invalidateInvitationPayments()
       setGuestsConfirmLoading(false)
@@ -817,6 +865,13 @@ export function EventGuestFlow({
         setGiftCheckoutOutcome(result)
         setGiftPaymentId(result.payment_id)
         if (result.payment_status.toUpperCase() === 'APPROVED') {
+          const capturedEmail = resolveGiftCapturedEmailFromSnapshot(snapshot)
+          if (capturedEmail) {
+            setGiftCapturedEmail(capturedEmail)
+            setGuestEmail((current) => current.trim() || capturedEmail)
+            setMessageEmailSubStepSkipped(true)
+            setMessagePhase('compose')
+          }
           setGiftsCompleted(true)
           setGiftPaymentId(null)
           setGiftCheckoutOutcome(null)
@@ -860,16 +915,27 @@ export function EventGuestFlow({
     const resolvedId = invitationId ?? guestInvitation.invitation?.id
     if (!resolvedId) return
 
+    const submitEmail = resolveSubmitGuestEmail(guestEmail, giftCapturedEmail)
+    if (!submitEmail) {
+      showGuestMessageEmailValidationError(t)
+      setMessagePhase('email')
+      setMessageEmailSubStepSkipped(false)
+      return
+    }
+    if (!isValidGuestEmail(submitEmail)) {
+      showGuestMessageEmailInvalidError(t)
+      setMessagePhase('email')
+      setMessageEmailSubStepSkipped(false)
+      return
+    }
+
     setMessageSubmitting(true)
     try {
-      const trimmed = coupleMessage.trim()
-      const invitation = await patchInvitationMessage(
-        resolvedId,
-        buildGuestMessageSubmitPayload(trimmed).message,
-        invitationAccess,
-      )
+      const payload = buildGuestMessageSubmitPayload(coupleMessage, submitEmail)
+      const invitation = await patchInvitationMessage(resolvedId, payload, invitationAccess)
       setMessageSaved(true)
-      setLastSavedMessage(trimmed)
+      setLastSavedMessage(fingerprintGuestMessagePayload(payload))
+      setGuestEmail(readGuestEmailFromInvitation(invitation) || submitEmail)
       const fromServer = readGuestMessageFromInvitation(invitation)
       if (fromServer) {
         setCoupleMessage(fromServer)
@@ -884,6 +950,8 @@ export function EventGuestFlow({
   }, [
     animateToBackendWizardStep,
     coupleMessage,
+    giftCapturedEmail,
+    guestEmail,
     guestInvitation,
     invitationAccess,
     invitationId,
@@ -1011,6 +1079,7 @@ export function EventGuestFlow({
                   buildInitialGuestConfirmSlots(
                     guestInvitation.invitation,
                     guestInvitation.ticket,
+                    guestInvitation.fieldDefinitions,
                   ),
                 )
               }
@@ -1109,12 +1178,18 @@ export function EventGuestFlow({
         return (
           <Spin spinning={messageSubmitting}>
             <EventGuestMessageBlock
-            event={event}
-            variant={messageVariant}
-            message={coupleMessage}
-            onMessageChange={setCoupleMessage}
-            onContinue={() => void handleMessageContinue()}
-          />
+              event={event}
+              variant={messageVariant}
+              phase={messagePhase}
+              email={guestEmail}
+              message={coupleMessage}
+              emailSubStepSkipped={messageEmailSubStepSkipped}
+              onEmailChange={setGuestEmail}
+              onMessageChange={setCoupleMessage}
+              onPhaseChange={setMessagePhase}
+              onBack={() => animateTo('gifts')}
+              onContinue={() => void handleMessageContinue()}
+            />
           </Spin>
         )
       case 'finished':

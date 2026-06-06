@@ -5,16 +5,21 @@ import { useTranslation } from 'react-i18next'
 import type { Event, FieldDefinition, Invitation, Product } from '@/shared/types/api'
 import type { GuestConfirmPhase } from '../../invitationFlow/lib/guestFlowDraft'
 import {
-  fieldLabelById,
+  findFullNameFieldId,
+} from '../../invitationFlow/lib/guestConfirmFieldUtils'
+import {
   allGuestsNotAttending,
   formatReviewFieldLine,
   formatReviewGuestHeading,
+  resolveGuestReviewDisplayName,
+  resolveGuestReviewFieldIds,
   showGuestConfirmValidationMessage,
   validateGuestSlot,
   type GuestConfirmFormSlot,
   type GuestSlotValidationResult,
 } from '../../invitationFlow/lib/guestConfirmMock'
 import { GuestConfirmBorderField } from './GuestConfirmBorderField'
+import { GuestConfirmFieldInput } from './GuestConfirmFieldInput'
 import { GuestFlowActions } from '../../invitationFlow/shared/GuestFlowActions'
 import { GuestFlowBlockHeader } from '../../invitationFlow/shared/GuestFlowBlockHeader'
 import { GuestFlowContentPanel } from '../../invitationFlow/shared/GuestFlowContentPanel'
@@ -115,20 +120,47 @@ function GuestConfirmFormView({
       <Flex vertical gap={16} style={{ width: '100%', textAlign: 'left' }}>
         <div className="guest-confirm-name-row">
           <div className="guest-confirm-name-main">
-            {current.hasPresetName ? (
-              <Text className="guest-confirm-preset-name-value">
-                {t('events.detail.guestConfirm.presetInvitation', { name: current.firstName })}
-              </Text>
-            ) : isAttending ? (
-              <GuestConfirmBorderField
-                label={t('events.detail.guestConfirm.firstNameLabel')}
-                required
-                value={current.firstName}
-                onChange={(e) => onUpdateSlot({ firstName: e.target.value })}
-                placeholder={t('events.detail.guestConfirm.firstNamePlaceholder')}
-                hasError={validation?.missingName ?? false}
-              />
-            ) : null}
+            {(() => {
+              const fullNameFieldId = findFullNameFieldId(
+                current.requiredFieldIds,
+                fieldDefinitions,
+              )
+              if (fullNameFieldId && isAttending) {
+                const isMissing = validation?.missingFieldIds.includes(fullNameFieldId) ?? false
+                const isInvalid = validation?.invalidFieldIds.includes(fullNameFieldId) ?? false
+                return (
+                  <GuestConfirmFieldInput
+                    fieldId={fullNameFieldId}
+                    fieldDefinitions={fieldDefinitions}
+                    required
+                    value={current.fieldValues[fullNameFieldId] ?? ''}
+                    onChange={(value) => onUpdateFieldValue(fullNameFieldId, value)}
+                    hasMissingError={isMissing}
+                    showValidation={validation !== null && (isMissing || isInvalid)}
+                  />
+                )
+              }
+              if (current.hasPresetName) {
+                return (
+                  <Text className="guest-confirm-preset-name-value">
+                    {t('events.detail.guestConfirm.presetInvitation', { name: current.firstName })}
+                  </Text>
+                )
+              }
+              if (isAttending) {
+                return (
+                  <GuestConfirmBorderField
+                    label={t('events.detail.guestConfirm.firstNameLabel')}
+                    required
+                    value={current.firstName}
+                    onChange={(e) => onUpdateSlot({ firstName: e.target.value })}
+                    placeholder={t('events.detail.guestConfirm.firstNamePlaceholder')}
+                    hasError={validation?.missingName ?? false}
+                  />
+                )
+              }
+              return null
+            })()}
           </div>
           <Checkbox
             className="guest-confirm-not-attending"
@@ -144,17 +176,21 @@ function GuestConfirmFormView({
             {t('events.detail.guestConfirm.notAttendingHint')}
           </Text>
         ) : (
-          current.requiredFieldIds.map((fieldId) => {
+          current.requiredFieldIds
+            .filter((fieldId) => fieldId !== findFullNameFieldId(current.requiredFieldIds, fieldDefinitions))
+            .map((fieldId) => {
             const isMissing = validation?.missingFieldIds.includes(fieldId) ?? false
+            const isInvalid = validation?.invalidFieldIds.includes(fieldId) ?? false
             return (
-              <GuestConfirmBorderField
+              <GuestConfirmFieldInput
                 key={fieldId}
-                label={fieldLabelById(fieldId, fieldDefinitions)}
+                fieldId={fieldId}
+                fieldDefinitions={fieldDefinitions}
                 required
                 value={current.fieldValues[fieldId] ?? ''}
-                onChange={(e) => onUpdateFieldValue(fieldId, e.target.value)}
-                placeholder={t('events.detail.guestConfirm.fieldPlaceholder')}
-                hasError={isMissing}
+                onChange={(value) => onUpdateFieldValue(fieldId, value)}
+                hasMissingError={isMissing}
+                showValidation={validation !== null && (isMissing || isInvalid)}
               />
             )
           })
@@ -177,6 +213,7 @@ function GuestConfirmFormView({
 
 type ReviewViewProps = {
   slots: GuestConfirmFormSlot[]
+  ticket: Product
   fieldDefinitions: FieldDefinition[]
   onBack: () => void
   onConfirm: () => void
@@ -185,6 +222,7 @@ type ReviewViewProps = {
 
 function GuestConfirmReviewView({
   slots,
+  ticket,
   fieldDefinitions,
   onBack,
   onConfirm,
@@ -215,17 +253,30 @@ function GuestConfirmReviewView({
             <Card key={index} size="small" style={{ textAlign: 'left' }}>
               <Flex vertical gap={10}>
                 <Text strong style={{ fontSize: 16 }}>
-                  {formatReviewGuestHeading(slot, index + 1, t)}
+                  {formatReviewGuestHeading(
+                    slot,
+                    index + 1,
+                    t,
+                    resolveGuestReviewDisplayName(slot, ticket, fieldDefinitions),
+                  )}
                 </Text>
-                {slot.attending === false ? null : slot.requiredFieldIds.length === 0 ? (
-                  <Text type="secondary">{t('events.detail.guestConfirm.reviewNoFields')}</Text>
-                ) : (
-                  slot.requiredFieldIds.map((fieldId) => (
-                    <Text key={fieldId} style={{ fontSize: 16 }}>
-                      {formatReviewFieldLine(fieldId, slot, fieldDefinitions, t)}
-                    </Text>
-                  ))
-                )}
+                {slot.attending === false ? null : (() => {
+                  const displayFieldIds = resolveGuestReviewFieldIds(
+                    slot,
+                    ticket,
+                    fieldDefinitions,
+                  )
+                  if (displayFieldIds.length > 0) {
+                    return displayFieldIds.map((fieldId) => (
+                      <Text key={fieldId} style={{ fontSize: 16 }}>
+                        {formatReviewFieldLine(fieldId, slot, fieldDefinitions, t)}
+                      </Text>
+                    ))
+                  }
+                  return (
+                    <Text type="secondary">{t('events.detail.guestConfirm.reviewNoFields')}</Text>
+                  )
+                })()}
               </Flex>
             </Card>
           ))}
@@ -247,6 +298,7 @@ function GuestConfirmReviewView({
 export function EventGuestConfirmBlock({
   event,
   variant,
+  ticket,
   fieldDefinitions,
   slots,
   onSlotsChange,
@@ -282,17 +334,19 @@ export function EventGuestConfirmBlock({
     setValidation(null)
     onValidationHighlightClear?.()
     onSlotsChange(
-      slots.map((slot, i) =>
-        i === currentIndex
-          ? { ...slot, fieldValues: { ...slot.fieldValues, [fieldId]: value } }
-          : slot,
-      ),
+      slots.map((slot, i) => {
+        if (i !== currentIndex) return slot
+        return {
+          ...slot,
+          fieldValues: { ...slot.fieldValues, [fieldId]: value },
+        }
+      }),
     )
   }
 
   const validateCurrentGuest = () => {
     if (!current) return false
-    const result = validateGuestSlot(current)
+    const result = validateGuestSlot(current, fieldDefinitions)
     setValidation(result.valid ? null : result)
     if (!result.valid) {
       showGuestConfirmValidationMessage(t, result, fieldDefinitions)
@@ -390,6 +444,7 @@ export function EventGuestConfirmBlock({
       ) : (
         <GuestConfirmReviewView
           slots={slots}
+          ticket={ticket}
           fieldDefinitions={fieldDefinitions}
           onBack={handleReviewBack}
           onConfirm={onAttendanceConfirmed}

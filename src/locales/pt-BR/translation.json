@@ -185,6 +185,9 @@
         "paymentsEmpty": "Nenhum pagamento registrado.",
         "paymentItemCount_one": "{{count}} item",
         "paymentItemCount_other": "{{count}} itens",
+        "paymentDateApproved": "Pago em {{date}}",
+        "paymentDatePending": "Iniciado em {{date}}",
+        "paymentDateOther": "{{date}}",
         "paymentItemsEmpty": "Nenhum item vinculado a este pagamento.",
         "paymentItemGuest": "Convidado: {{name}}",
         "paymentItemQuantity_one": "Qtd. {{count}}",
@@ -239,6 +242,12 @@
         "fieldsLabel": "Informações adicionais",
         "fieldsPlaceholder": "Selecione os campos para este convidado",
         "fieldPlaceholder": "Sua resposta",
+        "fieldPlaceholderCpf": "000.000.000-00",
+        "fieldPlaceholderEmail": "nome@exemplo.com",
+        "fieldPlaceholderPhone": "(00) 00000-0000",
+        "fieldPlaceholderAge": "0",
+        "fieldPlaceholderBirthDate": "DD/MM/AAAA",
+        "fieldPlaceholderFullName": "Nome completo",
         "back": "Voltar",
         "continue": "Continuar",
         "reviewContinue": "Revisar dados",
@@ -253,7 +262,15 @@
         "reviewBack": "Corrigir",
         "reviewConfirm": "Continuar",
         "validationNameRequired": "Informe o nome do convidado.",
-        "validationFieldsRequired": "Preencha: {{fields}}"
+        "validationFieldsRequired": "Preencha: {{fields}}",
+        "validation": {
+          "required": "Preencha {{label}}.",
+          "cpfInvalid": "Informe um CPF válido em {{label}}.",
+          "emailInvalid": "Informe um e-mail válido em {{label}}.",
+          "phoneInvalid": "Informe um telefone válido em {{label}} (10 ou 11 dígitos).",
+          "ageInvalid": "Informe uma idade válida em {{label}} (0 ou mais).",
+          "birthDateInvalid": "Informe uma data de nascimento válida em {{label}} (antes de hoje, DD/MM/AAAA)."
+        }
       },
       "guestGift": {
         "title": "Lista de presentes",
@@ -335,6 +352,12 @@
         }
       },
       "guestMessage": {
+        "emailTitle": "Seu e-mail",
+        "emailSubtitle": "Usamos seu e-mail apenas para falar com você sobre este convite.",
+        "emailLabel": "E-mail",
+        "emailPlaceholder": "voce@exemplo.com",
+        "emailValidationRequired": "Informe seu e-mail para continuar.",
+        "emailValidationInvalid": "Informe um endereço de e-mail válido.",
         "title": "Mensagem aos noivos",
         "subtitle": "Deixe um recado especial para os noivos (opcional).",
         "fieldLabel": "Sua mensagem",

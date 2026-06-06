@@ -131,3 +131,11 @@ textarea.guest-flow-field-input:focus {
   flex: 1;
   min-width: 0;
 }
+
+.guest-flow-field-error {
+  margin: 6px 0 0;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ant-color-error);
+}

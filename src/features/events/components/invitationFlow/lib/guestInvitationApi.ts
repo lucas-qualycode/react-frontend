@@ -7,7 +7,7 @@ import {
   isPendingPaymentStatus,
   resolveActivePendingPayment,
 } from './resolveActivePendingPayment'
-import type { SubmitGuestSlotsPayload } from './guestSubmitPayload'
+import type { SubmitGuestMessagePayload, SubmitGuestSlotsPayload } from './guestSubmitPayload'
 import type { GuestCheckoutPayload } from '../../blocks/payment/types'
 
 export type GuestInvitationErrorCode =
@@ -262,13 +262,20 @@ export async function submitGiftCheckout(
 
 export async function patchInvitationMessage(
   invitationId: string,
-  message: string,
+  payload: SubmitGuestMessagePayload,
   invitationAccess?: InvitationAccess | null,
 ): Promise<Invitation> {
   if (USE_MOCK_INVITATION) {
     const { getMockInvitation } = await import('./guestInvitationMock')
     const inv = getMockInvitation('evt-1')
-    return { ...inv, metadata: { ...(inv.metadata ?? {}), message: message.trim() } }
+    return {
+      ...inv,
+      metadata: {
+        ...(inv.metadata ?? {}),
+        message: payload.message.trim(),
+        guest_email: payload.email.trim(),
+      },
+    }
   }
 
   const res = await fetchApi(
@@ -276,7 +283,10 @@ export async function patchInvitationMessage(
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({
+        message: payload.message,
+        email: payload.email,
+      }),
     },
     invitationAccess,
   )

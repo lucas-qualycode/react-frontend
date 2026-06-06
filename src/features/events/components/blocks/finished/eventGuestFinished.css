@@ -217,9 +217,13 @@
   gap: 2px;
 }
 
-.guest-finished-payment-status {
-  font-size: 14px;
+.guest-finished-payment-status.ant-tag {
+  margin: 0;
+  align-self: flex-start;
+  font-size: 12px;
   font-weight: 600;
+  line-height: 1.35;
+  border-radius: 999px;
 }
 
 .guest-finished-payment-total {
@@ -229,6 +233,11 @@
 }
 
 .guest-finished-payment-item-count {
+  font-size: 13px;
+  color: var(--ant-color-text-secondary);
+}
+
+.guest-finished-payment-date {
   font-size: 13px;
   color: var(--ant-color-text-secondary);
 }

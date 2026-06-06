@@ -186,6 +186,7 @@ export interface FieldDefinition {
   label: string
   description?: string | null
   field_type: string
+  format?: string | null
   required_default?: boolean
   min_length?: number | null
   max_length?: number | null

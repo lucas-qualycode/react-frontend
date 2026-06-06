@@ -1,6 +1,13 @@
 import { message } from 'antd'
 import type { FieldDefinition, Invitation, InvitationGuestSlot, Product } from '@/shared/types/api'
 import {
+  fieldDefinitionById,
+  findFullNameFieldId,
+  getGuestFieldValidationErrorKey,
+  guestFieldValidationMessageKey,
+  type GuestFieldValidationErrorKey,
+} from './guestConfirmFieldUtils'
+import {
   getMockGuestFieldDefinitions,
   getMockGuestTicket,
   getMockInvitation,
@@ -30,7 +37,50 @@ export function getMockGuestConfirmFieldDefinitions(): FieldDefinition[] {
 
 export function ticketFieldIdsOrdered(ticket: Product): string[] {
   const refs = ticket.additional_info_fields ?? []
-  return refs.filter((r) => r.active !== false).map((r) => r.field_id)
+  return refs
+    .filter((r) => r.active !== false)
+    .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
+    .map((r) => r.field_id)
+}
+
+export function slotRequiredFieldIdsOrdered(
+  slot: GuestConfirmFormSlot,
+  ticket: Product,
+): string[] {
+  const ticketOrder = ticketFieldIdsOrdered(ticket)
+  const requiredSet = new Set(slot.requiredFieldIds)
+  const ordered = ticketOrder.filter((fieldId) => requiredSet.has(fieldId))
+  if (ordered.length > 0) return ordered
+  return [...slot.requiredFieldIds]
+}
+
+export function resolveGuestReviewDisplayName(
+  slot: GuestConfirmFormSlot,
+  ticket: Product,
+  fieldDefinitions: FieldDefinition[],
+): string {
+  const fullNameFieldId = findFullNameFieldId(
+    slotRequiredFieldIdsOrdered(slot, ticket),
+    fieldDefinitions,
+  )
+  if (fullNameFieldId) {
+    const fullName = slot.fieldValues[fullNameFieldId]?.trim()
+    if (fullName) return fullName
+  }
+  return slot.firstName.trim()
+}
+
+export function resolveGuestReviewFieldIds(
+  slot: GuestConfirmFormSlot,
+  ticket: Product,
+  fieldDefinitions: FieldDefinition[],
+): string[] {
+  const fieldIds = slotRequiredFieldIdsOrdered(slot, ticket)
+  const fullNameFieldId = findFullNameFieldId(fieldIds, fieldDefinitions)
+  if (!fullNameFieldId) return fieldIds
+  const fullNameValue = slot.fieldValues[fullNameFieldId]?.trim()
+  if (!fullNameValue) return fieldIds
+  return fieldIds.filter((fieldId) => fieldId !== fullNameFieldId)
 }
 
 export function resolveGuestRequiredFieldIds(
@@ -50,6 +100,7 @@ export function fieldLabelById(fieldId: string, defs: FieldDefinition[]): string
 export function buildInitialGuestConfirmSlots(
   invitation: Invitation,
   ticket: Product,
+  fieldDefinitions: FieldDefinition[] = [],
 ): GuestConfirmFormSlot[] {
   const existingSlots = invitation.guest_slots ?? []
   const count = Math.max(
@@ -65,6 +116,10 @@ export function buildInitialGuestConfirmSlots(
 
     const fieldValues = { ...(inv?.field_values ?? {}) }
     const attending = inv?.attending !== undefined ? inv.attending : true
+    const fullNameFieldId = findFullNameFieldId(requiredFieldIds, fieldDefinitions)
+    if (fullNameFieldId && firstName && !fieldValues[fullNameFieldId]?.trim()) {
+      fieldValues[fullNameFieldId] = firstName
+    }
 
     return {
       slotId: inv?.id,
@@ -82,6 +137,8 @@ export type GuestSlotValidationResult = {
   valid: boolean
   missingName: boolean
   missingFieldIds: string[]
+  invalidFieldIds: string[]
+  firstInvalidFieldErrorKey?: GuestFieldValidationErrorKey | null
 }
 
 export function showGuestConfirmValidationMessage(
@@ -98,14 +155,22 @@ export function showGuestConfirmValidationMessage(
       .map((id) => fieldLabelById(id, fieldDefinitions))
       .join(', ')
     message.error(t('events.detail.guestConfirm.validationFieldsRequired', { fields: labels }))
+    return
+  }
+  if (result.invalidFieldIds.length > 0) {
+    const firstInvalidId = result.invalidFieldIds[0]
+    const label = fieldLabelById(firstInvalidId, fieldDefinitions)
+    const errorKey = result.firstInvalidFieldErrorKey ?? 'required'
+    message.error(t(guestFieldValidationMessageKey(errorKey), { label }))
   }
 }
 
 export function findFirstInvalidGuestSlotIndex(
   slots: GuestConfirmFormSlot[],
+  fieldDefinitions: FieldDefinition[],
 ): { index: number; result: GuestSlotValidationResult } | null {
   for (let index = 0; index < slots.length; index += 1) {
-    const result = validateGuestSlot(slots[index])
+    const result = validateGuestSlot(slots[index], fieldDefinitions)
     if (!result.valid) {
       return { index, result }
     }
@@ -123,16 +188,50 @@ export function markAllGuestsNotAttending(
   return slots.map((slot) => ({ ...slot, attending: false }))
 }
 
-export function validateGuestSlot(slot: GuestConfirmFormSlot): GuestSlotValidationResult {
+export function validateGuestSlot(
+  slot: GuestConfirmFormSlot,
+  fieldDefinitions: FieldDefinition[],
+): GuestSlotValidationResult {
   if (slot.attending === false) {
-    return { valid: true, missingName: false, missingFieldIds: [] }
+    return {
+      valid: true,
+      missingName: false,
+      missingFieldIds: [],
+      invalidFieldIds: [],
+      firstInvalidFieldErrorKey: null,
+    }
   }
-  const missingName = !slot.hasPresetName && !slot.firstName.trim()
-  const missingFieldIds = slot.requiredFieldIds.filter((id) => !slot.fieldValues[id]?.trim())
+  const missingName =
+    !slot.hasPresetName &&
+    findFullNameFieldId(slot.requiredFieldIds, fieldDefinitions) === null &&
+    !slot.firstName.trim()
+  const missingFieldIds: string[] = []
+  const invalidFieldIds: string[] = []
+  let firstInvalidFieldErrorKey: GuestFieldValidationErrorKey | null = null
+
+  for (const fieldId of slot.requiredFieldIds) {
+    const value = slot.fieldValues[fieldId]?.trim() ?? ''
+    if (!value) {
+      missingFieldIds.push(fieldId)
+      continue
+    }
+    const definition = fieldDefinitionById(fieldId, fieldDefinitions)
+    if (!definition) continue
+    const errorKey = getGuestFieldValidationErrorKey(definition, value)
+    if (errorKey !== null) {
+      invalidFieldIds.push(fieldId)
+      if (firstInvalidFieldErrorKey === null) {
+        firstInvalidFieldErrorKey = errorKey
+      }
+    }
+  }
+
   return {
-    valid: !missingName && missingFieldIds.length === 0,
+    valid: !missingName && missingFieldIds.length === 0 && invalidFieldIds.length === 0,
     missingName,
     missingFieldIds,
+    invalidFieldIds,
+    firstInvalidFieldErrorKey,
   }
 }
 
@@ -140,9 +239,10 @@ export function formatReviewGuestHeading(
   slot: GuestConfirmFormSlot,
   guestIndex: number,
   t: (key: string, options?: Record<string, unknown>) => string,
+  displayName?: string,
 ): string {
   const notAttending = slot.attending === false
-  const name = slot.firstName.trim()
+  const name = (displayName ?? slot.firstName).trim()
   const notAttendingSuffix = t('events.detail.guestConfirm.reviewNotAttending')
 
   if (slot.hasPresetName && name) {

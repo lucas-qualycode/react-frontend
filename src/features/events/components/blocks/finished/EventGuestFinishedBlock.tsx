@@ -4,7 +4,7 @@ import {
   IdcardOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
-import { Button, Collapse, Flex, Modal, Spin, Typography, message } from 'antd'
+import { Button, Collapse, Flex, Modal, Spin, Tag, Typography, message } from 'antd'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Event, FieldDefinition, InvitationStatus, Product } from '@/shared/types/api'
@@ -66,6 +66,25 @@ function isPixPayment(payment: InvitationPaymentSummary): boolean {
   return (payment.payment_method ?? '').toLowerCase() === 'pix'
 }
 
+function paymentStatusTagColor(status: string): string {
+  switch (status.toUpperCase()) {
+    case 'APPROVED':
+      return 'success'
+    case 'PENDING':
+      return 'warning'
+    case 'PROCESSING':
+      return 'processing'
+    case 'FAILED':
+      return 'error'
+    case 'CANCELLED':
+      return 'default'
+    case 'REFUNDED':
+      return 'purple'
+    default:
+      return 'default'
+  }
+}
+
 function sortPaymentsDesc(payments: InvitationPaymentSummary[]): InvitationPaymentSummary[] {
   return [...payments].sort(
     (left, right) => Date.parse(right.created_at) - Date.parse(left.created_at),
@@ -101,7 +120,7 @@ export function EventGuestFinishedBlock({
   onEditGuests,
   onEditGifts,
 }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: payments = [], isLoading: paymentsLoading } = useInvitationPayments()
   const [pixModalOpen, setPixModalOpen] = useState(false)
   const [pixModalLoading, setPixModalLoading] = useState(false)
@@ -136,7 +155,10 @@ export function EventGuestFinishedBlock({
     return map
   }, [guestView?.guest_slots])
 
-  const sortedPayments = useMemo(() => sortPaymentsDesc(payments), [payments])
+  const sortedPayments = useMemo(
+    () => sortPaymentsDesc(payments.filter((payment) => payment.amount > 0)),
+    [payments],
+  )
 
   const formatPaymentStatus = (paymentStatus: string) => {
     const key = `events.detail.guestFinished.paymentStatus.${paymentStatus.toUpperCase()}`
@@ -149,6 +171,30 @@ export function EventGuestFinishedBlock({
       style: 'currency',
       currency: payment.currency || 'BRL',
     }).format(payment.amount / 100)
+
+  const formatPaymentDate = (payment: InvitationPaymentSummary) => {
+    const parsed = Date.parse(payment.created_at)
+    if (Number.isNaN(parsed)) return null
+    const locale = i18n.language.toLowerCase().startsWith('pt') ? 'pt-BR' : 'en-US'
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(parsed))
+  }
+
+  const formatPaymentDateLabel = (payment: InvitationPaymentSummary) => {
+    if (payment.amount <= 0) return null
+    const date = formatPaymentDate(payment)
+    if (!date) return null
+    const status = payment.status.toUpperCase()
+    if (status === 'APPROVED') {
+      return t('events.detail.guestFinished.paymentDateApproved', { date })
+    }
+    if (status === 'PENDING' || status === 'PROCESSING') {
+      return t('events.detail.guestFinished.paymentDatePending', { date })
+    }
+    return t('events.detail.guestFinished.paymentDateOther', { date })
+  }
 
   const handleOpenPix = useCallback(
     async (paymentId: string) => {
@@ -188,6 +234,7 @@ export function EventGuestFinishedBlock({
         t,
       })
       const showPixButton = isPendingPaymentStatus(payment.status) && isPixPayment(payment)
+      const paymentDateLabel = formatPaymentDateLabel(payment)
 
       return {
         key: payment.id,
@@ -195,12 +242,19 @@ export function EventGuestFinishedBlock({
           <div className="guest-finished-payment-header">
             <span className="guest-finished-payment-index">#{index + 1}</span>
             <div className="guest-finished-payment-main">
-              <span className="guest-finished-payment-status">
+              <Tag
+                bordered={false}
+                color={paymentStatusTagColor(payment.status)}
+                className="guest-finished-payment-status"
+              >
                 {formatPaymentStatus(payment.status)}
-              </span>
+              </Tag>
               <span className="guest-finished-payment-item-count">
                 {t('events.detail.guestFinished.paymentItemCount', { count: lineItems.length })}
               </span>
+              {paymentDateLabel ? (
+                <span className="guest-finished-payment-date">{paymentDateLabel}</span>
+              ) : null}
             </div>
             {showPixButton ? (
               <Button
@@ -243,7 +297,7 @@ export function EventGuestFinishedBlock({
           ),
       }
     })
-  }, [handleOpenPix, slotById, sortedPayments, t])
+  }, [handleOpenPix, i18n.language, slotById, sortedPayments, t])
 
   if (loading || !guestView) {
     return (

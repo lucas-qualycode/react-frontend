@@ -19,6 +19,8 @@ type Props = {
   showCount?: boolean
   type?: string
   autoComplete?: string
+  inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'decimal' | 'search' | 'url'
+  errorMessage?: string
 }
 
 export function GuestFlowBorderField({
@@ -36,6 +38,8 @@ export function GuestFlowBorderField({
   showCount = false,
   type,
   autoComplete,
+  inputMode,
+  errorMessage,
 }: Props) {
   const hasError = hasErrorProp || status === 'error'
 
@@ -70,10 +74,16 @@ export function GuestFlowBorderField({
           placeholder={placeholder}
           type={type}
           autoComplete={autoComplete}
+          inputMode={inputMode}
           variant="borderless"
           className="guest-flow-field-input"
         />
       )}
+      {errorMessage ? (
+        <p className="guest-flow-field-error" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
     </fieldset>
   )
 }

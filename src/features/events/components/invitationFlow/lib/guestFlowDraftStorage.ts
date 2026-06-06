@@ -103,6 +103,9 @@ export function normalizeGuestFlowDraft(draft: GuestFlowDraft): GuestFlowDraft {
     ...rest,
     activeStep: migrateLegacyWizardStep(String(rest.activeStep)),
     coupleMessage,
+    guestEmail: raw.guestEmail ?? '',
+    messagePhase: raw.messagePhase === 'compose' ? 'compose' : 'email',
+    giftCapturedEmail: raw.giftCapturedEmail ?? '',
     paymentMethod,
     cardPayment,
     checkout,
@@ -120,7 +123,7 @@ export function loadGuestFlowDraft(
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as GuestFlowDraft
-    if (parsed.version !== GUEST_FLOW_DRAFT_VERSION && parsed.version !== 4) return null
+    if (parsed.version !== GUEST_FLOW_DRAFT_VERSION && parsed.version !== 5 && parsed.version !== 4) return null
     if (parsed.invitationId !== invitationId || parsed.eventId !== eventId) return null
 
     const updatedAt = Date.parse(parsed.updatedAt)

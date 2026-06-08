@@ -6,7 +6,8 @@ import {
   writeFieldDefinitionsCache,
 } from '@/shared/api/fieldDefinitionsCache'
 import {
-  createEvent,
+  completeEventSetup,
+  createDraftEvent,
   createInvitation,
   createLocation,
   createProduct,
@@ -16,6 +17,7 @@ import {
   deleteInvitation,
   deleteProduct,
   getEvent,
+  getEventSetup,
   getInvitation,
   listEventProducts,
   listFieldDefinitions,
@@ -25,18 +27,22 @@ import {
   listSchedules,
   listTags,
   listUserEvents,
+  patchEventCommerce,
+  patchEventIdentity,
+  patchEventVenue,
   regenerateInvitationAccessToken,
-  updateEvent,
   updateProduct,
   updateSchedule,
   updateInvitation,
-  type CreateEventPayload,
+  type CreateDraftEventPayload,
   type CreateInvitationPayload,
   type CreateLocationPayload,
   type CreateProductPayload,
   type CreateSchedulePayload,
   type CreateTagPayload,
-  type UpdateEventPayload,
+  type PatchEventCommercePayload,
+  type PatchEventIdentityPayload,
+  type PatchEventVenuePayload,
   type UpdateInvitationPayload,
   type UpdateProductPayload,
   type UpdateSchedulePayload,
@@ -88,10 +94,19 @@ export function useEvent(eventId: string | undefined) {
   })
 }
 
+export function useEventSetup(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['eventSetup', eventId],
+    queryFn: async () => getEventSetup(eventId!),
+    enabled: !!eventId,
+    staleTime: 10_000,
+  })
+}
+
 export function useEventTags() {
   return useQuery({
     queryKey: ['eventTags'],
-    queryFn: async (): Promise<Tag[]> => listTags({ active: true, deleted: false, applies_to: 'EVENT' }),
+    queryFn: async (): Promise<Tag[]> => listTags({ active: true, applies_to: 'EVENT' }),
     staleTime: 60_000,
   })
 }
@@ -114,27 +129,64 @@ export function useCreateLocation() {
   })
 }
 
-export function useCreateEvent() {
+export function useCreateDraftEvent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: CreateEventPayload) => createEvent(payload),
+    mutationFn: (payload: CreateDraftEventPayload) => createDraftEvent(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userEvents'] })
       queryClient.invalidateQueries({ queryKey: ['event'] })
+    },
+  })
+}
+
+export function usePatchEventIdentity() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ eventId, payload }: { eventId: string; payload: PatchEventIdentityPayload }) =>
+      patchEventIdentity(eventId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userEvents'] })
+      queryClient.invalidateQueries({ queryKey: ['event'] })
+      queryClient.invalidateQueries({ queryKey: ['eventSetup'] })
+    },
+  })
+}
+
+export function usePatchEventVenue() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ eventId, payload }: { eventId: string; payload: PatchEventVenuePayload }) =>
+      patchEventVenue(eventId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userEvents'] })
+      queryClient.invalidateQueries({ queryKey: ['event'] })
+      queryClient.invalidateQueries({ queryKey: ['eventSetup'] })
       queryClient.invalidateQueries({ queryKey: ['locations'] })
     },
   })
 }
 
-export function useUpdateEvent() {
+export function usePatchEventCommerce() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ eventId, payload }: { eventId: string; payload: UpdateEventPayload }) =>
-      updateEvent(eventId, payload),
+    mutationFn: ({ eventId, payload }: { eventId: string; payload: PatchEventCommercePayload }) =>
+      patchEventCommerce(eventId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userEvents'] })
       queryClient.invalidateQueries({ queryKey: ['event'] })
-      queryClient.invalidateQueries({ queryKey: ['locations'] })
+    },
+  })
+}
+
+export function useCompleteEventSetup() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (eventId: string) => completeEventSetup(eventId),
+    onSuccess: (_data, eventId) => {
+      queryClient.invalidateQueries({ queryKey: ['userEvents'] })
+      queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+      queryClient.invalidateQueries({ queryKey: ['eventSetup', eventId] })
     },
   })
 }
@@ -182,7 +234,8 @@ export function useInvitation(invitationId: string | undefined) {
 export function useRegenerateInvitationAccessToken(eventId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (invitationId: string) => regenerateInvitationAccessToken(invitationId),
+    mutationFn: (invitationId: string) =>
+      regenerateInvitationAccessToken(eventId!, invitationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invitations', eventId] })
     },
@@ -193,17 +246,17 @@ export function useInvitationTags() {
   return useQuery({
     queryKey: ['invitationTags'],
     queryFn: async (): Promise<Tag[]> =>
-      listTags({ active: true, deleted: false, applies_to: 'INVITATION' }),
+      listTags({ active: true, applies_to: 'INVITATION' }),
     staleTime: 60_000,
   })
 }
 
-export function useCreateInvitation() {
+export function useCreateInvitation(eventId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: CreateInvitationPayload) => createInvitation(payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['invitations', variables.event_id] })
+    mutationFn: (payload: CreateInvitationPayload) => createInvitation(eventId!, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invitations', eventId] })
       queryClient.invalidateQueries({ queryKey: ['invitation'] })
     },
   })
@@ -218,7 +271,7 @@ export function useUpdateInvitation(eventId: string | undefined) {
     }: {
       invitationId: string
       payload: UpdateInvitationPayload
-    }) => updateInvitation(invitationId, payload),
+    }) => updateInvitation(eventId!, invitationId, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['invitations', eventId] })
       queryClient.invalidateQueries({ queryKey: ['invitation', variables.invitationId] })
@@ -230,7 +283,7 @@ export function useUpdateInvitation(eventId: string | undefined) {
 export function useDeleteInvitation(eventId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (invitationId: string) => deleteInvitation(invitationId),
+    mutationFn: (invitationId: string) => deleteInvitation(eventId!, invitationId),
     onSuccess: (_data, invitationId) => {
       queryClient.invalidateQueries({ queryKey: ['invitations', eventId] })
       queryClient.removeQueries({ queryKey: ['invitation', invitationId] })
@@ -241,10 +294,16 @@ export function useDeleteInvitation(eventId: string | undefined) {
 export function useCreateSchedule() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: CreateSchedulePayload) => createSchedule(payload),
+    mutationFn: ({
+      eventId,
+      payload,
+    }: {
+      eventId: string
+      payload: CreateSchedulePayload
+    }) => createSchedule(eventId, payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['schedules', variables.event_id] })
-      queryClient.invalidateQueries({ queryKey: ['event', variables.event_id] })
+      queryClient.invalidateQueries({ queryKey: ['schedules', variables.eventId] })
+      queryClient.invalidateQueries({ queryKey: ['event', variables.eventId] })
     },
   })
 }
@@ -254,25 +313,18 @@ export function useUpdateSchedule() {
   return useMutation({
     mutationFn: ({
       scheduleId,
+      eventId,
       payload,
     }: {
       scheduleId: string
       eventId: string
       payload: UpdateSchedulePayload
-    }) => updateSchedule(scheduleId, payload),
+    }) => updateSchedule(eventId, scheduleId, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['schedules', variables.eventId] })
       queryClient.invalidateQueries({ queryKey: ['event', variables.eventId] })
     },
   })
-}
-
-function isMerchandiseProduct(p: Product): boolean {
-  return p.type !== 'TICKET'
-}
-
-function isTicketProduct(p: Product): boolean {
-  return p.type === 'TICKET'
 }
 
 function isGiftProduct(p: Product): boolean {
@@ -305,9 +357,9 @@ export function useInvitationGiftProducts(invitationId: string | undefined) {
 export function useEventMerchProducts(eventId: string | undefined) {
   return useQuery({
     queryKey: ['eventProducts', eventId, 'merch'],
-    queryFn: async (): Promise<Product[]> => listEventProducts(eventId!),
+    queryFn: async (): Promise<Product[]> =>
+      listEventProducts(eventId!, { type: 'GIFT' }),
     enabled: !!eventId,
-    select: (list) => list.filter(isMerchandiseProduct),
     staleTime: 30_000,
   })
 }
@@ -318,7 +370,6 @@ export function useEventTicketProducts(eventId: string | undefined) {
     queryFn: async (): Promise<Product[]> =>
       listEventProducts(eventId!, { type: 'TICKET' }),
     enabled: !!eventId,
-    select: (list) => list.filter(isTicketProduct),
     staleTime: 30_000,
   })
 }
@@ -330,7 +381,6 @@ export function useInvitationTicketProducts(invitationId: string | undefined) {
     queryFn: async (): Promise<Product[]> =>
       listInvitationProducts(invitationId!, { type: 'TICKET', invitationAccess }),
     enabled: !!invitationId && !!invitationAccess,
-    select: (list) => list.filter(isTicketProduct),
     staleTime: 30_000,
   })
 }
@@ -339,7 +389,7 @@ export function useProductTags() {
   return useQuery({
     queryKey: ['productTags'],
     queryFn: async (): Promise<Tag[]> =>
-      listTags({ active: true, deleted: false, applies_to: 'PRODUCT' }),
+      listTags({ active: true, applies_to: 'PRODUCT' }),
     staleTime: 60_000,
   })
 }
@@ -367,11 +417,15 @@ export function useFieldDefinitions(enabled: boolean) {
 export function useCreateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: CreateProductPayload) => createProduct(payload),
+    mutationFn: ({
+      eventId,
+      payload,
+    }: {
+      eventId: string
+      payload: CreateProductPayload
+    }) => createProduct(eventId, payload),
     onSuccess: (_data, variables) => {
-      if (variables.parent_id) {
-        queryClient.invalidateQueries({ queryKey: ['eventProducts', variables.parent_id] })
-      }
+      queryClient.invalidateQueries({ queryKey: ['eventProducts', variables.eventId] })
     },
   })
 }
@@ -383,7 +437,7 @@ export function useUpdateProduct() {
       productId: string
       eventId: string
       payload: UpdateProductPayload
-    }) => updateProduct(vars.productId, vars.payload),
+    }) => updateProduct(vars.eventId, vars.productId, vars.payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['eventProducts', variables.eventId] })
     },
@@ -393,8 +447,8 @@ export function useUpdateProduct() {
 export function useDeleteProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ productId }: { productId: string; eventId: string }) =>
-      deleteProduct(productId),
+    mutationFn: ({ productId, eventId }: { productId: string; eventId: string }) =>
+      deleteProduct(eventId, productId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['eventProducts', variables.eventId] })
     },

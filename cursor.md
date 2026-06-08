@@ -66,7 +66,7 @@ src/
   features/
     auth/                   # index.ts (AuthFooterLink); pages/ lazy-loaded from app/routes
     home/
-    events/                 # index.ts (api, hooks: list/create invitations, getInvitation, event products, …); pages/ lazy-loaded; components/EventForm
+    events/                 # index.ts (api, hooks); create/ wizard; edit/ tabbed editor; old/ archived reference; guest flow in components/
     settings/               # SettingsLayout, sections, api/hooks/types
   shared/
     api/client.ts
@@ -107,24 +107,22 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 
 ### My events list (`features/events/UserEventsListPage.tsx`)
 
-- Card **click** navigates to **edit** (`/events/:id/edit`). **View** / **edit** icon buttons use **`Tooltip`** + **`aria-label`** (`userEvents.viewTooltip`, `userEvents.editTooltip`, and aria keys with event name). See **`.cursor/rules/react-icon-only-tooltip.mdc`**.
+- Card **click** navigates to **edit** (`/events/:id/edit`) or **resume wizard** (`/events/new/:id/identity`) when **`!active && !setup_completed_at`** (**Rascunho** badge). **View** icon hidden for drafts; **edit** icon tooltip **Continuar configuração** for drafts. **`isEventSetupDraft`** in **`shared/eventSetupUtils.ts`**. **`EventEditLayout`** redirects drafts to the wizard.
 - Header row: **name** (left), **active** tag + **actions** (right). **Cover** image below; **created** date under the image only (no location on the list card).
 
-### Create event (`EventCreatePage` + `EventForm` `mode="create"`)
+### Create event (`/events/new/*` wizard)
 
-- **No** cover image block (image is added on **edit** only). **No** full-page **`Spin`** while submitting—only the submit button **`loading`** state.
-- **Section menu** uses **local state only** — no **`?section=`** in the URL (any `section` query is removed on this flow).
-- **New events** are created with **`primary_category: "wedding"`** automatically: **`createEvent`** in **`features/events/api.ts`** merges that into the POST body (no event-type field in **`EventForm`**; edits do not PATCH `primary_category` yet).
-- **Wizard footer:** **Next** validates the current step and advances (**Details** → **Venue** → **Schedules** → **Products** → **Tickets** → **Invitations**). **Back** moves to the previous step without validating. **Create** (`events.create.submit`) appears only on **Invitations** and runs full-form submit (same as before).
+- **Wizard routes:** `identity` (`POST /events` draft) → `:eventId/venue` → `:eventId/schedule` (optional skip) → `:eventId/products` (optional skip) → `:eventId/tickets` (optional skip) → `:eventId/invitations` (`POST …/setup/complete`) → finish navigates to **`/events/:id/edit/details`**. Sub-editors at `:eventId/products|tickets|invitations/new` and `:id` paths stay inside the wizard layout.
+- **No** cover image on create (added on edit **details** tab via **`PATCH …/identity`**). **`EventCreateWizardLayout`** + step pages under **`features/events/create/`**.
+- **Draft events** default **`primary_category: "wedding"`** on the backend when omitted; **`createDraftEvent`** in **`features/events/api.ts`**.
 
-### Edit event (`EventEditPage` + `EventForm` `mode="edit"`)
+### Edit event (`/events/:id/edit/*` nested tabs)
 
-- **Section menu (URL `?section=`)**: `details` (identity, including tags), `venue`, `schedule` (start/end date and time, IANA time zone), `products`, `tickets` (paid/free + ticket products), `invitations` (list + placeholder actions; `EventInvitationsSection`). Unknown values (including removed `tags`) normalize to `?section=details`. **Save changes** persists event fields and/or schedule when either side is dirty; in **edit** mode the footer is **hidden** on **products**, **tickets**, and **invitations** (create flow still shows **Create event** on the last step). Create flow shows hints on **Schedules** / **Products** / **Tickets** / **Invitations** until the event exists.
-- **Collapse** (`Venue & location`, **`Media`** for cover): both start **collapsed** on open (`activeKey` initially `undefined`). Validation can open the right panel via `panelKeyByField` (e.g. location fields → `venue`, `imageURL` → `media`).
-- **Unsaved-changes / dirty pattern** (reusable for other edit pages): **`.cursor/rules/react-edit-page-dirty.mdc`**.
-- **“Save changes”** is **disabled** until the form is dirty. Dirty state uses **`Form.useWatch([], form)`** and compares to a baseline; **cover `imageURL` is excluded** from dirty snapshots (`snapshotEventFormValuesForDirty` / `snapshotFromInitialForDirty`) because the image is persisted separately.
-- **Cover image**: after Firebase upload, call **`updateEvent`**, then **`queryClient.setQueryData(['event', eventId], updated)`** and **`invalidateQueries`** for `userEvents`. Clearing the image uses **`updateEvent` with `imageURL: null`** (JSON must include `null`, not omit the field). Toasts: `events.form.imageUpdated` / `events.form.imageRemoved`. Do not reset the whole form on every cache bump: **sync `setFieldsValue` from `initialValues` on edit only when `eventId` changes**, not on every `initialValues` reference change.
-- **Leave guard**: `useBlocker(formDirty)`, `beforeunload` when dirty, Ant **`modal.confirm`** for in-app navigation. After a **successful** main-form save, use **`flushSync(() => setFormDirty(false))`** before **`navigate(...)`** so programmatic navigation is not blocked while `formDirty` is still true.
+- **Layout:** **`EventEditLayout`** (`features/events/edit/`) loads event, **`SectionStepsNavLayout`** tab nav, **`EventDirtyRegistryProvider`** + **`useBlocker`** leave guard.
+- **Tab routes:** `details`, `venue`, `schedule`, `products`, `tickets`, `invitations`; sub-editors at `products/new`, `products/:productId`, `tickets/new`, `tickets/:ticketId`, `invitations/new`, `invitations/:invitationId`.
+- **Per-tab save:** details / venue / schedule tabs **autosave** (debounced, no tab Save button); **`is_paid`** auto-saves on tickets tab; products / invitations / sub-editors save via their own API calls.
+- **Dirty snapshots:** **`shared/eventFormUtils.ts`** (`snapshotEventFormValuesForDirty` excludes cover **`imageURL`** from dirty baseline; image uploads PATCH immediately).
+- **Archived reference:** previous **`EventForm`** / **`EventEditPage`** live under **`features/events/old/`** (not routed).
 
 ### Guest invitation flow (`/events/:id/invitation/:invitationId`)
 
@@ -134,19 +132,21 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **`InvitationGuestFlowPage`** — loader-gated; **`InvitationAccessProvider`** + lazy **`EventDetailComposition`** / **`EventGuestFlow`**.
 - **`InvitationUnavailablePage`** — light page with **`GuestInvitationAccessErrorPanel`** only (no guest-flow imports).
 - Organizer **`events/:id`** (protected) still uses **`EventDetailPage`** without invitation token.
-- Hooks (`useEvent`, `useInvitation`, ticket/gift products) pass **`invitation_id` + `token`** on GETs and **`X-Invitation-Token`** on writes via **`fetchApi(..., invitationAccess)`**. Guest catalog uses **`GET /invitations/{id}/products`** (`useInvitationTicketProducts`, `useInvitationGiftProducts`); organizer event product lists use **`GET /products?parent_id=…`** (Firebase). **`useFieldDefinitions`** is public (no invite token); results are cached in **localStorage** (~24h stale) so guest/organizer flows avoid refetching on every refresh.
-- Organizers get **`access_token`** once on **POST `/invitations`** (create) or **`POST /invitations/{id}/access-token`** (refresh); token is stored in **`sessionStorage`** per invitation id for the invitations table **Link** / **Refresh link** actions (`EventInvitationsSection`).
+- Hooks (`useEvent`, `useInvitation`, ticket/gift products) pass **`invitation_id` + `token`** on GETs and **`X-Invitation-Token`** on writes via **`fetchApi(..., invitationAccess)`**. Guest catalog uses **`GET /invitations/{id}/products`** (`useInvitationTicketProducts`, `useInvitationGiftProducts`); organizer event product lists use **`GET /events/{eventId}/products`** (Firebase). **`useFieldDefinitions`** is public (no invite token); results are cached in **localStorage** (~24h stale) so guest/organizer flows avoid refetching on every refresh.
+- Organizers get **`access_token`** once on **POST `/events/{eventId}/invitations`** (create) or **`POST /events/{eventId}/invitations/{id}/access-token`** (refresh); token is stored in **`sessionStorage`** per invitation id for the invitations table **Link** / **Refresh link** actions (`EventInvitationsSection`).
 - **`POST /invitations/{id}/guest-submit`** requires the same token (`guestSubmitPersistence`).
 - Router factory: **`createAppRouter(queryClient)`** in **`app/routes/index.tsx`**; **`main.tsx`** passes the shared **`QueryClient`** into event routes for loader cache seeding.
 
 ### API types (`features/events/api.ts`)
 
-- **`UpdateEventPayload.imageURL`**: `string | null` so the client can **clear** the server field with `"imageURL": null` in the PATCH body.
+- Section APIs: **`createDraftEvent`**, **`patchEventIdentity`**, **`patchEventVenue`**, **`patchEventCommerce`**, **`getEventSetup`**, **`completeEventSetup`**.
+- Nested resources under **`/events/{eventId}/schedules|products|invitations`**.
+- **`PatchEventIdentityPayload.imageURL`**: `string | null` clears cover image.
 - **`CreateInvitationResponse`**: `Invitation & { access_token?: string }` (one-time; not returned on list GET).
 
 ### Event products and tickets (`EventProductsSection`)
 
-- **`Product.type`**: `TICKET` \| `MERCH` (see `shared/types/api.ts`). New creates send an explicit kind; ticket listings use **`listEventProducts(..., { type: 'TICKET' })`**. Merchandise still loads all products for the event and **filters client-side** (`type !== 'TICKET'`) so older API rows without `type` stay visible as non-tickets.
+- **`Product.type`**: `TICKET` \| `GIFT` (organizer products tab; see `shared/types/api.ts`). Listings use **`listEventProducts(..., { type: 'GIFT' | 'TICKET' })`**; backend defaults **`deleted=false`** on list routes.
 - **`fulfillment_type`**: optional on create/update; labels live under **`events.products.*`** and **`events.tickets.*`** (en + pt-BR).
 
 ---
@@ -157,7 +157,8 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **Lazy loading**: Heavy pages use `React.lazy` + `SuspensePage` wrapper with a small fallback (`PageFallback` with `Spin`).
 - **Protected areas**: Wrap segments with `ProtectedRoute` where only signed-in users should enter (e.g. organizer flows, settings).
 - **Settings**: `/settings` with `?section=` query (`profile`, `notifications`, `appearance`, `language`, `security`). Legacy paths like `/settings/profile` redirect to `/settings?section=profile`. `/settings/privacy` redirects to `?section=profile` (privacy UI deferred; see repo root `docs/privacy-settings-deferred.md`).
-- **Section menus (mandatory)**: Any in-page section menu or dropdown that switches content on the **same** route must sync the active section to the URL with **query params** (**`SettingsLayout`**, **`EventForm` `mode="edit"`** — slugs `details`, `venue`, `schedule`, `products`, `tickets`, `invitations`; **create** event form omits URL params). Prefer key **`section`** and `replace: true` on updates; normalize invalid params. Add redirects if old path-based URLs existed.
+- **Section menus (mandatory)**: Any in-page section menu or dropdown that switches content on the **same** route must sync the active section to the URL with **query params** (**`SettingsLayout`** — key **`section`**). Prefer `replace: true` on updates; normalize invalid params. Add redirects if old path-based URLs existed.
+- **Event edit exception**: organizer event edit uses **nested routes** under **`/events/:id/edit/*`** (not `?section=`). Create wizard uses **`/events/new/*`** routes.
 - **Breadcrumbs (mandatory)**: Use **`PageBreadcrumbBar`** (`shared/components/PageBreadcrumbBar.tsx`) whenever showing a breadcrumb so the **link icon** (copy full page URL) always appears next to the trail. Do not use raw `Breadcrumb` alone on feature pages.
 
 Cursor rule: **`.cursor/rules/react-nav-menus-and-breadcrumbs.mdc`**.

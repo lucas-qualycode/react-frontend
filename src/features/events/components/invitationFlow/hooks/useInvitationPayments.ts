@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useLoaderData } from 'react-router-dom'
-import type { GuestInvitationLoaderData } from '@/features/events/loaders/guestInvitationRoutes'
+import { useGuestInvitationLoaderData } from './useGuestInvitationLoaderData'
 import {
   fetchInvitationPayments,
   type InvitationPaymentSummary,
@@ -11,7 +10,11 @@ export function invitationPaymentsQueryKey(invitationId: string, token: string) 
 }
 
 export function useInvitationPayments() {
-  const { invitationId, invitationAccess, payments } = useLoaderData() as GuestInvitationLoaderData
+  const loaderData = useGuestInvitationLoaderData()
+  if (!loaderData) {
+    throw new Error('useInvitationPayments requires guest invitation loader data')
+  }
+  const { invitationId, invitationAccess, payments } = loaderData
 
   return useQuery({
     queryKey: invitationPaymentsQueryKey(invitationId, invitationAccess.token),
@@ -28,10 +31,12 @@ export function useInvitationPayments() {
 
 export function useInvalidateInvitationPayments() {
   const queryClient = useQueryClient()
-  const { invitationId, invitationAccess } = useLoaderData() as GuestInvitationLoaderData
+  const loaderData = useGuestInvitationLoaderData()
 
-  return () =>
+  return () => {
+    if (!loaderData) return
     queryClient.invalidateQueries({
-      queryKey: invitationPaymentsQueryKey(invitationId, invitationAccess.token),
+      queryKey: invitationPaymentsQueryKey(loaderData.invitationId, loaderData.invitationAccess.token),
     })
+  }
 }

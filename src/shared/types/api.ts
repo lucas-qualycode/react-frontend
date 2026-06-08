@@ -74,9 +74,10 @@ export interface Event {
   location?: Location | null
   active: boolean
   is_paid: boolean
-  is_online: boolean
+  is_online: boolean | null
   visibility?: EventVisibility
   primary_category?: EventPrimaryCategory | null
+  setup_completed_at?: string | null
   tags?: EventTagEmbed[]
   schedules?: Schedule[]
   imageURL?: string

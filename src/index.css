@@ -151,6 +151,23 @@
   outline-offset: 2px;
 }
 
+.event-form-wide-steps-menu.ant-steps-vertical .ant-steps-item-wait > .ant-steps-item-wrapper {
+  padding-inline: 12px;
+}
+
+.event-form-wide-steps-menu.ant-steps-vertical .ant-steps-item-wait .ant-steps-item-title {
+  color: var(--ant-color-text-secondary);
+  font-weight: 400;
+}
+
+.event-form-wide-steps-menu.ant-steps-vertical .ant-steps-item-wait .ant-steps-item-icon {
+  opacity: 0.72;
+}
+
+.event-form-compact-steps-menu.ant-steps-navigation .ant-steps-item-wait .ant-steps-item-icon {
+  opacity: 0.72;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .event-form-section-panel:not([hidden]) {
     animation: none;

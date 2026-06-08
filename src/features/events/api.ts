@@ -39,32 +39,46 @@ export type CreateLocationPayload = {
   maps_url?: string
 }
 
-export type CreateEventPayload = {
+export type CreateDraftEventPayload = {
   name: string
   description?: string
-  location_id?: string | null
   tag_ids: string[]
-  imageURL?: string
-  active?: boolean
-  is_paid?: boolean
-  is_online?: boolean
   visibility?: EventVisibility
+  primary_category?: EventPrimaryCategory
 }
 
-export type UpdateEventPayload = {
+export type PatchEventIdentityPayload = {
   name?: string
   description?: string
-  location_id?: string | null
   tag_ids?: string[]
   imageURL?: string | null
-  active?: boolean
-  is_paid?: boolean
-  is_online?: boolean
   visibility?: EventVisibility
+  primary_category?: EventPrimaryCategory
+}
+
+export type PatchEventVenuePayload = {
+  is_online: boolean
+  location_id?: string | null
+}
+
+export type PatchEventCommercePayload = {
+  is_paid: boolean
+}
+
+export type SetupStatus = {
+  status: 'draft' | 'ready' | 'active'
+  missing: string[]
+  sections: Record<string, boolean>
+}
+
+export type CompleteSetupResponse = {
+  event_id: string
+  active: boolean
+  setup_completed_at: string
 }
 
 export async function listUserEvents(userId: string): Promise<Event[]> {
-  const params = new URLSearchParams({ created_by: userId, deleted: 'false' })
+  const params = new URLSearchParams({ created_by: userId })
   const res = await fetchApi(`events?${params.toString()}`)
   if (!res.ok) throw new Error('Failed to load events')
   return res.json() as Promise<Event[]>
@@ -89,29 +103,65 @@ export async function getEvent(
   return res.json() as Promise<Event>
 }
 
-const NEW_EVENT_PRIMARY_CATEGORY: EventPrimaryCategory = 'wedding'
-
-export async function createEvent(payload: CreateEventPayload): Promise<Event> {
+export async function createDraftEvent(payload: CreateDraftEventPayload): Promise<Event> {
   const res = await fetchApi('events', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...payload, primary_category: NEW_EVENT_PRIMARY_CATEGORY }),
+    body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error('Failed to create event')
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Event>
 }
 
-export async function updateEvent(
+export async function patchEventIdentity(
   eventId: string,
-  payload: UpdateEventPayload
+  payload: PatchEventIdentityPayload,
 ): Promise<Event> {
-  const res = await fetchApi(`events/${eventId}`, {
+  const res = await fetchApi(`events/${eventId}/identity`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error('Failed to update event')
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Event>
+}
+
+export async function patchEventVenue(
+  eventId: string,
+  payload: PatchEventVenuePayload,
+): Promise<Event> {
+  const res = await fetchApi(`events/${eventId}/venue`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Event>
+}
+
+export async function patchEventCommerce(
+  eventId: string,
+  payload: PatchEventCommercePayload,
+): Promise<Event> {
+  const res = await fetchApi(`events/${eventId}/commerce`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Event>
+}
+
+export async function getEventSetup(eventId: string): Promise<SetupStatus> {
+  const res = await fetchApi(`events/${eventId}/setup`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<SetupStatus>
+}
+
+export async function completeEventSetup(eventId: string): Promise<CompleteSetupResponse> {
+  const res = await fetchApi(`events/${eventId}/setup/complete`, { method: 'POST' })
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<CompleteSetupResponse>
 }
 
 export async function deleteEvent(eventId: string): Promise<Event> {
@@ -121,8 +171,7 @@ export async function deleteEvent(eventId: string): Promise<Event> {
 }
 
 export async function listLocations(): Promise<Location[]> {
-  const params = new URLSearchParams({ deleted: 'false' })
-  const res = await fetchApi(`locations?${params.toString()}`)
+  const res = await fetchApi('locations')
   if (!res.ok) throw new Error('Failed to load locations')
   return res.json() as Promise<Location[]>
 }
@@ -179,7 +228,6 @@ export async function createTag(payload: CreateTagPayload): Promise<Tag> {
 }
 
 export type CreateSchedulePayload = {
-  event_id: string
   start_date: string
   end_date: string
   start_time: string
@@ -202,14 +250,16 @@ export type UpdateSchedulePayload = {
 }
 
 export async function listSchedules(eventId: string): Promise<Schedule[]> {
-  const params = new URLSearchParams({ event_id: eventId })
-  const res = await fetchApi(`schedules?${params.toString()}`)
+  const res = await fetchApi(`events/${eventId}/schedules`)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Schedule[]>
 }
 
-export async function createSchedule(payload: CreateSchedulePayload): Promise<Schedule> {
-  const res = await fetchApi('schedules', {
+export async function createSchedule(
+  eventId: string,
+  payload: CreateSchedulePayload,
+): Promise<Schedule> {
+  const res = await fetchApi(`events/${eventId}/schedules`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -222,10 +272,11 @@ export async function createSchedule(payload: CreateSchedulePayload): Promise<Sc
 }
 
 export async function updateSchedule(
+  eventId: string,
   scheduleId: string,
-  payload: UpdateSchedulePayload
+  payload: UpdateSchedulePayload,
 ): Promise<Schedule> {
-  const res = await fetchApi(`schedules/${scheduleId}`, {
+  const res = await fetchApi(`events/${eventId}/schedules/${scheduleId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -244,8 +295,6 @@ export type CreateProductPayload = {
   name: string
   description: string
   imageURL?: string | null
-  parent_id: string | null
-  parent_type: string | null
   type?: ProductKind | null
   fulfillment_type?: FulfillmentType | null
   is_free: boolean
@@ -262,8 +311,6 @@ export type UpdateProductPayload = {
   name?: string
   description?: string
   imageURL?: string | null
-  parent_id?: string | null
-  parent_type?: string | null
   type?: ProductKind | null
   fulfillment_type?: FulfillmentType | null
   is_free?: boolean
@@ -277,10 +324,7 @@ export type UpdateProductPayload = {
 }
 
 export async function listFieldDefinitions(): Promise<FieldDefinition[]> {
-  const params = new URLSearchParams({
-    deleted: 'false',
-    active: 'true',
-  })
+  const params = new URLSearchParams({ active: 'true' })
   const res = await fetchApi(`field-definitions?${params.toString()}`)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<FieldDefinition[]>
@@ -288,43 +332,35 @@ export async function listFieldDefinitions(): Promise<FieldDefinition[]> {
 
 export async function listEventProducts(
   eventId: string,
-  opts?: { type?: ProductKind },
+  opts: { type: ProductKind },
 ): Promise<Product[]> {
-  const params = new URLSearchParams({
-    parent_id: eventId,
-    deleted: 'false',
-  })
-  if (opts?.type) {
-    params.set('type', opts.type)
-  }
-  const res = await fetchApi(`products?${params.toString()}`)
+  const params = new URLSearchParams({ type: opts.type })
+  const res = await fetchApi(`events/${eventId}/products?${params.toString()}`)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Product[]>
 }
 
 export async function listInvitationProducts(
   invitationId: string,
-  opts?: { type?: ProductKind; invitationAccess?: InvitationAccess | null },
+  opts: { type: ProductKind; invitationAccess?: InvitationAccess | null },
 ): Promise<Product[]> {
-  const params = new URLSearchParams({
-    deleted: 'false',
-  })
-  if (opts?.type) {
-    params.set('type', opts.type)
-  }
+  const params = new URLSearchParams({ type: opts.type })
   const path = appendInvitationAccessQuery(
     `invitations/${invitationId}/products?${params.toString()}`,
-    opts?.invitationAccess,
+    opts.invitationAccess,
     { includeInvitationId: false },
   )
-  const res = await fetchApi(path, undefined, opts?.invitationAccess)
+  const res = await fetchApi(path, undefined, opts.invitationAccess)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Product[]>
 }
 
-export async function createProduct(payload: CreateProductPayload): Promise<Product> {
+export async function createProduct(
+  eventId: string,
+  payload: CreateProductPayload,
+): Promise<Product> {
   const additional_info_fields = payload.additional_info_fields ?? []
-  const res = await fetchApi('products', {
+  const res = await fetchApi(`events/${eventId}/products`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -340,10 +376,11 @@ export async function createProduct(payload: CreateProductPayload): Promise<Prod
 }
 
 export async function updateProduct(
+  eventId: string,
   productId: string,
-  payload: UpdateProductPayload
+  payload: UpdateProductPayload,
 ): Promise<Product> {
-  const res = await fetchApi(`products/${productId}`, {
+  const res = await fetchApi(`events/${eventId}/products/${productId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -352,21 +389,18 @@ export async function updateProduct(
   return res.json() as Promise<Product>
 }
 
-export async function deleteProduct(productId: string): Promise<void> {
-  const res = await fetchApi(`products/${productId}`, { method: 'DELETE' })
+export async function deleteProduct(eventId: string, productId: string): Promise<void> {
+  const res = await fetchApi(`events/${eventId}/products/${productId}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(await apiErrorMessage(res))
 }
 
 export async function listInvitations(eventId: string): Promise<Invitation[]> {
-  const params = new URLSearchParams({ event_id: eventId })
-  const res = await fetchApi(`invitations?${params.toString()}`)
+  const res = await fetchApi(`events/${eventId}/invitations`)
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<Invitation[]>
 }
 
 export type CreateInvitationPayload = {
-  event_id: string
-  inviter_id: string
   name: string
   destination: string
   destination_type: InvitationDestinationType
@@ -381,11 +415,10 @@ export type CreateInvitationPayload = {
 export type CreateInvitationResponse = Invitation & { access_token?: string }
 
 export async function createInvitation(
+  eventId: string,
   payload: CreateInvitationPayload,
 ): Promise<CreateInvitationResponse> {
   const body: Record<string, unknown> = {
-    event_id: payload.event_id,
-    inviter_id: payload.inviter_id,
     name: payload.name.trim(),
     destination: payload.destination.trim(),
     destination_type: payload.destination_type,
@@ -402,7 +435,7 @@ export async function createInvitation(
       required_field_ids: g.required_field_ids ?? [],
     }))
   }
-  const res = await fetchApi('invitations', {
+  const res = await fetchApi(`events/${eventId}/invitations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -412,11 +445,13 @@ export async function createInvitation(
 }
 
 export async function regenerateInvitationAccessToken(
+  eventId: string,
   invitationId: string,
 ): Promise<{ access_token: string }> {
-  const res = await fetchApi(`invitations/${invitationId}/access-token`, {
-    method: 'POST',
-  })
+  const res = await fetchApi(
+    `events/${eventId}/invitations/${invitationId}/access-token`,
+    { method: 'POST' },
+  )
   if (!res.ok) throw new Error(await apiErrorMessage(res))
   return res.json() as Promise<{ access_token: string }>
 }
@@ -467,6 +502,7 @@ export type UpdateInvitationPayload = {
 }
 
 export async function updateInvitation(
+  eventId: string,
   invitationId: string,
   payload: UpdateInvitationPayload,
 ): Promise<Invitation> {
@@ -488,7 +524,7 @@ export async function updateInvitation(
       required_field_ids: g.required_field_ids ?? [],
     }))
   }
-  const res = await fetchApi(`invitations/${invitationId}`, {
+  const res = await fetchApi(`events/${eventId}/invitations/${invitationId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -497,7 +533,9 @@ export async function updateInvitation(
   return res.json() as Promise<Invitation>
 }
 
-export async function deleteInvitation(invitationId: string): Promise<void> {
-  const res = await fetchApi(`invitations/${invitationId}`, { method: 'DELETE' })
+export async function deleteInvitation(eventId: string, invitationId: string): Promise<void> {
+  const res = await fetchApi(`events/${eventId}/invitations/${invitationId}`, {
+    method: 'DELETE',
+  })
   if (!res.ok) throw new Error(await apiErrorMessage(res))
 }

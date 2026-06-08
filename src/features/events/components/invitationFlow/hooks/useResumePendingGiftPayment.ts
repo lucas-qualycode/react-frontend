@@ -1,14 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { useLoaderData } from 'react-router-dom'
 import type { InvitationAccess } from '@/shared/api/invitationAccess'
-import type { GuestInvitationLoaderData } from '@/features/events/loaders/guestInvitationRoutes'
 import {
   resolvePendingGiftPaymentFromList,
   type GuestPaymentStatusResponse,
   type InvitationPaymentSummary,
 } from '../lib/guestInvitationApi'
 import { invitationPaymentsQueryKey } from './useInvitationPayments'
+import { useGuestInvitationLoaderData } from './useGuestInvitationLoaderData'
 
 type Params = {
   invitationId: string
@@ -26,15 +25,15 @@ export function useResumePendingGiftPayment({
   onComplete,
 }: Params) {
   const queryClient = useQueryClient()
-  const { invitationAccess: loaderAccess } = useLoaderData() as GuestInvitationLoaderData
-  const access = invitationAccess ?? loaderAccess
+  const loaderData = useGuestInvitationLoaderData()
+  const access = invitationAccess ?? loaderData?.invitationAccess
   const onResumeRef = useRef(onResume)
   const onCompleteRef = useRef(onComplete)
   onResumeRef.current = onResume
   onCompleteRef.current = onComplete
 
   useEffect(() => {
-    if (!enabled || !invitationId) return
+    if (!enabled || !invitationId || !access) return
 
     let cancelled = false
 

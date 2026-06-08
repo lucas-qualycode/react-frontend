@@ -1,0 +1,157 @@
+.guest-mp-payment-gifts-summary {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guest-mp-payment-gifts-summary-heading {
+  font-size: 14px;
+}
+
+.guest-mp-payment-gifts-collapse {
+  width: 100%;
+  background: var(--ant-color-bg-container);
+  border: 2px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg);
+  overflow: hidden;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.guest-mp-payment-gifts-collapse:has(.ant-collapse-header:hover) {
+  border-color: var(--ant-color-primary);
+  background: color-mix(in srgb, var(--ant-color-primary) 5%, var(--ant-color-bg-container));
+}
+
+.guest-mp-payment-gifts-collapse .ant-collapse-item {
+  border: none;
+}
+
+.guest-mp-payment-gifts-collapse .ant-collapse-header {
+  align-items: center !important;
+  padding: 12px 16px !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.guest-mp-payment-gifts-collapse .ant-collapse-header:hover {
+  background: color-mix(in srgb, var(--ant-color-primary) 5%, transparent);
+}
+
+.guest-mp-payment-gifts-collapse .ant-collapse-content-box {
+  padding: 0 16px 12px !important;
+}
+
+.guest-mp-payment-gifts-summary-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.guest-mp-payment-gifts-summary-total {
+  flex-shrink: 0;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.guest-mp-payment-gifts-summary-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.guest-mp-payment-gifts-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 6px 0;
+}
+
+.guest-mp-payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.guest-mp-payment-method-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg);
+  background: var(--ant-color-bg-container);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.guest-mp-payment-method-card:hover {
+  border-color: var(--ant-color-primary);
+  background: color-mix(in srgb, var(--ant-color-primary) 5%, var(--ant-color-bg-container));
+}
+
+.guest-mp-payment-method-card:hover .guest-mp-payment-method-type-icon {
+  color: var(--ant-color-primary);
+}
+
+.guest-mp-payment-method-card.is-selected {
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 0 0 1px var(--ant-color-primary);
+  background: color-mix(in srgb, var(--ant-color-primary) 8%, var(--ant-color-bg-container));
+}
+
+.guest-mp-payment-method-type-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  color: var(--ant-color-text-secondary);
+  transition: color 0.2s ease;
+}
+
+.guest-mp-payment-method-card.is-selected .guest-mp-payment-method-type-icon {
+  color: var(--ant-color-primary);
+}
+
+.guest-mp-payment-method-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.guest-mp-payment-method-selected-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--ant-color-primary);
+}
+
+.guest-mp-payment-field-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ant-color-text);
+}
+
+.guest-mp-payment-field-required {
+  color: var(--ant-color-error);
+}
+
+.guest-mp-payment-mock-banner {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--ant-border-radius-lg);
+  background: var(--ant-color-warning-bg);
+  border: 1px solid var(--ant-color-warning-border);
+}

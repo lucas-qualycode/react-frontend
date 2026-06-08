@@ -1,0 +1,61 @@
+.guest-panel-shell {
+  padding: 56px 32px 64px;
+  box-sizing: border-box;
+}
+
+.guest-flow-viewport {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-x: clip;
+}
+
+.guest-flow-viewport--with-steps {
+  --guest-flow-steps-gap: 48px;
+}
+
+.guest-flow-viewport--content-panel {
+  min-height: calc(
+    calc(var(--guest-flow-steps-gap, 0px) * 2 + 56px) + var(--guest-flow-content-box-min-height, 520px) + 68px
+  );
+}
+
+.guest-flow-viewport--with-steps.guest-flow-viewport--content-panel {
+  min-height: calc(
+    calc(var(--guest-flow-steps-gap) * 2 + 56px) + var(--guest-flow-content-box-min-height, 520px) + 68px
+  );
+}
+
+.guest-flow-viewport--with-steps .guest-panel-shell {
+  padding-top: 0;
+}
+
+.guest-flow-track {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  will-change: transform;
+}
+
+.guest-flow-slot {
+  flex: 0 0 var(--guest-flow-slide-width, 100%);
+  width: var(--guest-flow-slide-width, 100%);
+  min-width: var(--guest-flow-slide-width, 100%);
+  max-width: var(--guest-flow-slide-width, 100%);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.guest-payment-qr {
+  width: min(240px, 70vw);
+  height: min(240px, 70vw);
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: var(--ant-border-radius-lg);
+  background: #fff;
+  padding: 12px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+}

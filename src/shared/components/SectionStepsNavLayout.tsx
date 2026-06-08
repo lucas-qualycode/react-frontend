@@ -15,6 +15,7 @@ export type SectionStepsNavLayoutProps<K extends string> = {
   activeKey: K
   onActiveKeyChange: (key: K) => void
   menuDropdownAriaLabel: string
+  navMode?: 'progress' | 'menu'
   children: ReactNode
 }
 
@@ -24,6 +25,7 @@ export function SectionStepsNavLayout<K extends string>({
   activeKey,
   onActiveKeyChange,
   menuDropdownAriaLabel,
+  navMode = 'progress',
   children,
 }: SectionStepsNavLayoutProps<K>) {
   const screens = Grid.useBreakpoint()
@@ -36,12 +38,16 @@ export function SectionStepsNavLayout<K extends string>({
     () =>
       sectionOrder.map((key) => {
         const m = itemByKey.get(key)
-        return {
+        const item = {
           title: m?.label ?? key,
           icon: m?.icon,
+          ...(navMode === 'menu'
+            ? { status: key === activeKey ? ('process' as const) : ('wait' as const) }
+            : {}),
         }
+        return item
       }),
-    [sectionOrder, itemByKey],
+    [sectionOrder, itemByKey, navMode, activeKey],
   )
 
   const compactStepItems = useMemo(
@@ -58,6 +64,9 @@ export function SectionStepsNavLayout<K extends string>({
               {m?.icon}
             </span>
           ),
+          ...(navMode === 'menu'
+            ? { status: sectionKey === activeKey ? ('process' as const) : ('wait' as const) }
+            : {}),
           style: {
             flex: '1 1 0%',
             minWidth: 0,
@@ -82,7 +91,7 @@ export function SectionStepsNavLayout<K extends string>({
           },
         }
       }),
-    [sectionOrder, itemByKey],
+    [sectionOrder, itemByKey, navMode, activeKey],
   )
 
   const dropdownMenuItems: MenuProps['items'] = useMemo(
@@ -90,13 +99,18 @@ export function SectionStepsNavLayout<K extends string>({
     [items],
   )
 
+  const wideStepsClassName =
+    navMode === 'menu' ? 'event-form-wide-steps event-form-wide-steps-menu' : 'event-form-wide-steps'
+  const compactStepsClassName =
+    navMode === 'menu' ? 'event-form-compact-steps event-form-compact-steps-menu' : 'event-form-compact-steps'
+
   return (
     <Flex vertical gap={compactNav ? 12 : 0} style={{ width: '100%' }}>
       {compactNav ? (
         <Flex align="center" gap={16} style={{ width: '100%' }}>
           <div style={{ flex: 1, minWidth: 0, overflowX: 'visible', paddingBottom: 4 }}>
             <Steps
-              className="event-form-compact-steps"
+              className={compactStepsClassName}
               style={{ width: '100%' }}
               size="small"
               type="navigation"
@@ -129,7 +143,7 @@ export function SectionStepsNavLayout<K extends string>({
         {!compactNav ? (
           <div style={{ width: 220, flexShrink: 0 }}>
             <Steps
-              className="event-form-wide-steps"
+              className={wideStepsClassName}
               orientation="vertical"
               size="small"
               responsive={false}

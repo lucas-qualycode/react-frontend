@@ -21,7 +21,7 @@ describe('features/events/api', () => {
 
     await listUserEvents('user-1')
 
-    expect(fetchApiMock).toHaveBeenCalledWith('events?created_by=user-1&deleted=false')
+    expect(fetchApiMock).toHaveBeenCalledWith('events?created_by=user-1')
   })
 
   it('builds listTags query string', async () => {
@@ -30,9 +30,9 @@ describe('features/events/api', () => {
       json: async () => [],
     } as unknown as Response)
 
-    await listTags({ active: true, deleted: false, applies_to: 'EVENT' })
+    await listTags({ active: true, applies_to: 'EVENT' })
 
-    expect(fetchApiMock).toHaveBeenCalledWith('tags?active=true&deleted=false&applies_to=EVENT')
+    expect(fetchApiMock).toHaveBeenCalledWith('tags?active=true&applies_to=EVENT')
   })
 
   it('builds listLocations query string', async () => {
@@ -43,7 +43,7 @@ describe('features/events/api', () => {
 
     await listLocations()
 
-    expect(fetchApiMock).toHaveBeenCalledWith('locations?deleted=false')
+    expect(fetchApiMock).toHaveBeenCalledWith('locations')
   })
 
   it('posts createLocation with trimmed fields only', async () => {

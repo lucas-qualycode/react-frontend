@@ -6,6 +6,7 @@ import { useAuth } from '@/app/auth/AuthContext'
 import { ListItemMediaCard } from '@/shared/components/ListItemMediaCard'
 import { PageBreadcrumbBar } from '@/shared/components/PageBreadcrumbBar'
 import { useUserEvents } from '../hooks'
+import { eventManagePath, isEventSetupDraft } from '../shared/eventSetupUtils'
 
 const { Title, Text } = Typography
 
@@ -40,7 +41,7 @@ export function UserEventsListPage() {
           </Title>
           <Text type="secondary">{t('userEvents.subtitle')}</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/events/create')}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/events/new')}>
           {t('userEvents.create')}
         </Button>
       </Flex>
@@ -64,6 +65,8 @@ export function UserEventsListPage() {
             {events.map((event) => {
               const createdAtLabel = formatEventDate(locale, event.created_at)
               const imageHeight = xs ? 180 : 200
+              const isDraft = isEventSetupDraft(event)
+              const managePath = eventManagePath(event)
               return (
                 <Col key={event.id} xs={24} sm={12}>
                   <ListItemMediaCard
@@ -71,38 +74,51 @@ export function UserEventsListPage() {
                     imageAlt={event.name}
                     imageSrc={event.imageURL}
                     imageHeight={imageHeight}
-                    onClick={() => navigate(`/events/${event.id}/edit`)}
+                    onClick={() => navigate(managePath)}
                     noImageText={t('events.detail.noImage')}
                     headerTrailing={
                       <>
-                        {typeof event.active === 'boolean' ? (
+                        {isDraft ? (
+                          <Tag color="gold">{t('userEvents.badgeDraft')}</Tag>
+                        ) : typeof event.active === 'boolean' ? (
                           <Tag color={event.active ? 'green' : 'default'}>
                             {event.active ? t('userEvents.badgeActive') : t('userEvents.badgeInactive')}
                           </Tag>
                         ) : null}
                         <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                           <Space size={0}>
-                            <Tooltip title={t('userEvents.viewTooltip')} placement="bottom">
-                              <Button
-                                type="text"
-                                icon={<EyeOutlined />}
-                                aria-label={t('userEvents.viewEventAria', { name: event.name })}
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  navigate(`/events/${event.id}`)
-                                }}
-                              />
-                            </Tooltip>
-                            <Tooltip title={t('userEvents.editTooltip')} placement="bottom">
+                            {!isDraft ? (
+                              <Tooltip title={t('userEvents.viewTooltip')} placement="bottom">
+                                <Button
+                                  type="text"
+                                  icon={<EyeOutlined />}
+                                  aria-label={t('userEvents.viewEventAria', { name: event.name })}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    navigate(`/events/${event.id}`)
+                                  }}
+                                />
+                              </Tooltip>
+                            ) : null}
+                            <Tooltip
+                              title={
+                                isDraft ? t('userEvents.resumeWizardTooltip') : t('userEvents.editTooltip')
+                              }
+                              placement="bottom"
+                            >
                               <Button
                                 type="text"
                                 icon={<EditOutlined />}
-                                aria-label={t('userEvents.editAria', { name: event.name })}
+                                aria-label={
+                                  isDraft
+                                    ? t('userEvents.resumeWizardAria', { name: event.name })
+                                    : t('userEvents.editAria', { name: event.name })
+                                }
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  navigate(`/events/${event.id}/edit`)
+                                  navigate(managePath)
                                 }}
                               />
                             </Tooltip>
@@ -129,7 +145,7 @@ export function UserEventsListPage() {
             style={{ marginTop: 24 }}
           >
             <Flex justify="center" align="center" gap={12}>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/events/create')}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/events/new')}>
                 {t('userEvents.create')}
               </Button>
             </Flex>

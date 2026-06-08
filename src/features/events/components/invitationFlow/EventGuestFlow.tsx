@@ -1,7 +1,7 @@
 import { Alert, Button, Flex, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLoaderData } from 'react-router-dom'
+import { useGuestInvitationLoaderData } from './hooks/useGuestInvitationLoaderData'
 import type { Event } from '@/shared/types/api'
 import { EventGuestConfirmBlock } from '../blocks/confirm/EventGuestConfirmBlock'
 import { EventGuestFinishedBlock } from '../blocks/finished/EventGuestFinishedBlock'
@@ -74,7 +74,6 @@ import {
 } from './types'
 import { useInvitationAccess } from '@/shared/api/InvitationAccessContext'
 import { useGuestInvitation } from './hooks/useGuestInvitation'
-import type { GuestInvitationLoaderData } from '@/features/events/loaders/guestInvitationRoutes'
 import './eventGuestFlow.css'
 
 const { Text } = Typography
@@ -140,7 +139,8 @@ export function EventGuestFlow({
   finishedVariant: _finishedVariant,
 }: Props) {
   const { t } = useTranslation()
-  const { pendingGiftPayment } = useLoaderData() as GuestInvitationLoaderData
+  const loaderData = useGuestInvitationLoaderData()
+  const pendingGiftPayment = loaderData?.pendingGiftPayment ?? null
   const invitationAccess = useInvitationAccess()
   const guestInvitation = useGuestInvitation(event.id, invitationId)
   const invalidateInvitationPayments = useInvalidateInvitationPayments()

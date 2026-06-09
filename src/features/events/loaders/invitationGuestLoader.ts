@@ -78,8 +78,8 @@ export function createGuestInvitationLoader(queryClient: QueryClient) {
 
     const [eventResult, guestViewResult, paymentsResult] = await Promise.allSettled([
       getEvent(eventId, invitationAccess),
-      fetchInvitationGuestView(invitationId, invitationAccess),
-      fetchInvitationPayments(invitationId, invitationAccess),
+      fetchInvitationGuestView(eventId, invitationId, invitationAccess),
+      fetchInvitationPayments(eventId, invitationId, invitationAccess),
     ])
 
     const rejections: unknown[] = []
@@ -101,6 +101,7 @@ export function createGuestInvitationLoader(queryClient: QueryClient) {
     const resumePendingGift = guestView.invitation.wizard_step === 'gifts'
     const pendingGiftPayment = await resolvePendingGiftPaymentFromList(
       payments,
+      eventId,
       invitationId,
       invitationAccess,
       { fetchStatus: resumePendingGift },

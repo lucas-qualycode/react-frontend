@@ -687,7 +687,7 @@ export const EventMerchProductEditorSection = forwardRef<
                 {t('events.tags.cancel')}
               </Button>
               <Button type="primary" htmlType="submit" loading={submitPending} disabled={!isDirty}>
-                {tp('modalOk')}
+                {isEdit ? t('events.form.save') : t('events.form.create')}
               </Button>
             </Space>
           </Flex>

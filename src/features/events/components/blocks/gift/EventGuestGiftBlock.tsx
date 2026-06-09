@@ -268,7 +268,7 @@ export function EventGuestGiftBlock({
   onGiftsConfirmed,
 }: Props) {
   const { t } = useTranslation()
-  const { products, isLoading } = useGuestGiftProducts(invitationId)
+  const { products, isLoading } = useGuestGiftProducts(event.id, invitationId)
 
   if (variant !== 'wedding') return null
 

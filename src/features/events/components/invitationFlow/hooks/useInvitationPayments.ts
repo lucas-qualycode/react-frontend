@@ -19,7 +19,11 @@ export function useInvitationPayments() {
   return useQuery({
     queryKey: invitationPaymentsQueryKey(invitationId, invitationAccess.token),
     queryFn: async (): Promise<InvitationPaymentSummary[]> => {
-      const result = await fetchInvitationPayments(invitationId, invitationAccess)
+      const result = await fetchInvitationPayments(
+        loaderData.eventId,
+        invitationId,
+        invitationAccess,
+      )
       return result.payments
     },
     initialData: payments,

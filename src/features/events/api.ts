@@ -340,12 +340,13 @@ export async function listEventProducts(
 }
 
 export async function listInvitationProducts(
+  eventId: string,
   invitationId: string,
   opts: { type: ProductKind; invitationAccess?: InvitationAccess | null },
 ): Promise<Product[]> {
   const params = new URLSearchParams({ type: opts.type })
   const path = appendInvitationAccessQuery(
-    `invitations/${invitationId}/products?${params.toString()}`,
+    `events/${eventId}/invitations/${invitationId}/guests/products?${params.toString()}`,
     opts.invitationAccess,
     { includeInvitationId: false },
   )
@@ -408,7 +409,7 @@ export type CreateInvitationPayload = {
   metadata?: Record<string, unknown>
   tag_ids?: string[]
   spot_count?: number
-  spots?: { name: string; required_field_ids: string[] }[]
+  spots?: { id?: string; name: string; required_field_ids: string[] }[]
 }
 
 export type CreateInvitationResponse = Invitation & { access_token?: string }
@@ -456,33 +457,43 @@ export async function regenerateInvitationAccessToken(
 }
 
 export async function getInvitation(
+  eventId: string,
   invitationId: string,
   invitationAccess?: InvitationAccess | null,
 ): Promise<Invitation> {
-  const path = appendInvitationAccessQuery(
-    `invitations/${invitationId}`,
-    invitationAccess,
-    { includeInvitationId: false },
-  )
-  const res = await fetchApi(path, undefined, invitationAccess)
-  if (!res.ok) {
-    const detail = await readApiErrorDetail(res)
-    if (
-      detail === 'invitation_expired' ||
-      detail === 'invitation_access_token_invalid'
-    ) {
-      throw new InvitationAccessFailure(detail)
+  if (invitationAccess) {
+    const path = appendInvitationAccessQuery(
+      `events/${eventId}/invitations/${invitationId}/guests`,
+      invitationAccess,
+      { includeInvitationId: false },
+    )
+    const res = await fetchApi(path, undefined, invitationAccess)
+    if (!res.ok) {
+      const detail = await readApiErrorDetail(res)
+      if (
+        detail === 'invitation_expired' ||
+        detail === 'invitation_access_token_invalid'
+      ) {
+        throw new InvitationAccessFailure(detail)
+      }
+      throw new Error(detail ?? `Request failed (${res.status})`)
     }
-    throw new Error(detail ?? `Request failed (${res.status})`)
-  }
-  const data = (await res.json()) as unknown
-  if (isInvitationGuestView(data)) {
-    return {
-      ...data.invitation,
-      spots: data.spots.map(({ user_product: _up, ...spot }) => spot),
+    const data = (await res.json()) as unknown
+    if (isInvitationGuestView(data)) {
+      return {
+        ...data.invitation,
+        spots: data.spots.map(({ user_product, ...spot }) => ({
+          ...spot,
+          has_user_product: user_product != null,
+        })),
+      }
     }
+    throw new Error('Invalid invitation response shape')
   }
-  return data as Invitation
+
+  const res = await fetchApi(`events/${eventId}/invitations/${invitationId}`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<Invitation>
 }
 
 export type UpdateInvitationPayload = {
@@ -494,7 +505,7 @@ export type UpdateInvitationPayload = {
   metadata?: Record<string, unknown>
   tag_ids?: string[]
   spot_count?: number
-  spots?: { name: string; required_field_ids: string[] }[]
+  spots?: { id?: string; name: string; required_field_ids: string[] }[]
 }
 
 export async function updateInvitation(
@@ -515,10 +526,15 @@ export async function updateInvitation(
     body.ticket_id = tid || null
   }
   if (payload.spots !== undefined) {
-    body.spots = payload.spots.map((s) => ({
-      name: (s.name ?? '').trim(),
-      required_field_ids: s.required_field_ids ?? [],
-    }))
+    body.spots = payload.spots.map((s) => {
+      const row: Record<string, unknown> = {
+        name: (s.name ?? '').trim(),
+        required_field_ids: s.required_field_ids ?? [],
+      }
+      const sid = s.id?.trim()
+      if (sid) row.id = sid
+      return row
+    })
   }
   const res = await fetchApi(`events/${eventId}/invitations/${invitationId}`, {
     method: 'PATCH',

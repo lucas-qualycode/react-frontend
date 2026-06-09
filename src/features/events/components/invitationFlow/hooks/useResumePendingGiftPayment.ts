@@ -10,6 +10,7 @@ import { invitationPaymentsQueryKey } from './useInvitationPayments'
 import { useGuestInvitationLoaderData } from './useGuestInvitationLoaderData'
 
 type Params = {
+  eventId: string
   invitationId: string
   invitationAccess?: InvitationAccess | null
   enabled: boolean
@@ -18,6 +19,7 @@ type Params = {
 }
 
 export function useResumePendingGiftPayment({
+  eventId,
   invitationId,
   invitationAccess,
   enabled,
@@ -45,6 +47,7 @@ export function useResumePendingGiftPayment({
         if (!cached) return
         const status = await resolvePendingGiftPaymentFromList(
           cached,
+          eventId,
           invitationId,
           access,
         )
@@ -64,5 +67,5 @@ export function useResumePendingGiftPayment({
     return () => {
       cancelled = true
     }
-  }, [access, enabled, invitationId, queryClient])
+  }, [access, enabled, eventId, invitationId, queryClient])
 }

@@ -580,6 +580,7 @@ export function EventGuestFlow({
   }, [animateTo, resetGiftEditState])
 
   const ticketPoll = useTicketFulfillmentPoll({
+    eventId: event.id,
     invitationId: resolvedInvitationId,
     invitationAccess,
     pendingSpotIds: pendingTicketSpotIds,
@@ -623,6 +624,7 @@ export function EventGuestFlow({
   )
 
   useResumePendingGiftPayment({
+    eventId: event.id,
     invitationId: resolvedInvitationId,
     invitationAccess,
     enabled: giftsBootstrap === 'resolving' && draftHydrated,
@@ -631,6 +633,7 @@ export function EventGuestFlow({
   })
 
   const giftPaymentPoll = useGiftPaymentPoll({
+    eventId: event.id,
     invitationId: resolvedInvitationId,
     invitationAccess,
     paymentId: giftPaymentId,
@@ -714,7 +717,7 @@ export function EventGuestFlow({
     setGuestsConfirmLoading(true)
     try {
       const payload = buildSpotsSubmitPayload(spots)
-      const result = await confirmGuests(resolvedId, payload, invitationAccess)
+      const result = await confirmGuests(event.id, resolvedId, payload, invitationAccess)
       setGuestsConfirmed(true)
       setLastSavedGuestsFingerprint(fingerprintSpotsSubmitPayload(payload))
       if (result.pending_ticket_spot_ids.length > 0) {
@@ -786,7 +789,7 @@ export function EventGuestFlow({
           payment_provider: snapshot.payment_provider ?? 'mercadopago',
           provider_checkout: {},
         })
-        await submitGiftCheckout(resolvedId, payload, {
+        await submitGiftCheckout(event.id, resolvedId, payload, {
           idempotencyKey: checkoutIdempotencyKeyRef.current,
           invitationAccess,
         })
@@ -842,7 +845,7 @@ export function EventGuestFlow({
           canCreateCardToken: canCreateMpCardToken,
         })
         const payload = buildGuestCheckoutPayload(resolvedId, resolvedCheckout, finalizeResult)
-        const result = await submitGiftCheckout(resolvedId, payload, {
+        const result = await submitGiftCheckout(event.id, resolvedId, payload, {
           idempotencyKey: checkoutIdempotencyKeyRef.current,
           invitationAccess,
         })
@@ -917,7 +920,12 @@ export function EventGuestFlow({
     setMessageSubmitting(true)
     try {
       const payload = buildGuestMessageSubmitPayload(coupleMessage, submitEmail)
-      const invitation = await patchInvitationMessage(resolvedId, payload, invitationAccess)
+      const invitation = await patchInvitationMessage(
+        event.id,
+        resolvedId,
+        payload,
+        invitationAccess,
+      )
       setMessageSaved(true)
       setLastSavedMessage(fingerprintGuestMessagePayload(payload))
       setGuestEmail(readGuestEmailFromInvitation(invitation) || submitEmail)

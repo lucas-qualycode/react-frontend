@@ -15,6 +15,7 @@ export type TicketFulfillmentPollState =
   | 'timeout'
 
 type Params = {
+  eventId: string
   invitationId: string
   invitationAccess?: InvitationAccess | null
   pendingSpotIds: string[]
@@ -31,6 +32,7 @@ function spotsFulfilled(view: InvitationGuestView, pendingSpotIds: string[]): bo
 }
 
 export function useTicketFulfillmentPoll({
+  eventId,
   invitationId,
   invitationAccess,
   pendingSpotIds,
@@ -43,10 +45,10 @@ export function useTicketFulfillmentPoll({
   onCompleteRef.current = onComplete
 
   const pollOnce = useCallback(async () => {
-    const view = await fetchInvitationGuestView(invitationId, invitationAccess)
+    const view = await fetchInvitationGuestView(eventId, invitationId, invitationAccess)
     setGuestView(view)
     return view
-  }, [invitationAccess, invitationId])
+  }, [eventId, invitationAccess, invitationId])
 
   useEffect(() => {
     if (!enabled || pendingSpotIds.length === 0) {
@@ -91,7 +93,7 @@ export function useTicketFulfillmentPoll({
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [enabled, invitationAccess, invitationId, pendingSpotIds, pollOnce])
+  }, [enabled, eventId, invitationAccess, invitationId, pendingSpotIds, pollOnce])
 
   const retry = useCallback(async () => {
     setState('polling')

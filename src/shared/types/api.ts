@@ -135,6 +135,7 @@ export interface Spot {
   required_field_ids: string[]
   field_values?: Record<string, string>
   attending?: boolean
+  has_user_product?: boolean
   created_at: string
   updated_at: string
 }

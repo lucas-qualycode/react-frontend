@@ -220,13 +220,16 @@ export function useEventInvitations(eventId: string | undefined) {
   })
 }
 
-export function useInvitation(invitationId: string | undefined) {
+export function useInvitation(
+  eventId: string | undefined,
+  invitationId: string | undefined,
+) {
   const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['invitation', invitationId, invitationAccess?.token ?? ''],
+    queryKey: ['invitation', eventId, invitationId, invitationAccess?.token ?? ''],
     queryFn: async (): Promise<Invitation> =>
-      getInvitation(invitationId!, invitationAccess),
-    enabled: !!invitationId,
+      getInvitation(eventId!, invitationId!, invitationAccess),
+    enabled: !!eventId && !!invitationId,
     staleTime: 30_000,
   })
 }
@@ -342,13 +345,25 @@ export function useEventGiftProducts(eventId: string | undefined) {
   })
 }
 
-export function useInvitationGiftProducts(invitationId: string | undefined) {
+export function useInvitationGiftProducts(
+  eventId: string | undefined,
+  invitationId: string | undefined,
+) {
   const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['invitationProducts', invitationId, 'gift', invitationAccess?.token ?? ''],
+    queryKey: [
+      'invitationProducts',
+      eventId,
+      invitationId,
+      'gift',
+      invitationAccess?.token ?? '',
+    ],
     queryFn: async (): Promise<Product[]> =>
-      listInvitationProducts(invitationId!, { type: 'GIFT', invitationAccess }),
-    enabled: !!invitationId && !!invitationAccess,
+      listInvitationProducts(eventId!, invitationId!, {
+        type: 'GIFT',
+        invitationAccess,
+      }),
+    enabled: !!eventId && !!invitationId && !!invitationAccess,
     select: (list) => list.filter(isGiftProduct),
     staleTime: 30_000,
   })
@@ -374,13 +389,25 @@ export function useEventTicketProducts(eventId: string | undefined) {
   })
 }
 
-export function useInvitationTicketProducts(invitationId: string | undefined) {
+export function useInvitationTicketProducts(
+  eventId: string | undefined,
+  invitationId: string | undefined,
+) {
   const invitationAccess = useInvitationAccess()
   return useQuery({
-    queryKey: ['invitationProducts', invitationId, 'ticket', invitationAccess?.token ?? ''],
+    queryKey: [
+      'invitationProducts',
+      eventId,
+      invitationId,
+      'ticket',
+      invitationAccess?.token ?? '',
+    ],
     queryFn: async (): Promise<Product[]> =>
-      listInvitationProducts(invitationId!, { type: 'TICKET', invitationAccess }),
-    enabled: !!invitationId && !!invitationAccess,
+      listInvitationProducts(eventId!, invitationId!, {
+        type: 'TICKET',
+        invitationAccess,
+      }),
+    enabled: !!eventId && !!invitationId && !!invitationAccess,
     staleTime: 30_000,
   })
 }

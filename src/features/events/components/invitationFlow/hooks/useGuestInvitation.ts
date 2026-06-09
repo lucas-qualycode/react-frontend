@@ -28,14 +28,15 @@ export function useGuestInvitation(
     queryKey: ['invitationGuestView', invitationId, invitationAccess?.token ?? ''],
     queryFn: async (): Promise<InvitationGuestView> => {
       if (USE_MOCK_INVITATION) return getMockInvitationGuestView(eventId ?? 'evt-1')
-      return fetchInvitationGuestView(invitationId!, invitationAccess)
+      return fetchInvitationGuestView(eventId!, invitationId!, invitationAccess)
     },
-    enabled: !USE_MOCK_INVITATION && !!invitationId,
+    enabled: !USE_MOCK_INVITATION && !!eventId && !!invitationId,
     staleTime: 30_000,
   })
 
   const fieldDefinitionsQuery = useFieldDefinitions(!USE_MOCK_INVITATION)
   const ticketProductsQuery = useInvitationTicketProducts(
+    USE_MOCK_INVITATION ? undefined : eventId,
     USE_MOCK_INVITATION ? undefined : invitationId,
   )
 

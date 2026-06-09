@@ -125,7 +125,7 @@ export function EventGuestFinishedBlock({
   const [pixModalOpen, setPixModalOpen] = useState(false)
   const [pixModalLoading, setPixModalLoading] = useState(false)
   const [pixModalPayment, setPixModalPayment] = useState<GuestPaymentStatusResponse | null>(null)
-  const { products: giftProducts } = useGuestGiftProducts(invitationId)
+  const { products: giftProducts } = useGuestGiftProducts(event.id, invitationId)
 
   const invitation = guestView?.invitation
   const status = (invitation?.status ?? 'SENT') as InvitationStatus
@@ -202,7 +202,12 @@ export function EventGuestFinishedBlock({
       setPixModalLoading(true)
       setPixModalPayment(null)
       try {
-        const statusResponse = await fetchPaymentStatus(invitationId, paymentId, invitationAccess)
+        const statusResponse = await fetchPaymentStatus(
+          event.id,
+          invitationId,
+          paymentId,
+          invitationAccess,
+        )
         setPixModalPayment(statusResponse)
       } catch {
         message.error(t('events.detail.guestFinished.pixLoadError'))
@@ -211,7 +216,7 @@ export function EventGuestFinishedBlock({
         setPixModalLoading(false)
       }
     },
-    [invitationAccess, invitationId, t],
+    [event.id, invitationAccess, invitationId, t],
   )
 
   const handleCopyPix = async () => {

@@ -518,6 +518,8 @@
       "sectionMedia": "Mídia",
       "sectionTags": "Tags",
       "sectionVisibility": "Visibilidade",
+      "create": "Criar",
+      "save": "Salvar",
       "submitError": "Não foi possível salvar. Tente novamente."
     },
     "products": {
@@ -547,7 +549,6 @@
       "modalEditTitle": "Editar produto",
       "modalTabBasic": "Informações básicas",
       "modalTabConfig": "Configuração",
-      "modalOk": "Salvar",
       "fieldName": "Nome",
       "fieldImage": "Imagem",
       "productImageAlt": "Imagem do produto",
@@ -616,7 +617,6 @@
       "additionalFieldsColumnRequired": "Obrigatório",
       "additionalFieldsMoveUp": "Mover para cima",
       "additionalFieldsMoveDown": "Mover para baixo",
-      "modalOk": "Salvar",
       "fieldName": "Nome",
       "fieldImage": "Imagem",
       "productImageAlt": "Imagem do ingresso",
@@ -705,7 +705,6 @@
         "title": "Adicionar convite",
         "intro": "Você está criando um novo convite para este evento.",
         "back": "Voltar",
-        "submit": "Criar convite",
         "cancel": "Cancelar",
         "nameLabel": "Nome do convite",
         "namePlaceholder": "Ex.: rótulo deste convite",
@@ -761,7 +760,7 @@
       "edit": {
         "title": "Editar convite",
         "intro": "Atualize este convite para este evento.",
-        "submit": "Salvar",
+        "removeGuestBlocked": "Este convidado já possui ingresso e não pode ser removido.",
         "success": "Convite salvo.",
         "delete": "Excluir",
         "deleteConfirmTitle": "Excluir este convite?",

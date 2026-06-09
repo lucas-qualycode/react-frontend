@@ -518,6 +518,8 @@
       "sectionMedia": "Media",
       "sectionTags": "Tags",
       "sectionVisibility": "Visibility",
+      "create": "Create",
+      "save": "Save",
       "submitError": "Could not save. Please try again."
     },
     "products": {
@@ -547,7 +549,6 @@
       "modalEditTitle": "Edit product",
       "modalTabBasic": "Basic info",
       "modalTabConfig": "Configuration",
-      "modalOk": "Save",
       "fieldName": "Name",
       "fieldImage": "Image",
       "productImageAlt": "Product image",
@@ -616,7 +617,6 @@
       "additionalFieldsColumnRequired": "Required",
       "additionalFieldsMoveUp": "Move up",
       "additionalFieldsMoveDown": "Move down",
-      "modalOk": "Save",
       "fieldName": "Name",
       "fieldImage": "Image",
       "productImageAlt": "Ticket image",
@@ -705,7 +705,6 @@
         "title": "Add invitation",
         "intro": "You are creating a new invitation for this event.",
         "back": "Back",
-        "submit": "Create invitation",
         "cancel": "Cancel",
         "nameLabel": "Invitation name",
         "namePlaceholder": "e.g. Label for this invitation",
@@ -761,7 +760,7 @@
       "edit": {
         "title": "Edit invitation",
         "intro": "Update this invitation for this event.",
-        "submit": "Save",
+        "removeGuestBlocked": "This guest already has a ticket and cannot be removed.",
         "success": "Invitation saved.",
         "delete": "Delete",
         "deleteConfirmTitle": "Delete this invitation?",

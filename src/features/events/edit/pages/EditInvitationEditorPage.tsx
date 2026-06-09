@@ -110,6 +110,7 @@ function buildGuestFieldSelectableIdsOrdered(
 }
 
 type SpotRowForm = {
+  id?: string
   name: string
   required_field_ids: string[]
 }
@@ -127,6 +128,7 @@ type InvitationCreateFormValues = {
 
 function snapshotInvitationDirty(v: InvitationCreateFormValues): string {
   const spots = (v.spots ?? []).map((g) => ({
+    id: g.id ?? '',
     name: (g.name ?? '').trim(),
     required_field_ids: [...(g.required_field_ids ?? [])].sort(),
   }))
@@ -175,7 +177,7 @@ export const EventInvitationCreateSection = forwardRef<
     data: existingInvitation,
     isLoading: invitationLoading,
     isError: invitationError,
-  } = useInvitation(isEdit ? invitationId : undefined)
+  } = useInvitation(isEdit ? eventId : undefined, isEdit ? invitationId : undefined)
 
   const { data: tickets = [] } = useEventTicketProducts(eventId)
   const { data: event } = useEvent(eventId)
@@ -190,6 +192,16 @@ export const EventInvitationCreateSection = forwardRef<
   const allInviteValues = Form.useWatch([], form) as InvitationCreateFormValues | undefined
   const baselineRef = useRef('')
   const [isDirty, setIsDirty] = useState(false)
+
+  const lockedSpotIds = useMemo(
+    () =>
+      new Set(
+        (existingInvitation?.spots ?? [])
+          .filter((spot) => spot.has_user_product)
+          .map((spot) => spot.id),
+      ),
+    [existingInvitation?.spots],
+  )
 
   const ticketsForInvitationForm = useMemo(() => {
     const activeOnly = tickets.filter((p) => p.active)
@@ -309,7 +321,7 @@ export const EventInvitationCreateSection = forwardRef<
     () => ({
       title: isEdit ? t('events.invitations.edit.title') : t('events.invitations.create.title'),
       intro: isEdit ? t('events.invitations.edit.intro') : t('events.invitations.create.intro'),
-      submit: isEdit ? t('events.invitations.edit.submit') : t('events.invitations.create.submit'),
+      submit: isEdit ? t('events.form.save') : t('events.form.create'),
       success: isEdit ? t('events.invitations.edit.success') : t('events.invitations.create.success'),
     }),
     [isEdit, t],
@@ -418,6 +430,7 @@ export const EventInvitationCreateSection = forwardRef<
       expires_at: dayjs(existingInvitation.expires_at),
       tag_ids: existingInvitation.tags?.map((x) => x.id) ?? [],
       spots: (existingInvitation.spots ?? []).map((s) => ({
+        id: s.id,
         name: s.name ?? '',
         required_field_ids: s.required_field_ids ?? [],
       })),
@@ -441,6 +454,7 @@ export const EventInvitationCreateSection = forwardRef<
             expires_at: dayjs(existingInvitation.expires_at),
             tag_ids: existingInvitation.tags?.map((x) => x.id) ?? [],
             spots: (existingInvitation.spots ?? []).map((s) => ({
+              id: s.id,
               name: s.name ?? '',
               required_field_ids: s.required_field_ids ?? [],
             })),
@@ -528,7 +542,9 @@ export const EventInvitationCreateSection = forwardRef<
           ? values.spot_count
           : 1,
       )
-      const rawGuests = values.spots ?? []
+      const rawGuests = isEdit
+        ? ((form.getFieldsValue(true) as InvitationCreateFormValues).spots ?? values.spots ?? [])
+        : (values.spots ?? [])
       if (rawGuests.length > slotCount) {
         message.error(t('events.invitations.create.spotDetailsExceedCount'))
         return
@@ -540,16 +556,20 @@ export const EventInvitationCreateSection = forwardRef<
         fieldDefinitions,
       )
       const submitLocked = ticketLockedFieldIdSet(submitTicket)
-      const spotsPayload = rawGuests
-        .map((g) => ({
-          name: (g.name ?? '').trim(),
-          required_field_ids: normalizeGuestFieldIds(
-            g.required_field_ids,
-            submitSelectableOrdered,
-            submitLocked,
-          ),
-        }))
-        .filter((g) => g.name.length > 0 || (g.required_field_ids?.length ?? 0) > 0)
+      const mappedSpots = rawGuests.map((g) => ({
+        ...(g.id ? { id: g.id } : {}),
+        name: (g.name ?? '').trim(),
+        required_field_ids: normalizeGuestFieldIds(
+          g.required_field_ids,
+          submitSelectableOrdered,
+          submitLocked,
+        ),
+      }))
+      const spotsPayload = isEdit
+        ? mappedSpots
+        : mappedSpots.filter(
+            (g) => g.name.length > 0 || (g.required_field_ids?.length ?? 0) > 0,
+          )
       try {
         if (isEdit && invitationId) {
           await updateMutation.mutateAsync({
@@ -603,6 +623,7 @@ export const EventInvitationCreateSection = forwardRef<
       user?.uid,
       ticketsForInvitationForm,
       fieldDefinitions,
+      form,
     ],
   )
 
@@ -734,6 +755,9 @@ export const EventInvitationCreateSection = forwardRef<
             <>
               {fields.map((field) => (
                 <Flex key={field.key} gap={8} align="flex-start" wrap="wrap" style={{ marginBottom: 12 }}>
+                  <Form.Item name={[field.name, 'id']} hidden>
+                    <Input />
+                  </Form.Item>
                   <Form.Item
                     label={t('events.invitations.create.spotNameLabel')}
                     name={[field.name, 'name']}
@@ -798,14 +822,32 @@ export const EventInvitationCreateSection = forwardRef<
                       }}
                     />
                   </Form.Item>
-                  <Button
-                    type="text"
-                    danger
-                    icon={<MinusCircleOutlined />}
-                    onClick={() => remove(field.name)}
-                    aria-label={t('events.invitations.create.removeGuest')}
-                    style={{ marginTop: 30 }}
-                  />
+                  <Form.Item noStyle shouldUpdate>
+                    {() => {
+                      const row = (form.getFieldValue('spots') as SpotRowForm[] | undefined)?.[
+                        field.name
+                      ]
+                      const spotLocked = Boolean(row?.id && lockedSpotIds.has(row.id))
+                      const removeLabel = t('events.invitations.create.removeGuest')
+                      const lockedTitle = t('events.invitations.edit.removeGuestBlocked')
+                      return (
+                        <Tooltip title={spotLocked ? lockedTitle : undefined}>
+                          <span style={{ display: 'inline-flex', marginTop: 30 }}>
+                            <Button
+                              type="text"
+                              danger
+                              icon={<MinusCircleOutlined />}
+                              disabled={spotLocked}
+                              onClick={() => remove(field.name)}
+                              aria-label={
+                                spotLocked ? `${removeLabel}. ${lockedTitle}` : removeLabel
+                              }
+                            />
+                          </span>
+                        </Tooltip>
+                      )
+                    }}
+                  </Form.Item>
                 </Flex>
               ))}
               <Form.Item shouldUpdate noStyle>

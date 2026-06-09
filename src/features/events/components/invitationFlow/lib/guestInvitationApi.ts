@@ -70,6 +70,7 @@ export type InvitationGuestUserProduct = {
   status: string
   product_id: string
   payment_id?: string | null
+  spot_id?: string | null
   metadata: Record<string, unknown>
 }
 
@@ -130,6 +131,10 @@ export type InvitationPaymentsResponse = {
   payments: InvitationPaymentSummary[]
 }
 
+function guestInvitationBasePath(eventId: string, invitationId: string): string {
+  return `events/${eventId}/invitations/${invitationId}/guests`
+}
+
 async function parseApiError(res: Response): Promise<GuestInvitationApiError> {
   try {
     const j = (await res.json()) as { error?: unknown; detail?: unknown }
@@ -159,6 +164,7 @@ export function isInvitationGuestView(data: unknown): data is InvitationGuestVie
 }
 
 export async function fetchInvitationGuestView(
+  eventId: string,
   invitationId: string,
   invitationAccess?: InvitationAccess | null,
 ): Promise<InvitationGuestView> {
@@ -167,12 +173,12 @@ export async function fetchInvitationGuestView(
     return getMockInvitationGuestView(
       invitationId.startsWith('invitation-mock-')
         ? invitationId.slice('invitation-mock-'.length)
-        : 'evt-1',
+        : eventId,
     )
   }
 
   const res = await fetchApi(
-    `invitations/${invitationId}`,
+    guestInvitationBasePath(eventId, invitationId),
     { method: 'GET' },
     invitationAccess,
   )
@@ -187,6 +193,7 @@ export async function fetchInvitationGuestView(
 }
 
 export async function confirmGuests(
+  eventId: string,
   invitationId: string,
   payload: SubmitSpotsPayload,
   invitationAccess?: InvitationAccess | null,
@@ -203,7 +210,7 @@ export async function confirmGuests(
   }
 
   const res = await fetchApi(
-    `invitations/${invitationId}/guests/confirm`,
+    `${guestInvitationBasePath(eventId, invitationId)}/confirm`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -218,6 +225,7 @@ export async function confirmGuests(
 }
 
 export async function submitGiftCheckout(
+  eventId: string,
   invitationId: string,
   payload: GuestCheckoutPayload,
   options: {
@@ -243,7 +251,7 @@ export async function submitGiftCheckout(
   }
 
   const res = await fetchApi(
-    `invitations/${invitationId}/gifts/checkout`,
+    `${guestInvitationBasePath(eventId, invitationId)}/gifts/checkout`,
     {
       method: 'POST',
       headers: {
@@ -261,13 +269,14 @@ export async function submitGiftCheckout(
 }
 
 export async function patchInvitationMessage(
+  eventId: string,
   invitationId: string,
   payload: SubmitGuestMessagePayload,
   invitationAccess?: InvitationAccess | null,
 ): Promise<Invitation> {
   if (USE_MOCK_INVITATION) {
     const { getMockInvitation } = await import('./guestInvitationMock')
-    const inv = getMockInvitation('evt-1')
+    const inv = getMockInvitation(eventId)
     return {
       ...inv,
       metadata: {
@@ -279,7 +288,7 @@ export async function patchInvitationMessage(
   }
 
   const res = await fetchApi(
-    `invitations/${invitationId}/message`,
+    `${guestInvitationBasePath(eventId, invitationId)}/message`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -297,6 +306,7 @@ export async function patchInvitationMessage(
 }
 
 export async function fetchInvitationPayments(
+  eventId: string,
   invitationId: string,
   invitationAccess?: InvitationAccess | null,
 ): Promise<InvitationPaymentsResponse> {
@@ -305,7 +315,7 @@ export async function fetchInvitationPayments(
   }
 
   const res = await fetchApi(
-    `invitations/${invitationId}/payments`,
+    `${guestInvitationBasePath(eventId, invitationId)}/payments`,
     { method: 'GET' },
     invitationAccess,
   )
@@ -316,6 +326,7 @@ export async function fetchInvitationPayments(
 }
 
 export async function fetchPaymentStatus(
+  eventId: string,
   invitationId: string,
   paymentId: string,
   invitationAccess?: InvitationAccess | null,
@@ -331,7 +342,7 @@ export async function fetchPaymentStatus(
   }
 
   const res = await fetchApi(
-    `invitations/${invitationId}/payments/${paymentId}/status`,
+    `${guestInvitationBasePath(eventId, invitationId)}/payments/${paymentId}/status`,
     { method: 'GET' },
     invitationAccess,
   )
@@ -343,6 +354,7 @@ export async function fetchPaymentStatus(
 
 export async function resolvePendingGiftPaymentFromList(
   payments: InvitationPaymentSummary[],
+  eventId: string,
   invitationId: string,
   invitationAccess?: InvitationAccess | null,
   options?: { fetchStatus?: boolean },
@@ -355,12 +367,13 @@ export async function resolvePendingGiftPaymentFromList(
   if (!active) return null
   if (options?.fetchStatus === false) return null
 
-  const status = await fetchPaymentStatus(invitationId, active.id, invitationAccess)
+  const status = await fetchPaymentStatus(eventId, invitationId, active.id, invitationAccess)
   if (!isPendingPaymentStatus(status.payment_status)) return null
   return status
 }
 
 export async function resolvePendingGiftPayment(
+  eventId: string,
   invitationId: string,
   invitationAccess?: InvitationAccess | null,
 ): Promise<GuestPaymentStatusResponse | null> {
@@ -368,8 +381,13 @@ export async function resolvePendingGiftPayment(
     return null
   }
 
-  const { payments } = await fetchInvitationPayments(invitationId, invitationAccess)
-  return resolvePendingGiftPaymentFromList(payments, invitationId, invitationAccess)
+  const { payments } = await fetchInvitationPayments(eventId, invitationId, invitationAccess)
+  return resolvePendingGiftPaymentFromList(
+    payments,
+    eventId,
+    invitationId,
+    invitationAccess,
+  )
 }
 
 export { isPendingPaymentStatus, resolveActivePendingPayment } from './resolveActivePendingPayment'

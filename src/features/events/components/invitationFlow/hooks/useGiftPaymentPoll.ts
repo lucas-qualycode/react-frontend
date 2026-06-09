@@ -11,6 +11,7 @@ const GIFT_POLL_INTERVAL_MS = 2500
 export type GiftPaymentPollState = 'idle' | 'polling' | 'approved' | 'failed' | 'cancelled'
 
 type Params = {
+  eventId: string
   invitationId: string
   invitationAccess?: InvitationAccess | null
   paymentId: string | null
@@ -18,6 +19,7 @@ type Params = {
   onTerminal?: (outcome: GuestPaymentStatusResponse) => void
 }
 export function useGiftPaymentPoll({
+  eventId,
   invitationId,
   invitationAccess,
   paymentId,
@@ -31,10 +33,10 @@ export function useGiftPaymentPoll({
 
   const pollOnce = useCallback(async () => {
     if (!paymentId) return null
-    const next = await fetchPaymentStatus(invitationId, paymentId, invitationAccess)
+    const next = await fetchPaymentStatus(eventId, invitationId, paymentId, invitationAccess)
     setOutcome(next)
     return next
-  }, [invitationAccess, invitationId, paymentId])
+  }, [eventId, invitationAccess, invitationId, paymentId])
 
   useEffect(() => {
     if (!enabled || !paymentId) {

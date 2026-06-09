@@ -2,9 +2,9 @@ import { message } from 'antd'
 import type { FieldDefinition, Invitation, InvitationGuestSlot, Product } from '@/shared/types/api'
 import {
   fieldDefinitionById,
-  findFullNameFieldId,
   getGuestFieldValidationErrorKey,
   guestFieldValidationMessageKey,
+  resolveGuestFieldLabel,
   type GuestFieldValidationErrorKey,
 } from './guestConfirmFieldUtils'
 import {
@@ -54,53 +54,33 @@ export function slotRequiredFieldIdsOrdered(
   return [...slot.requiredFieldIds]
 }
 
-export function resolveGuestReviewDisplayName(
-  slot: GuestConfirmFormSlot,
-  ticket: Product,
-  fieldDefinitions: FieldDefinition[],
-): string {
-  const fullNameFieldId = findFullNameFieldId(
-    slotRequiredFieldIdsOrdered(slot, ticket),
-    fieldDefinitions,
-  )
-  if (fullNameFieldId) {
-    const fullName = slot.fieldValues[fullNameFieldId]?.trim()
-    if (fullName) return fullName
-  }
+export function resolveGuestReviewDisplayName(slot: GuestConfirmFormSlot): string {
   return slot.firstName.trim()
 }
 
 export function resolveGuestReviewFieldIds(
   slot: GuestConfirmFormSlot,
   ticket: Product,
-  fieldDefinitions: FieldDefinition[],
 ): string[] {
-  const fieldIds = slotRequiredFieldIdsOrdered(slot, ticket)
-  const fullNameFieldId = findFullNameFieldId(fieldIds, fieldDefinitions)
-  if (!fullNameFieldId) return fieldIds
-  const fullNameValue = slot.fieldValues[fullNameFieldId]?.trim()
-  if (!fullNameValue) return fieldIds
-  return fieldIds.filter((fieldId) => fieldId !== fullNameFieldId)
+  return slotRequiredFieldIdsOrdered(slot, ticket)
 }
 
 export function resolveGuestRequiredFieldIds(
   inv: InvitationGuestSlot | undefined,
-  ticket: Product,
 ): string[] {
-  if (inv?.required_field_ids?.length) {
-    return [...inv.required_field_ids]
-  }
-  return ticketFieldIdsOrdered(ticket)
+  return [...(inv?.required_field_ids ?? [])]
 }
 
-export function fieldLabelById(fieldId: string, defs: FieldDefinition[]): string {
-  return defs.find((d) => d.id === fieldId)?.label ?? fieldId
+export function fieldLabelById(
+  fieldId: string,
+  defs: FieldDefinition[],
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  return resolveGuestFieldLabel(fieldDefinitionById(fieldId, defs), fieldId, t)
 }
 
 export function buildInitialGuestConfirmSlots(
   invitation: Invitation,
-  ticket: Product,
-  fieldDefinitions: FieldDefinition[] = [],
 ): GuestConfirmFormSlot[] {
   const existingSlots = invitation.guest_slots ?? []
   const count = Math.max(
@@ -112,14 +92,10 @@ export function buildInitialGuestConfirmSlots(
   return Array.from({ length: count }, (_, index) => {
     const inv = existingSlots[index]
     const firstName = (inv?.first_name ?? '').trim()
-    const requiredFieldIds = resolveGuestRequiredFieldIds(inv, ticket)
+    const requiredFieldIds = resolveGuestRequiredFieldIds(inv)
 
     const fieldValues = { ...(inv?.field_values ?? {}) }
     const attending = inv?.attending !== undefined ? inv.attending : true
-    const fullNameFieldId = findFullNameFieldId(requiredFieldIds, fieldDefinitions)
-    if (fullNameFieldId && firstName && !fieldValues[fullNameFieldId]?.trim()) {
-      fieldValues[fullNameFieldId] = firstName
-    }
 
     return {
       slotId: inv?.id,
@@ -135,7 +111,6 @@ export function buildInitialGuestConfirmSlots(
 
 export type GuestSlotValidationResult = {
   valid: boolean
-  missingName: boolean
   missingFieldIds: string[]
   invalidFieldIds: string[]
   firstInvalidFieldErrorKey?: GuestFieldValidationErrorKey | null
@@ -146,20 +121,16 @@ export function showGuestConfirmValidationMessage(
   result: GuestSlotValidationResult,
   fieldDefinitions: FieldDefinition[],
 ): void {
-  if (result.missingName) {
-    message.error(t('events.detail.guestConfirm.validationNameRequired'))
-    return
-  }
   if (result.missingFieldIds.length > 0) {
     const labels = result.missingFieldIds
-      .map((id) => fieldLabelById(id, fieldDefinitions))
+      .map((id) => fieldLabelById(id, fieldDefinitions, t))
       .join(', ')
     message.error(t('events.detail.guestConfirm.validationFieldsRequired', { fields: labels }))
     return
   }
   if (result.invalidFieldIds.length > 0) {
     const firstInvalidId = result.invalidFieldIds[0]
-    const label = fieldLabelById(firstInvalidId, fieldDefinitions)
+    const label = fieldLabelById(firstInvalidId, fieldDefinitions, t)
     const errorKey = result.firstInvalidFieldErrorKey ?? 'required'
     message.error(t(guestFieldValidationMessageKey(errorKey), { label }))
   }
@@ -195,16 +166,11 @@ export function validateGuestSlot(
   if (slot.attending === false) {
     return {
       valid: true,
-      missingName: false,
       missingFieldIds: [],
       invalidFieldIds: [],
       firstInvalidFieldErrorKey: null,
     }
   }
-  const missingName =
-    !slot.hasPresetName &&
-    findFullNameFieldId(slot.requiredFieldIds, fieldDefinitions) === null &&
-    !slot.firstName.trim()
   const missingFieldIds: string[] = []
   const invalidFieldIds: string[] = []
   let firstInvalidFieldErrorKey: GuestFieldValidationErrorKey | null = null
@@ -227,8 +193,7 @@ export function validateGuestSlot(
   }
 
   return {
-    valid: !missingName && missingFieldIds.length === 0 && invalidFieldIds.length === 0,
-    missingName,
+    valid: missingFieldIds.length === 0 && invalidFieldIds.length === 0,
     missingFieldIds,
     invalidFieldIds,
     firstInvalidFieldErrorKey,
@@ -260,7 +225,7 @@ export function formatReviewGuestHeading(
     return `${heading}: ${name}`
   }
 
-  return `${heading} — ${t('events.detail.guestConfirm.reviewNameMissing')}`
+  return heading
 }
 
 export function formatReviewFieldLine(
@@ -269,7 +234,7 @@ export function formatReviewFieldLine(
   fieldDefinitions: FieldDefinition[],
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string {
-  const label = fieldLabelById(fieldId, fieldDefinitions)
+  const label = fieldLabelById(fieldId, fieldDefinitions, t)
   const value = slot.fieldValues[fieldId]?.trim()
   const displayValue = value || t('events.detail.guestConfirm.reviewNotProvided')
   return `${label}: ${displayValue}`

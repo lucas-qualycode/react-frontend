@@ -67,10 +67,9 @@ function resolveInitialWizardStep(
 function hydrationFromDraft(
   draft: GuestFlowDraft,
   invitation: Invitation,
-  ticket: Product,
 ): GuestFlowHydrationPayload {
-  const merged = mergeDraftWithServerState(draft, invitation, ticket)
-  const initialSlots = buildInitialGuestConfirmSlots(invitation, ticket)
+  const merged = mergeDraftWithServerState(draft, invitation)
+  const initialSlots = buildInitialGuestConfirmSlots(invitation)
   const declinedPath = draft.flowPath === 'decline'
   const guestSlots = declinedPath
     ? markAllGuestsNotAttending(merged.guestSlots)
@@ -96,9 +95,8 @@ function hydrationFromDraft(
 
 function hydrationWithoutDraft(
   invitation: Invitation,
-  ticket: Product,
 ): GuestFlowHydrationPayload {
-  const serverFlags = buildRsvpPersistFlagsFromInvitation(invitation, ticket)
+  const serverFlags = buildRsvpPersistFlagsFromInvitation(invitation)
   const savedMessage = readGuestMessageFromInvitation(invitation)
   const savedEmail = readGuestEmailFromInvitation(invitation)
   const guestEmail = savedEmail
@@ -107,7 +105,7 @@ function hydrationWithoutDraft(
   return {
     ...createDefaultGuestFlowDraftState(),
     activeStep: resolveInitialWizardStep(invitation, null),
-    guestSlots: buildInitialGuestConfirmSlots(invitation, ticket),
+    guestSlots: buildInitialGuestConfirmSlots(invitation),
     coupleMessage: savedMessage,
     guestEmail,
     messagePhase,
@@ -140,9 +138,9 @@ export function useGuestFlowDraft({
     const draftKey = invitationId ?? invitation.id
     const draft = loadGuestFlowDraft(draftKey, eventId)
     if (draft) {
-      onHydrate(hydrationFromDraft(draft, invitation, ticket))
+      onHydrate(hydrationFromDraft(draft, invitation))
     } else {
-      onHydrate(hydrationWithoutDraft(invitation, ticket))
+      onHydrate(hydrationWithoutDraft(invitation))
     }
     onDraftHydrated()
   }, [eventId, invitation, invitationId, isReady, onDraftHydrated, onHydrate, ticket])

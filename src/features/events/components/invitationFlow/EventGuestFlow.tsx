@@ -358,10 +358,9 @@ export function EventGuestFlow({
     const invitation = guestInvitation.invitation
     const ticket = guestInvitation.ticket
     if (!draftHydrated || !invitationReady || !invitation || !ticket || guestSlots.length > 0) return
-    setGuestSlots(buildInitialGuestConfirmSlots(invitation, ticket, guestInvitation.fieldDefinitions))
+    setGuestSlots(buildInitialGuestConfirmSlots(invitation))
   }, [
     draftHydrated,
-    guestInvitation.fieldDefinitions,
     guestInvitation.invitation,
     guestInvitation.ticket,
     guestSlots.length,
@@ -376,11 +375,7 @@ export function EventGuestFlow({
     const draftKey = invitationId ?? invitation.id
     const stored = loadGuestFlowDraft(draftKey, event.id)
     if (stored?.guestSlots?.length) {
-      const initial = buildInitialGuestConfirmSlots(
-        invitation,
-        ticket,
-        guestInvitation.fieldDefinitions,
-      )
+      const initial = buildInitialGuestConfirmSlots(invitation)
       setGuestSlots(mergeGuestSlotsWithDraft(initial, stored.guestSlots))
     }
 
@@ -529,9 +524,9 @@ export function EventGuestFlow({
     if (!invitation || !ticket || !guestView) return false
 
     const merged = mergeInvitationGuestSlots(invitation, guestView.guest_slots)
-    setGuestSlots(buildInitialGuestConfirmSlots(merged, ticket, guestInvitation.fieldDefinitions))
+    setGuestSlots(buildInitialGuestConfirmSlots(merged))
     return true
-  }, [guestInvitation.fieldDefinitions, guestInvitation.guestView, guestInvitation.invitation, guestInvitation.ticket])
+  }, [guestInvitation.guestView, guestInvitation.invitation, guestInvitation.ticket])
 
   const handleEditGuestsFromFinished = useCallback(() => {
     if (!hydrateGuestSlotsFromGuestView()) return
@@ -595,8 +590,6 @@ export function EventGuestFlow({
         setGuestSlots(
           buildInitialGuestConfirmSlots(
             mergeInvitationGuestSlots(view.invitation, view.guest_slots),
-            ticket,
-            guestInvitation.fieldDefinitions,
           ),
         )
       }
@@ -699,7 +692,7 @@ export function EventGuestFlow({
     const baseSlots =
       guestSlots.length > 0
         ? guestSlots
-        : buildInitialGuestConfirmSlots(invitation, ticket, guestInvitation.fieldDefinitions)
+        : buildInitialGuestConfirmSlots(invitation)
     const declinedSlots = markAllGuestsNotAttending(baseSlots)
 
     setFlowPath('decline')
@@ -720,7 +713,7 @@ export function EventGuestFlow({
 
     setGuestsConfirmLoading(true)
     try {
-      const payload = buildGuestSlotsSubmitPayload(guestSlots, guestInvitation.fieldDefinitions)
+      const payload = buildGuestSlotsSubmitPayload(guestSlots)
       const result = await confirmGuests(resolvedId, payload, invitationAccess)
       setGuestsConfirmed(true)
       setLastSavedGuestsFingerprint(fingerprintGuestSlotsSubmitPayload(payload))
@@ -735,18 +728,10 @@ export function EventGuestFlow({
         setGuestSlots(
           buildInitialGuestConfirmSlots(
             mergeInvitationGuestSlots(refreshedInvitation, refreshedGuestView.guest_slots),
-            ticket,
-            guestInvitation.fieldDefinitions,
           ),
         )
       } else if (refreshedInvitation) {
-        setGuestSlots(
-          buildInitialGuestConfirmSlots(
-            refreshedInvitation,
-            ticket,
-            guestInvitation.fieldDefinitions,
-          ),
-        )
+        setGuestSlots(buildInitialGuestConfirmSlots(refreshedInvitation))
       }
       invalidateInvitationPayments()
       setGuestsConfirmLoading(false)
@@ -1076,11 +1061,7 @@ export function EventGuestFlow({
                 guestSlots.length === 0
               ) {
                 setGuestSlots(
-                  buildInitialGuestConfirmSlots(
-                    guestInvitation.invitation,
-                    guestInvitation.ticket,
-                    guestInvitation.fieldDefinitions,
-                  ),
+                  buildInitialGuestConfirmSlots(guestInvitation.invitation),
                 )
               }
               animateTo('guests')

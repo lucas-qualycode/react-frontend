@@ -1,6 +1,4 @@
-import type { FieldDefinition } from '@/shared/types/api'
 import type { GuestConfirmFormSlot } from './guestConfirmMock'
-import { findFullNameFieldId } from './guestConfirmFieldUtils'
 
 export type SubmitGuestSlotPayload = {
   id?: string
@@ -35,17 +33,11 @@ function stableStringify(value: unknown): string {
 
 export function buildGuestSlotsSubmitPayload(
   guestSlots: GuestConfirmFormSlot[],
-  fieldDefinitions: FieldDefinition[] = [],
 ): SubmitGuestSlotsPayload {
   return {
     guests: guestSlots.map((slot) => {
-      const presetFirstName = slot.firstName.trim()
-      const fullNameFieldId = findFullNameFieldId(slot.requiredFieldIds, fieldDefinitions)
-      const fullNameValue = fullNameFieldId
-        ? (slot.fieldValues[fullNameFieldId]?.trim() ?? '')
-        : ''
       const row: SubmitGuestSlotPayload = {
-        first_name: presetFirstName || fullNameValue,
+        first_name: slot.firstName.trim(),
         required_field_ids: [...slot.requiredFieldIds],
         field_values: Object.fromEntries(
           Object.entries(slot.fieldValues).map(([k, v]) => [k, (v ?? '').trim()]),

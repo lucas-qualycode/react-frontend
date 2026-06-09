@@ -7,6 +7,7 @@ import {
   guestFieldPlaceholderKey,
   guestFieldValidationMessageKey,
   getGuestFieldValidationErrorKey,
+  resolveGuestFieldLabel,
 } from '../../invitationFlow/lib/guestConfirmFieldUtils'
 import { GuestConfirmBorderField } from './GuestConfirmBorderField'
 
@@ -49,6 +50,8 @@ export function GuestConfirmFieldInput({
     ? t(placeholderKey)
     : t('events.detail.guestConfirm.fieldPlaceholder')
 
+  const fieldLabel = resolveGuestFieldLabel(definition, fieldId, t)
+
   const validationErrorKey =
     showValidation && value.trim()
       ? getGuestFieldValidationErrorKey(definition, value)
@@ -60,13 +63,13 @@ export function GuestConfirmFieldInput({
   const errorMessage =
     validationErrorKey !== null
       ? t(guestFieldValidationMessageKey(validationErrorKey), {
-          label: definition.label,
+          label: fieldLabel,
         })
       : undefined
 
   return (
     <GuestConfirmBorderField
-      label={definition.label}
+      label={fieldLabel}
       required={required}
       value={value}
       onChange={(event) => onChange(formatGuestFieldInput(definition, event.target.value))}

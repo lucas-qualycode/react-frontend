@@ -1,4 +1,4 @@
-import type { Invitation, Product } from '@/shared/types/api'
+import type { Invitation } from '@/shared/types/api'
 import {
   buildGuestMessageSubmitPayload,
   buildGuestSlotsSubmitPayload,
@@ -46,7 +46,6 @@ export function invitationHasPersistedGuestRsvp(invitation: Invitation): boolean
 
 export function buildRsvpPersistFlagsFromInvitation(
   invitation: Invitation,
-  ticket: Product,
 ): GuestRsvpPersistFlags {
   const guestsSaved = invitationHasPersistedGuestRsvp(invitation)
   const savedMessage = readGuestMessageFromInvitation(invitation)
@@ -55,7 +54,7 @@ export function buildRsvpPersistFlagsFromInvitation(
 
   const lastSavedGuestsFingerprint = guestsSaved
     ? fingerprintGuestSlotsSubmitPayload(
-        buildGuestSlotsSubmitPayload(buildInitialGuestConfirmSlots(invitation, ticket)),
+        buildGuestSlotsSubmitPayload(buildInitialGuestConfirmSlots(invitation)),
       )
     : null
 
@@ -100,10 +99,9 @@ function resolveHydratedMessagePhase(
 export function mergeDraftWithServerState(
   draft: GuestFlowDraft,
   invitation: Invitation,
-  ticket: Product,
 ): GuestFlowDraftState {
-  const serverSlots = buildInitialGuestConfirmSlots(invitation, ticket)
-  const serverFlags = buildRsvpPersistFlagsFromInvitation(invitation, ticket)
+  const serverSlots = buildInitialGuestConfirmSlots(invitation)
+  const serverFlags = buildRsvpPersistFlagsFromInvitation(invitation)
   const savedMessage = readGuestMessageFromInvitation(invitation)
   const savedEmail = readGuestEmailFromInvitation(invitation)
   const giftCapturedEmail = draft.giftCapturedEmail ?? ''

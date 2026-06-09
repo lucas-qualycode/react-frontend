@@ -11,7 +11,7 @@ import { EditTabShell } from './EditTabShell'
 
 export function EditTicketProductRoutePage() {
   const navigate = useNavigate()
-  const { productId } = useParams<{ productId: string }>()
+  const { ticketId } = useParams<{ ticketId: string }>()
   const { eventId } = useEventEditContext()
   const { setDirty, registerDiscard, unregisterDiscard } = useEventDirtyRegistry()
   const editorRef = useRef<EventTicketEditorHandle>(null)
@@ -40,7 +40,7 @@ export function EditTicketProductRoutePage() {
       <EventTicketEditorSection
         ref={editorRef}
         eventId={eventId}
-        productId={productId}
+        productId={ticketId}
         onNavigateBack={onNavigateBack}
         onDirtyChange={handleDirtyChange}
       />

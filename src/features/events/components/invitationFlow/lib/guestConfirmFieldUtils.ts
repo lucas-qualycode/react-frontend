@@ -9,6 +9,15 @@ export type GuestConfirmFieldKind =
   | 'full_name'
   | 'text'
 
+const DEFAULT_GUEST_FIELD_LABEL_KEYS = new Set([
+  'full_name',
+  'cpf',
+  'email',
+  'phone',
+  'age',
+  'birth_date',
+])
+
 export function fieldDefinitionById(
   fieldId: string,
   definitions: FieldDefinition[],
@@ -16,23 +25,21 @@ export function fieldDefinitionById(
   return definitions.find((row) => row.id === fieldId)
 }
 
-export function isFullNameFieldDefinition(definition: FieldDefinition): boolean {
-  const format = (definition.format ?? '').trim().toLowerCase()
+export function guestFieldLabelTranslationKey(definition: FieldDefinition): string | null {
   const key = definition.key.trim().toLowerCase()
-  return format === 'full_name' || key === 'full_name'
+  if (!DEFAULT_GUEST_FIELD_LABEL_KEYS.has(key)) return null
+  return `events.detail.guestConfirm.fieldLabels.${key}`
 }
 
-export function findFullNameFieldId(
-  requiredFieldIds: string[],
-  definitions: FieldDefinition[],
-): string | null {
-  for (const fieldId of requiredFieldIds) {
-    const definition = fieldDefinitionById(fieldId, definitions)
-    if (definition && isFullNameFieldDefinition(definition)) {
-      return fieldId
-    }
-  }
-  return null
+export function resolveGuestFieldLabel(
+  definition: FieldDefinition | undefined,
+  fieldId: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!definition) return fieldId
+  const translationKey = guestFieldLabelTranslationKey(definition)
+  if (translationKey) return t(translationKey)
+  return definition.label?.trim() || fieldId
 }
 
 export function resolveGuestFieldKind(definition: FieldDefinition): GuestConfirmFieldKind {

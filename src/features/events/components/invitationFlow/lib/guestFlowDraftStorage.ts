@@ -41,7 +41,7 @@ export function mergeGuestSlotsWithDraft(
     return {
       ...initial,
       slotId: initial.slotId ?? draft.slotId,
-      firstName: initial.hasPresetName ? initial.firstName : (draft.firstName ?? initial.firstName),
+      firstName: initial.firstName,
       fieldValues,
       attending: draft.attending ?? initial.attending,
     }
@@ -174,7 +174,6 @@ export function resolveGuestFlowStepFromDraft(draft: GuestFlowDraft): EventGuest
     draft.guestSlots.some(
       (slot) =>
         slot.attending === false ||
-        slot.firstName.trim().length > 0 ||
         Object.values(slot.fieldValues).some((v) => v.trim().length > 0),
     )
 

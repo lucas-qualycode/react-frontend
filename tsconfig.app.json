@@ -29,6 +29,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"],
-  "exclude": ["src/features/events/old"]
+  "include": ["src"]
 }

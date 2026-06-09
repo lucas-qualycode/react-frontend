@@ -122,7 +122,6 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **Tab routes:** `details`, `venue`, `schedule`, `products`, `tickets`, `invitations`; sub-editors at `products/new`, `products/:productId`, `tickets/new`, `tickets/:ticketId`, `invitations/new`, `invitations/:invitationId`.
 - **Per-tab save:** details / venue / schedule tabs **autosave** (debounced, no tab Save button); **`is_paid`** auto-saves on tickets tab; products / invitations / sub-editors save via their own API calls.
 - **Dirty snapshots:** **`shared/eventFormUtils.ts`** (`snapshotEventFormValuesForDirty` excludes cover **`imageURL`** from dirty baseline; image uploads PATCH immediately).
-- **Archived reference:** previous **`EventForm`** / **`EventEditPage`** live under **`features/events/old/`** (not routed).
 
 ### Guest invitation flow (`/events/:id/invitation/:invitationId`)
 

@@ -1,9 +1,9 @@
 import type { GuestCheckoutSnapshot } from './guestCheckoutSession'
 import type { GuestConfirmPhase, GuestPaymentMethodChoice } from './guestFlowDraft'
 import {
-  findFirstInvalidGuestSlotIndex,
+  findFirstInvalidSpotIndex,
   showGuestConfirmValidationMessage,
-  validateGuestSlot,
+  validateSpot,
   type GuestConfirmFormSlot,
 } from './guestConfirmMock'
 import { guestFlowShowsProgressIndicator, type GuestFlowProgressStep } from './guestFlowProgress'
@@ -32,13 +32,13 @@ function validateLeaveGuestsStep(
   if (confirmPhase === 'form') {
     const current = slots[confirmGuestIndex]
     if (!current) return { ok: true }
-    const result = validateGuestSlot(current, fieldDefinitions)
+    const result = validateSpot(current, fieldDefinitions)
     if (result.valid) return { ok: true }
     showGuestConfirmValidationMessage(t, result, fieldDefinitions)
     return { ok: false, step: 'guests', validation: result, guestIndex: confirmGuestIndex }
   }
 
-  const firstInvalid = findFirstInvalidGuestSlotIndex(slots, fieldDefinitions)
+  const firstInvalid = findFirstInvalidSpotIndex(slots, fieldDefinitions)
   if (!firstInvalid) return { ok: true }
   showGuestConfirmValidationMessage(t, firstInvalid.result, fieldDefinitions)
   return {

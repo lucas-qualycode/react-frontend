@@ -49,12 +49,12 @@ type Props = {
 }
 
 function toFormSlot(
-  slot: InvitationGuestView['guest_slots'][number],
+  slot: InvitationGuestView['spots'][number],
 ): GuestConfirmFormSlot {
   return {
     slotId: slot.id,
-    firstName: slot.first_name ?? '',
-    hasPresetName: Boolean(slot.first_name?.trim()),
+    name: slot.name ?? '',
+    hasPresetName: Boolean(slot.name?.trim()),
     fromInvitation: true,
     requiredFieldIds: slot.required_field_ids ?? [],
     fieldValues: slot.field_values ?? {},
@@ -131,10 +131,10 @@ export function EventGuestFinishedBlock({
   const status = (invitation?.status ?? 'SENT') as InvitationStatus
   const isDeclined = status === 'DECLINED'
 
-  const guestSlotsForDisplay = useMemo(() => {
+  const spotsForDisplay = useMemo(() => {
     if (!guestView) return []
-    if (isDeclined) return guestView.guest_slots
-    return guestView.guest_slots.filter((slot) => slot.attending !== false)
+    if (isDeclined) return guestView.spots
+    return guestView.spots.filter((slot) => slot.attending !== false)
   }, [guestView, isDeclined])
 
   const gifts = guestView?.user_products.gifts ?? []
@@ -147,13 +147,13 @@ export function EventGuestFinishedBlock({
     return map
   }, [giftProducts])
 
-  const slotById = useMemo(() => {
-    const map = new Map<string, InvitationGuestView['guest_slots'][number]>()
-    for (const slot of guestView?.guest_slots ?? []) {
+  const spotById = useMemo(() => {
+    const map = new Map<string, InvitationGuestView['spots'][number]>()
+    for (const slot of guestView?.spots ?? []) {
       map.set(slot.id, slot)
     }
     return map
-  }, [guestView?.guest_slots])
+  }, [guestView?.spots])
 
   const sortedPayments = useMemo(
     () => sortPaymentsDesc(payments.filter((payment) => payment.amount > 0)),
@@ -229,7 +229,7 @@ export function EventGuestFinishedBlock({
     return sortedPayments.map((payment, index) => {
       const orderItems = payment.items ?? []
       const lineItems = buildGuestFinishedPaymentLineItems(orderItems, {
-        slotById,
+        spotById,
         currency: payment.currency,
         t,
       })
@@ -297,7 +297,7 @@ export function EventGuestFinishedBlock({
           ),
       }
     })
-  }, [handleOpenPix, i18n.language, slotById, sortedPayments, t])
+  }, [handleOpenPix, i18n.language, spotById, sortedPayments, t])
 
   if (loading || !guestView) {
     return (
@@ -338,14 +338,14 @@ export function EventGuestFinishedBlock({
             id="guest-finished-guests-heading"
             icon={<TeamOutlined />}
             title={t('events.detail.guestFinished.guestsSection')}
-            count={guestSlotsForDisplay.length}
+            count={spotsForDisplay.length}
             editLabel={onEditGuests ? t('events.detail.guestFinished.sectionEdit') : undefined}
             onEdit={onEditGuests}
           >
-            {guestSlotsForDisplay.length === 0 ? (
+            {spotsForDisplay.length === 0 ? (
               <Text className="guest-finished-empty">{t('events.detail.guestFinished.guestsEmpty')}</Text>
             ) : (
-              guestSlotsForDisplay.map((slot, index) => {
+              spotsForDisplay.map((slot, index) => {
                 const formSlot = toFormSlot(slot)
                 return (
                   <div key={slot.id} className="guest-finished-guest-block">

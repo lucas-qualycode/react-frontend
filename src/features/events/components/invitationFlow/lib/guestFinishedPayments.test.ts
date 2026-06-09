@@ -32,18 +32,18 @@ describe('guestFinishedPayments', () => {
         quantity: 1,
         unit_price: 0,
         total_price: 0,
-        guest_slot_id: 'slot-1',
+        spot_id: 'slot-1',
       },
     ]
 
     const lineItems = buildGuestFinishedPaymentLineItems(items, {
-      slotById: new Map([
+      spotById: new Map([
         [
           'slot-1',
           {
             id: 'slot-1',
             invitation_id: 'inv-1',
-            first_name: 'Ana',
+            name: 'Ana',
             required_field_ids: [],
             field_values: {},
             attending: true,

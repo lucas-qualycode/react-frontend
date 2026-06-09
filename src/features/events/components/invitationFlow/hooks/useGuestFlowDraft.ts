@@ -71,17 +71,17 @@ function hydrationFromDraft(
   const merged = mergeDraftWithServerState(draft, invitation)
   const initialSlots = buildInitialGuestConfirmSlots(invitation)
   const declinedPath = draft.flowPath === 'decline'
-  const guestSlots = declinedPath
-    ? markAllGuestsNotAttending(merged.guestSlots)
-    : merged.guestSlots
+  const spots = declinedPath
+    ? markAllGuestsNotAttending(merged.spots)
+    : merged.spots
   const confirmPhase = declinedPath ? 'review' : merged.confirmPhase
   const confirmGuestIndex = declinedPath
-    ? Math.max(0, guestSlots.length - 1)
+    ? Math.max(0, spots.length - 1)
     : Math.min(Math.max(0, draft.confirmGuestIndex), Math.max(0, initialSlots.length - 1))
 
   return {
     ...merged,
-    guestSlots,
+    spots,
     confirmPhase,
     confirmGuestIndex,
     activeStep: resolveInitialWizardStep(invitation, draft),
@@ -105,7 +105,7 @@ function hydrationWithoutDraft(
   return {
     ...createDefaultGuestFlowDraftState(),
     activeStep: resolveInitialWizardStep(invitation, null),
-    guestSlots: buildInitialGuestConfirmSlots(invitation),
+    spots: buildInitialGuestConfirmSlots(invitation),
     coupleMessage: savedMessage,
     guestEmail,
     messagePhase,

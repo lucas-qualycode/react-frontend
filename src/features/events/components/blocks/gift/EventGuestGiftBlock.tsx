@@ -22,7 +22,7 @@ type Props = {
   event: Event
   invitationId: string
   variant: EventGuestGiftVariant
-  guestSlots: GuestConfirmFormSlot[]
+  spots: GuestConfirmFormSlot[]
   selectedProductIds: string[]
   onSelectedProductIdsChange: (ids: string[]) => void
   phase: GuestGiftPhase
@@ -255,7 +255,7 @@ export function EventGuestGiftBlock({
   event,
   invitationId,
   variant,
-  guestSlots,
+  spots,
   selectedProductIds,
   onSelectedProductIdsChange,
   phase,
@@ -273,7 +273,7 @@ export function EventGuestGiftBlock({
   if (variant !== 'wedding') return null
 
   const selectedIds = useMemo(() => new Set(selectedProductIds), [selectedProductIds])
-  const hasAttendingGuests = guestSlots.some((slot) => slot.attending !== false)
+  const hasAttendingGuests = spots.some((slot) => slot.attending !== false)
 
   const selectedProducts = useMemo(
     () => products.filter((p) => selectedIds.has(p.id) && p.type === 'GIFT'),

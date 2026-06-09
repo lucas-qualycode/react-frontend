@@ -14,7 +14,6 @@ import type {
   FulfillmentType,
   Invitation,
   InvitationDestinationType,
-  InvitationGuestSlotStatus,
   Location,
   Product,
   ProductKind,
@@ -408,8 +407,8 @@ export type CreateInvitationPayload = {
   ticket_id?: string | null
   metadata?: Record<string, unknown>
   tag_ids?: string[]
-  guest_slot_count?: number
-  guests?: { first_name: string; required_field_ids: string[] }[]
+  spot_count?: number
+  spots?: { name: string; required_field_ids: string[] }[]
 }
 
 export type CreateInvitationResponse = Invitation & { access_token?: string }
@@ -425,14 +424,14 @@ export async function createInvitation(
     expires_at: payload.expires_at,
     metadata: payload.metadata ?? {},
     tag_ids: payload.tag_ids ?? [],
-    guest_slot_count: payload.guest_slot_count ?? 0,
+    spot_count: payload.spot_count ?? 0,
   }
   const tid = payload.ticket_id?.trim()
   if (tid) body.ticket_id = tid
-  if (payload.guests !== undefined) {
-    body.guests = payload.guests.map((g) => ({
-      first_name: (g.first_name ?? '').trim(),
-      required_field_ids: g.required_field_ids ?? [],
+  if (payload.spots !== undefined) {
+    body.spots = payload.spots.map((s) => ({
+      name: (s.name ?? '').trim(),
+      required_field_ids: s.required_field_ids ?? [],
     }))
   }
   const res = await fetchApi(`events/${eventId}/invitations`, {
@@ -480,10 +479,7 @@ export async function getInvitation(
   if (isInvitationGuestView(data)) {
     return {
       ...data.invitation,
-      guest_slots: data.guest_slots.map(({ user_product: _up, ...slot }) => ({
-        ...slot,
-        status: slot.status as InvitationGuestSlotStatus,
-      })),
+      spots: data.spots.map(({ user_product: _up, ...spot }) => spot),
     }
   }
   return data as Invitation
@@ -497,8 +493,8 @@ export type UpdateInvitationPayload = {
   ticket_id?: string | null
   metadata?: Record<string, unknown>
   tag_ids?: string[]
-  guest_slot_count?: number
-  guests?: { first_name: string; required_field_ids: string[] }[]
+  spot_count?: number
+  spots?: { name: string; required_field_ids: string[] }[]
 }
 
 export async function updateInvitation(
@@ -513,15 +509,15 @@ export async function updateInvitation(
   if (payload.expires_at !== undefined) body.expires_at = payload.expires_at
   if (payload.metadata !== undefined) body.metadata = payload.metadata
   if (payload.tag_ids !== undefined) body.tag_ids = payload.tag_ids
-  if (payload.guest_slot_count !== undefined) body.guest_slot_count = payload.guest_slot_count
+  if (payload.spot_count !== undefined) body.spot_count = payload.spot_count
   if (payload.ticket_id !== undefined) {
     const tid = payload.ticket_id?.trim()
     body.ticket_id = tid || null
   }
-  if (payload.guests !== undefined) {
-    body.guests = payload.guests.map((g) => ({
-      first_name: (g.first_name ?? '').trim(),
-      required_field_ids: g.required_field_ids ?? [],
+  if (payload.spots !== undefined) {
+    body.spots = payload.spots.map((s) => ({
+      name: (s.name ?? '').trim(),
+      required_field_ids: s.required_field_ids ?? [],
     }))
   }
   const res = await fetchApi(`events/${eventId}/invitations/${invitationId}`, {

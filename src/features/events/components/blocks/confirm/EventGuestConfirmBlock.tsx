@@ -11,9 +11,9 @@ import {
   resolveGuestReviewDisplayName,
   resolveGuestReviewFieldIds,
   showGuestConfirmValidationMessage,
-  validateGuestSlot,
+  validateSpot,
   type GuestConfirmFormSlot,
-  type GuestSlotValidationResult,
+  type SpotValidationResult,
 } from '../../invitationFlow/lib/guestConfirmMock'
 import { GuestConfirmFieldInput } from './GuestConfirmFieldInput'
 import { GuestFlowActions } from '../../invitationFlow/shared/GuestFlowActions'
@@ -41,7 +41,7 @@ type Props = {
   onAttendanceConfirmed: () => void
   editFromFinished?: boolean
   onCancelEdit?: () => void
-  validationHighlight?: GuestSlotValidationResult | null
+  validationHighlight?: SpotValidationResult | null
   validationHighlightGuestIndex?: number
   onValidationHighlightClear?: () => void
 }
@@ -51,7 +51,7 @@ type FormViewProps = {
   slots: GuestConfirmFormSlot[]
   currentIndex: number
   fieldDefinitions: FieldDefinition[]
-  validation: GuestSlotValidationResult | null
+  validation: SpotValidationResult | null
   onBack?: () => void
   backLabel?: string
   onContinue: () => void
@@ -118,7 +118,7 @@ function GuestConfirmFormView({
           <div className="guest-confirm-name-main">
             {current.hasPresetName ? (
               <Text className="guest-confirm-preset-name-value">
-                {t('events.detail.guestConfirm.presetInvitation', { name: current.firstName })}
+                {t('events.detail.guestConfirm.presetInvitation', { name: current.name })}
               </Text>
             ) : null}
           </div>
@@ -266,7 +266,7 @@ export function EventGuestConfirmBlock({
   onValidationHighlightClear,
 }: Props) {
   const { t } = useTranslation()
-  const [validation, setValidation] = useState<GuestSlotValidationResult | null>(null)
+  const [validation, setValidation] = useState<SpotValidationResult | null>(null)
 
   const displayValidation = validation ?? validationHighlight ?? null
 
@@ -296,7 +296,7 @@ export function EventGuestConfirmBlock({
 
   const validateCurrentGuest = () => {
     if (!current) return false
-    const result = validateGuestSlot(current, fieldDefinitions)
+    const result = validateSpot(current, fieldDefinitions)
     setValidation(result.valid ? null : result)
     if (!result.valid) {
       showGuestConfirmValidationMessage(t, result, fieldDefinitions)

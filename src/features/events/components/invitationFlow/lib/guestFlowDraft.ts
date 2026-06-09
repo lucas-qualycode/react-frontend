@@ -50,7 +50,7 @@ export type GuestFlowDraft = {
   updatedAt: string
   flowPath: GuestFlowPath
   activeStep: EventGuestFlowStep
-  guestSlots: GuestConfirmFormSlot[]
+  spots: GuestConfirmFormSlot[]
   confirmPhase: GuestConfirmPhase
   confirmGuestIndex: number
   selectedProductIds: string[]
@@ -77,7 +77,7 @@ export function createDefaultGuestFlowDraftState(): GuestFlowDraftState {
   return {
     flowPath: 'attend',
     activeStep: 'welcome' as EventGuestFlowStep,
-    guestSlots: [],
+    spots: [],
     confirmPhase: 'form',
     confirmGuestIndex: 0,
     selectedProductIds: [],

@@ -1,15 +1,15 @@
 import type { GuestConfirmFormSlot } from './guestConfirmMock'
 
-export type SubmitGuestSlotPayload = {
+export type SubmitSpotPayload = {
   id?: string
-  first_name: string
+  name: string
   required_field_ids: string[]
   field_values: Record<string, string>
   attending: boolean
 }
 
-export type SubmitGuestSlotsPayload = {
-  guests: SubmitGuestSlotPayload[]
+export type SubmitSpotsPayload = {
+  spots: SubmitSpotPayload[]
 }
 
 export type SubmitGuestMessagePayload = {
@@ -31,13 +31,13 @@ function stableStringify(value: unknown): string {
   })
 }
 
-export function buildGuestSlotsSubmitPayload(
-  guestSlots: GuestConfirmFormSlot[],
-): SubmitGuestSlotsPayload {
+export function buildSpotsSubmitPayload(
+  spots: GuestConfirmFormSlot[],
+): SubmitSpotsPayload {
   return {
-    guests: guestSlots.map((slot) => {
-      const row: SubmitGuestSlotPayload = {
-        first_name: slot.firstName.trim(),
+    spots: spots.map((slot) => {
+      const row: SubmitSpotPayload = {
+        name: slot.name.trim(),
         required_field_ids: [...slot.requiredFieldIds],
         field_values: Object.fromEntries(
           Object.entries(slot.fieldValues).map(([k, v]) => [k, (v ?? '').trim()]),
@@ -62,7 +62,7 @@ export function buildGuestMessageSubmitPayload(
   }
 }
 
-export function fingerprintGuestSlotsSubmitPayload(payload: SubmitGuestSlotsPayload): string {
+export function fingerprintSpotsSubmitPayload(payload: SubmitSpotsPayload): string {
   return stableStringify(payload)
 }
 
@@ -73,12 +73,12 @@ export function fingerprintGuestMessagePayload(payload: SubmitGuestMessagePayloa
   })
 }
 
-export function guestSlotsSubmitUnchanged(
-  payload: SubmitGuestSlotsPayload,
+export function spotsSubmitUnchanged(
+  payload: SubmitSpotsPayload,
   lastSavedFingerprint: string | null | undefined,
 ): boolean {
   if (!lastSavedFingerprint) return false
-  return fingerprintGuestSlotsSubmitPayload(payload) === lastSavedFingerprint
+  return fingerprintSpotsSubmitPayload(payload) === lastSavedFingerprint
 }
 
 export function guestMessageSubmitUnchanged(

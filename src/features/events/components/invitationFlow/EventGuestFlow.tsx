@@ -18,13 +18,13 @@ import {
   type GuestCheckoutSnapshot,
 } from './lib/guestCheckoutSession'
 import { createDefaultGuestFlowDraftState } from './lib/guestFlowDraft'
-import { loadGuestFlowDraft, mergeGuestSlotsWithDraft } from './lib/guestFlowDraftStorage'
+import { loadGuestFlowDraft, mergeSpotsWithDraft } from './lib/guestFlowDraftStorage'
 import {
   buildGuestFlowProgressCompletion,
   guestFlowProgressActiveIndex,
   guestFlowShowsProgressIndicator,
 } from './lib/guestFlowProgress'
-import type { GuestSlotValidationResult } from './lib/guestConfirmMock'
+import type { SpotValidationResult } from './lib/guestConfirmMock'
 import type { CardFormValidation } from '../blocks/mpPayment/guestMpPaymentForm'
 import { createDefaultCardPaymentSecrets } from '../blocks/mpPayment/guestMpPaymentForm'
 import {
@@ -32,7 +32,7 @@ import {
   markAllGuestsNotAttending,
   type GuestConfirmFormSlot,
 } from './lib/guestConfirmMock'
-import { buildGuestMessageSubmitPayload, buildGuestSlotsSubmitPayload, fingerprintGuestMessagePayload, fingerprintGuestSlotsSubmitPayload } from './lib/guestSubmitPayload'
+import { buildGuestMessageSubmitPayload, buildSpotsSubmitPayload, fingerprintGuestMessagePayload, fingerprintSpotsSubmitPayload } from './lib/guestSubmitPayload'
 import { readGuestEmailFromInvitation, readGuestMessageFromInvitation } from './lib/guestFlowRsvpHydration'
 import {
   isValidGuestEmail,
@@ -49,7 +49,7 @@ import {
   type GiftCheckoutResponse,
   type GuestPaymentStatusResponse,
 } from './lib/guestInvitationApi'
-import { mergeInvitationGuestSlots } from './lib/invitationGuestSlots'
+import { mergeInvitationSpots } from './lib/invitationSpots'
 import { flowStepFromWizardStep } from './lib/resolveWizardStep'
 import { formatPixExpiryCountdown } from './lib/formatPixExpiryCountdown'
 import { useMercadoPago } from '@/features/events/hooks/useMercadoPago'
@@ -163,7 +163,7 @@ export function EventGuestFlow({
   const [draftHydrated, setDraftHydrated] = useState(false)
 
   const [flowPath, setFlowPath] = useState(defaultDraftState.flowPath)
-  const [guestSlots, setGuestSlots] = useState<GuestConfirmFormSlot[]>(defaultDraftState.guestSlots)
+  const [spots, setSpots] = useState<GuestConfirmFormSlot[]>(defaultDraftState.spots)
   const [confirmPhase, setConfirmPhase] = useState(defaultDraftState.confirmPhase)
   const [confirmGuestIndex, setConfirmGuestIndex] = useState(defaultDraftState.confirmGuestIndex)
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>(
@@ -195,11 +195,11 @@ export function EventGuestFlow({
   )
   const [maxProgressIndexReached, setMaxProgressIndexReached] = useState(0)
   const [guestsConfirmLoading, setGuestsConfirmLoading] = useState(false)
-  const [pendingTicketSlotIds, setPendingTicketSlotIds] = useState<string[]>([])
+  const [pendingTicketSpotIds, setPendingTicketSpotIds] = useState<string[]>([])
   const [giftPaymentId, setGiftPaymentId] = useState<string | null>(null)
   const [giftCheckoutOutcome, setGiftCheckoutOutcome] = useState<GiftCheckoutResponse | null>(null)
   const [confirmValidationHighlight, setConfirmValidationHighlight] =
-    useState<GuestSlotValidationResult | null>(null)
+    useState<SpotValidationResult | null>(null)
   const [confirmValidationGuestIndex, setConfirmValidationGuestIndex] = useState<number | undefined>(
     undefined,
   )
@@ -242,7 +242,7 @@ export function EventGuestFlow({
     () => ({
       flowPath,
       activeStep,
-      guestSlots,
+      spots,
       confirmPhase,
       confirmGuestIndex,
       selectedProductIds,
@@ -265,7 +265,7 @@ export function EventGuestFlow({
     [
       flowPath,
       activeStep,
-      guestSlots,
+      spots,
       confirmPhase,
       confirmGuestIndex,
       selectedProductIds,
@@ -291,7 +291,7 @@ export function EventGuestFlow({
     setFlowPath(payload.flowPath)
     setActiveStep(payload.activeStep)
     activeStepRef.current = payload.activeStep
-    setGuestSlots(payload.guestSlots)
+    setSpots(payload.spots)
     setConfirmPhase(payload.confirmPhase)
     setConfirmGuestIndex(payload.confirmGuestIndex)
     setSelectedProductIds(payload.selectedProductIds)
@@ -317,7 +317,7 @@ export function EventGuestFlow({
     setGiftsSubView('catalog')
     setGiftPaymentId(null)
     setGiftCheckoutOutcome(null)
-    setPendingTicketSlotIds([])
+    setPendingTicketSpotIds([])
     if (payload.activeStep === 'gifts' && pendingGiftPayment) {
       applyPendingGiftPayment(pendingGiftPayment)
       setGiftsBootstrap('ready')
@@ -357,13 +357,13 @@ export function EventGuestFlow({
   useLayoutEffect(() => {
     const invitation = guestInvitation.invitation
     const ticket = guestInvitation.ticket
-    if (!draftHydrated || !invitationReady || !invitation || !ticket || guestSlots.length > 0) return
-    setGuestSlots(buildInitialGuestConfirmSlots(invitation))
+    if (!draftHydrated || !invitationReady || !invitation || !ticket || spots.length > 0) return
+    setSpots(buildInitialGuestConfirmSlots(invitation))
   }, [
     draftHydrated,
     guestInvitation.invitation,
     guestInvitation.ticket,
-    guestSlots.length,
+    spots.length,
     invitationReady,
   ])
 
@@ -374,9 +374,9 @@ export function EventGuestFlow({
 
     const draftKey = invitationId ?? invitation.id
     const stored = loadGuestFlowDraft(draftKey, event.id)
-    if (stored?.guestSlots?.length) {
+    if (stored?.spots?.length) {
       const initial = buildInitialGuestConfirmSlots(invitation)
-      setGuestSlots(mergeGuestSlotsWithDraft(initial, stored.guestSlots))
+      setSpots(mergeSpotsWithDraft(initial, stored.spots))
     }
 
     setConfirmPhase('form')
@@ -517,26 +517,26 @@ export function EventGuestFlow({
     [animateTo],
   )
 
-  const hydrateGuestSlotsFromGuestView = useCallback(() => {
+  const hydrateSpotsFromGuestView = useCallback(() => {
     const invitation = guestInvitation.invitation
     const ticket = guestInvitation.ticket
     const guestView = guestInvitation.guestView
     if (!invitation || !ticket || !guestView) return false
 
-    const merged = mergeInvitationGuestSlots(invitation, guestView.guest_slots)
-    setGuestSlots(buildInitialGuestConfirmSlots(merged))
+    const merged = mergeInvitationSpots(invitation, guestView.spots)
+    setSpots(buildInitialGuestConfirmSlots(merged))
     return true
   }, [guestInvitation.guestView, guestInvitation.invitation, guestInvitation.ticket])
 
   const handleEditGuestsFromFinished = useCallback(() => {
-    if (!hydrateGuestSlotsFromGuestView()) return
+    if (!hydrateSpotsFromGuestView()) return
     setConfirmPhase('review')
     setConfirmGuestIndex(0)
     setConfirmValidationHighlight(null)
     setConfirmValidationGuestIndex(undefined)
     setGuestEditReturnStep('finished')
     animateTo('guests')
-  }, [animateTo, hydrateGuestSlotsFromGuestView])
+  }, [animateTo, hydrateSpotsFromGuestView])
 
   const resetGiftEditState = useCallback(() => {
     setSelectedProductIds([])
@@ -558,7 +558,7 @@ export function EventGuestFlow({
   }, [animateTo, resetGiftEditState])
 
   const handleCancelGuestEdit = useCallback(() => {
-    hydrateGuestSlotsFromGuestView()
+    hydrateSpotsFromGuestView()
     setConfirmPhase('review')
     setConfirmGuestIndex(0)
     setConfirmValidationHighlight(null)
@@ -568,7 +568,7 @@ export function EventGuestFlow({
     if (returnStep) {
       animateTo(returnStep)
     }
-  }, [animateTo, hydrateGuestSlotsFromGuestView])
+  }, [animateTo, hydrateSpotsFromGuestView])
 
   const handleCancelGiftEdit = useCallback(() => {
     resetGiftEditState()
@@ -582,20 +582,20 @@ export function EventGuestFlow({
   const ticketPoll = useTicketFulfillmentPoll({
     invitationId: resolvedInvitationId,
     invitationAccess,
-    pendingSlotIds: pendingTicketSlotIds,
-    enabled: pendingTicketSlotIds.length > 0,
+    pendingSpotIds: pendingTicketSpotIds,
+    enabled: pendingTicketSpotIds.length > 0,
     onComplete: (view) => {
       const ticket = guestInvitation.ticket
       if (ticket) {
-        setGuestSlots(
+        setSpots(
           buildInitialGuestConfirmSlots(
-            mergeInvitationGuestSlots(view.invitation, view.guest_slots),
+            mergeInvitationSpots(view.invitation, view.spots),
           ),
         )
       }
       void guestInvitation.refetchGuestView()
       invalidateInvitationPayments()
-      setPendingTicketSlotIds([])
+      setPendingTicketSpotIds([])
       setGuestsConfirmLoading(false)
       const returnStep = guestEditReturnStepRef.current
       if (returnStep) {
@@ -610,7 +610,7 @@ export function EventGuestFlow({
   useEffect(() => {
     if (ticketPoll.state !== 'timeout') return
     message.warning(t('events.detail.guestFlow.ticketPollTimeout'))
-    setPendingTicketSlotIds([])
+    setPendingTicketSpotIds([])
     setGuestsConfirmLoading(false)
     animateToBackendWizardStep('gifts')
   }, [animateToBackendWizardStep, t, ticketPoll.state])
@@ -690,19 +690,19 @@ export function EventGuestFlow({
     if (!invitation || !ticket) return
 
     const baseSlots =
-      guestSlots.length > 0
-        ? guestSlots
+      spots.length > 0
+        ? spots
         : buildInitialGuestConfirmSlots(invitation)
     const declinedSlots = markAllGuestsNotAttending(baseSlots)
 
     setFlowPath('decline')
-    setGuestSlots(declinedSlots)
+    setSpots(declinedSlots)
     setConfirmPhase('review')
     setConfirmGuestIndex(Math.max(0, declinedSlots.length - 1))
     setConfirmValidationHighlight(null)
     setConfirmValidationGuestIndex(undefined)
     animateTo('guests')
-  }, [animateTo, guestInvitation.invitation, guestInvitation.ticket, guestSlots])
+  }, [animateTo, guestInvitation.invitation, guestInvitation.ticket, spots])
 
   useLayoutEffect(() => () => cancelAnimationFrame(frameRef.current), [])
 
@@ -713,25 +713,25 @@ export function EventGuestFlow({
 
     setGuestsConfirmLoading(true)
     try {
-      const payload = buildGuestSlotsSubmitPayload(guestSlots)
+      const payload = buildSpotsSubmitPayload(spots)
       const result = await confirmGuests(resolvedId, payload, invitationAccess)
       setGuestsConfirmed(true)
-      setLastSavedGuestsFingerprint(fingerprintGuestSlotsSubmitPayload(payload))
-      if (result.pending_ticket_slot_ids.length > 0) {
-        setPendingTicketSlotIds(result.pending_ticket_slot_ids)
+      setLastSavedGuestsFingerprint(fingerprintSpotsSubmitPayload(payload))
+      if (result.pending_ticket_spot_ids.length > 0) {
+        setPendingTicketSpotIds(result.pending_ticket_spot_ids)
         return
       }
       const refetchResult = await guestInvitation.refetchGuestView()
       const refreshedInvitation = refetchResult.data?.invitation ?? guestInvitation.invitation
       const refreshedGuestView = refetchResult.data ?? guestInvitation.guestView
       if (refreshedInvitation && refreshedGuestView) {
-        setGuestSlots(
+        setSpots(
           buildInitialGuestConfirmSlots(
-            mergeInvitationGuestSlots(refreshedInvitation, refreshedGuestView.guest_slots),
+            mergeInvitationSpots(refreshedInvitation, refreshedGuestView.spots),
           ),
         )
       } else if (refreshedInvitation) {
-        setGuestSlots(buildInitialGuestConfirmSlots(refreshedInvitation))
+        setSpots(buildInitialGuestConfirmSlots(refreshedInvitation))
       }
       invalidateInvitationPayments()
       setGuestsConfirmLoading(false)
@@ -750,7 +750,7 @@ export function EventGuestFlow({
       animateTo,
       animateToBackendWizardStep,
       guestInvitation,
-      guestSlots,
+      spots,
       invalidateInvitationPayments,
       invitationAccess,
       invitationId,
@@ -1058,9 +1058,9 @@ export function EventGuestFlow({
               if (
                 guestInvitation.invitation &&
                 guestInvitation.ticket &&
-                guestSlots.length === 0
+                spots.length === 0
               ) {
-                setGuestSlots(
+                setSpots(
                   buildInitialGuestConfirmSlots(guestInvitation.invitation),
                 )
               }
@@ -1069,7 +1069,7 @@ export function EventGuestFlow({
           />
         )
       case 'guests':
-        if (!guestInvitation.invitation || !guestInvitation.ticket || guestSlots.length === 0) {
+        if (!guestInvitation.invitation || !guestInvitation.ticket || spots.length === 0) {
           return null
         }
         return (
@@ -1081,11 +1081,11 @@ export function EventGuestFlow({
               invitation={guestInvitation.invitation}
               ticket={guestInvitation.ticket}
               fieldDefinitions={guestInvitation.fieldDefinitions}
-              slots={guestSlots}
+              slots={spots}
               onSlotsChange={(next) => {
                 setConfirmValidationHighlight(null)
                 setConfirmValidationGuestIndex(undefined)
-                setGuestSlots(next)
+                setSpots(next)
               }}
               phase={confirmPhase}
               onPhaseChange={setConfirmPhase}
@@ -1143,7 +1143,7 @@ export function EventGuestFlow({
             event={event}
             invitationId={resolvedInvitationId}
             variant={giftsVariant}
-            guestSlots={guestSlots}
+            spots={spots}
             selectedProductIds={selectedProductIds}
             onSelectedProductIdsChange={setSelectedProductIds}
             phase={giftPhase}

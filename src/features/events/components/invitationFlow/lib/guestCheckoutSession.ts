@@ -101,18 +101,18 @@ export function normalizeCheckoutSnapshot(raw: unknown): GuestCheckoutSnapshot |
   }
 }
 
-export function countAttendingGuests(guestSlots: GuestConfirmFormSlot[]): number {
-  return guestSlots.filter((slot) => slot.attending !== false).length
+export function countAttendingGuests(spots: GuestConfirmFormSlot[]): number {
+  return spots.filter((slot) => slot.attending !== false).length
 }
 
 export function buildTicketLineItemsForAttendingGuests(
   ticket: Product,
-  guestSlots: GuestConfirmFormSlot[],
+  spots: GuestConfirmFormSlot[],
 ): GuestCheckoutLineItem[] {
-  return guestSlots
+  return spots
     .filter((slot) => slot.attending !== false)
     .map((slot) => {
-      const guestName = slot.firstName.trim()
+      const guestName = slot.name.trim()
       const label = guestName ? `${ticket.name} — ${guestName}` : ticket.name
       return lineItemFromProduct(ticket, 'TICKET', label)
     })
@@ -159,11 +159,11 @@ export function splitCheckoutItemsByType(
 export function buildGuestCheckoutSnapshot(
   parent_id: string,
   ticket: Product | null,
-  guestSlots: GuestConfirmFormSlot[],
+  spots: GuestConfirmFormSlot[],
   giftProducts: Product[],
 ): GuestCheckoutSnapshot {
   const ticket_items = ticket
-    ? buildTicketLineItemsForAttendingGuests(ticket, guestSlots)
+    ? buildTicketLineItemsForAttendingGuests(ticket, spots)
     : []
   const gift_items = buildGiftLineItemsFromProducts(giftProducts)
   const items = [...ticket_items, ...gift_items]
@@ -180,7 +180,7 @@ export function buildGuestCheckoutSnapshot(
 export function refreshGuestCheckoutWithAttendingTickets(
   checkout: GuestCheckoutSnapshot,
   ticket: Product | null,
-  guestSlots: GuestConfirmFormSlot[],
+  spots: GuestConfirmFormSlot[],
 ): GuestCheckoutSnapshot {
   if (!ticket) return checkout
 
@@ -201,7 +201,7 @@ export function refreshGuestCheckoutWithAttendingTickets(
     last_updated_by: '',
   }))
 
-  return buildGuestCheckoutSnapshot(checkout.parent_id, ticket, guestSlots, giftProducts)
+  return buildGuestCheckoutSnapshot(checkout.parent_id, ticket, spots, giftProducts)
 }
 
 export function buildCheckoutSnapshotFromProducts(

@@ -1,10 +1,10 @@
 import type { CardFormValidation } from '../../blocks/mpPayment/guestMpPaymentForm'
-import type { GuestSlotValidationResult } from './guestConfirmMock'
+import type { SpotValidationResult } from './guestConfirmMock'
 
 export type LeaveStepValidationFailure =
   | {
       step: 'guests'
-      validation: GuestSlotValidationResult
+      validation: SpotValidationResult
       guestIndex: number
     }
   | {

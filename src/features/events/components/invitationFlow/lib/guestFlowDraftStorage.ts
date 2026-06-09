@@ -15,7 +15,7 @@ import {
 import { GUEST_FLOW_STEP_INDEX, type EventGuestFlowStep } from '../types'
 import { migrateLegacyWizardStep } from './wizardStepStorage'
 
-export function mergeGuestSlotsWithDraft(
+export function mergeSpotsWithDraft(
   initialSlots: GuestConfirmFormSlot[],
   draftSlots: GuestConfirmFormSlot[] | undefined,
 ): GuestConfirmFormSlot[] {
@@ -41,7 +41,7 @@ export function mergeGuestSlotsWithDraft(
     return {
       ...initial,
       slotId: initial.slotId ?? draft.slotId,
-      firstName: initial.firstName,
+      name: initial.name,
       fieldValues,
       attending: draft.attending ?? initial.attending,
     }
@@ -72,14 +72,7 @@ function normalizeCardPaymentTypeId(
   return paymentTypeIdForGuestMethod(paymentMethod) ?? 'credit_card'
 }
 
-type GuestFlowDraftWithLegacyFields = GuestFlowDraft & { declineMessage?: string }
-
 export function normalizeGuestFlowDraft(draft: GuestFlowDraft): GuestFlowDraft {
-  const raw = draft as GuestFlowDraftWithLegacyFields
-  const legacyDeclineMessage = raw.declineMessage?.trim() ?? ''
-  const coupleMessage =
-    raw.coupleMessage.trim().length > 0 ? raw.coupleMessage : legacyDeclineMessage
-
   const paymentMethod = normalizeLegacyPaymentMethod(
     draft.paymentMethod as string | null | undefined,
   )
@@ -97,15 +90,14 @@ export function normalizeGuestFlowDraft(draft: GuestFlowDraft): GuestFlowDraft {
     ? normalizeCheckoutSnapshot(draft.checkout)
     : null
 
-  const { declineMessage: _legacyDeclineMessage, ...rest } = raw
-
   return {
-    ...rest,
-    activeStep: migrateLegacyWizardStep(String(rest.activeStep)),
-    coupleMessage,
-    guestEmail: raw.guestEmail ?? '',
-    messagePhase: raw.messagePhase === 'compose' ? 'compose' : 'email',
-    giftCapturedEmail: raw.giftCapturedEmail ?? '',
+    ...draft,
+    spots: draft.spots,
+    activeStep: migrateLegacyWizardStep(String(draft.activeStep)),
+    coupleMessage: draft.coupleMessage,
+    guestEmail: draft.guestEmail ?? '',
+    messagePhase: draft.messagePhase === 'compose' ? 'compose' : 'email',
+    giftCapturedEmail: draft.giftCapturedEmail ?? '',
     paymentMethod,
     cardPayment,
     checkout,
@@ -123,7 +115,7 @@ export function loadGuestFlowDraft(
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as GuestFlowDraft
-    if (parsed.version !== GUEST_FLOW_DRAFT_VERSION && parsed.version !== 5 && parsed.version !== 4) return null
+    if (parsed.version !== GUEST_FLOW_DRAFT_VERSION) return null
     if (parsed.invitationId !== invitationId || parsed.eventId !== eventId) return null
 
     const updatedAt = Date.parse(parsed.updatedAt)
@@ -170,8 +162,8 @@ export function resolveGuestFlowStepFromDraft(draft: GuestFlowDraft): EventGuest
   }
 
   const hasGuestProgress =
-    draft.guestSlots.length > 0 &&
-    draft.guestSlots.some(
+    draft.spots.length > 0 &&
+    draft.spots.some(
       (slot) =>
         slot.attending === false ||
         Object.values(slot.fieldValues).some((v) => v.trim().length > 0),

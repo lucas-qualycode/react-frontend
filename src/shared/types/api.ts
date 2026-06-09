@@ -127,16 +127,14 @@ export const INVITATION_DESTINATION_TYPES: InvitationDestinationType[] = [
   'USER_ID',
 ]
 
-export type InvitationGuestSlotStatus = 'PENDING' | 'COMPLETED'
-
-export interface InvitationGuestSlot {
+export interface Spot {
   id: string
+  event_id: string
   invitation_id: string
-  first_name: string
+  name: string
   required_field_ids: string[]
   field_values?: Record<string, string>
   attending?: boolean
-  status: InvitationGuestSlotStatus
   created_at: string
   updated_at: string
 }
@@ -155,8 +153,8 @@ export interface Invitation {
   expires_at: string
   created_at: string
   updated_at: string
-  guest_slot_count?: number
-  guest_slots?: InvitationGuestSlot[]
+  spot_count?: number
+  spots?: Spot[]
   wizard_step?: InvitationWizardStep | null
   metadata?: Record<string, unknown>
   tags?: EventTagEmbed[]

@@ -7,16 +7,16 @@ import {
   isPendingPaymentStatus,
   resolveActivePendingPayment,
 } from './resolveActivePendingPayment'
-import type { SubmitGuestMessagePayload, SubmitGuestSlotsPayload } from './guestSubmitPayload'
+import type { SubmitGuestMessagePayload, SubmitSpotsPayload } from './guestSubmitPayload'
 import type { GuestCheckoutPayload } from '../../blocks/payment/types'
 
 export type GuestInvitationErrorCode =
   | 'INSUFFICIENT_INVENTORY'
-  | 'GUEST_SLOT_LIMIT_EXCEEDED'
+  | 'SPOT_LIMIT_EXCEEDED'
   | 'INVITATION_EXPIRED'
   | 'PAYMENT_PROVIDER_ERROR'
   | 'INVALID_ORDER_ITEMS'
-  | 'GUEST_SLOT_DUPLICATE'
+  | 'SPOT_DUPLICATE'
   | 'INVALID_STATUS_TRANSITION'
 
 export class GuestInvitationApiError extends Error {
@@ -73,10 +73,10 @@ export type InvitationGuestUserProduct = {
   metadata: Record<string, unknown>
 }
 
-export type InvitationGuestSlotView = {
+export type InvitationSpotView = {
   id: string
   invitation_id: string
-  first_name: string
+  name: string
   required_field_ids: string[]
   field_values: Record<string, string>
   attending: boolean
@@ -88,7 +88,7 @@ export type InvitationGuestSlotView = {
 
 export type InvitationGuestView = {
   invitation: Invitation
-  guest_slots: InvitationGuestSlotView[]
+  spots: InvitationSpotView[]
   user_products: {
     tickets: InvitationGuestUserProduct[]
     gifts: InvitationGuestUserProduct[]
@@ -100,7 +100,7 @@ export type GuestConfirmResponse = {
   invitation_status: string
   payment_id: string | null
   order_id: string | null
-  pending_ticket_slot_ids: string[]
+  pending_ticket_spot_ids: string[]
   wizard_step?: string | null
 }
 
@@ -112,7 +112,7 @@ export type InvitationPaymentOrderItem = {
   quantity: number
   unit_price: number
   total_price: number
-  guest_slot_id?: string | null
+  spot_id?: string | null
 }
 
 export type InvitationPaymentSummary = {
@@ -153,7 +153,7 @@ export function isInvitationGuestView(data: unknown): data is InvitationGuestVie
     typeof data === 'object' &&
     data !== null &&
     'invitation' in data &&
-    'guest_slots' in data &&
+    'spots' in data &&
     'user_products' in data
   )
 }
@@ -188,16 +188,16 @@ export async function fetchInvitationGuestView(
 
 export async function confirmGuests(
   invitationId: string,
-  payload: SubmitGuestSlotsPayload,
+  payload: SubmitSpotsPayload,
   invitationAccess?: InvitationAccess | null,
 ): Promise<GuestConfirmResponse> {
   if (USE_MOCK_INVITATION) {
     return {
       invitation_id: invitationId,
-      invitation_status: payload.guests.some((g) => g.attending) ? 'ACCEPTED' : 'DECLINED',
+      invitation_status: payload.spots.some((g) => g.attending) ? 'ACCEPTED' : 'DECLINED',
       payment_id: null,
       order_id: null,
-      pending_ticket_slot_ids: [],
+      pending_ticket_spot_ids: [],
       wizard_step: 'gifts',
     }
   }

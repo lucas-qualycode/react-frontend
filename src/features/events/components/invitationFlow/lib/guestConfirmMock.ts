@@ -1,5 +1,5 @@
 import { message } from 'antd'
-import type { FieldDefinition, Invitation, InvitationGuestSlot, Product } from '@/shared/types/api'
+import type { FieldDefinition, Invitation, Product, Spot } from '@/shared/types/api'
 import {
   fieldDefinitionById,
   getGuestFieldValidationErrorKey,
@@ -15,7 +15,7 @@ import {
 
 export type GuestConfirmFormSlot = {
   slotId?: string
-  firstName: string
+  name: string
   requiredFieldIds: string[]
   fieldValues: Record<string, string>
   fromInvitation: boolean
@@ -55,7 +55,7 @@ export function slotRequiredFieldIdsOrdered(
 }
 
 export function resolveGuestReviewDisplayName(slot: GuestConfirmFormSlot): string {
-  return slot.firstName.trim()
+  return slot.name.trim()
 }
 
 export function resolveGuestReviewFieldIds(
@@ -66,7 +66,7 @@ export function resolveGuestReviewFieldIds(
 }
 
 export function resolveGuestRequiredFieldIds(
-  inv: InvitationGuestSlot | undefined,
+  inv: Spot | undefined,
 ): string[] {
   return [...(inv?.required_field_ids ?? [])]
 }
@@ -82,16 +82,16 @@ export function fieldLabelById(
 export function buildInitialGuestConfirmSlots(
   invitation: Invitation,
 ): GuestConfirmFormSlot[] {
-  const existingSlots = invitation.guest_slots ?? []
+  const existingSlots = invitation.spots ?? []
   const count = Math.max(
     1,
-    invitation.guest_slot_count ?? 0,
+    invitation.spot_count ?? 0,
     existingSlots.length,
   )
 
   return Array.from({ length: count }, (_, index) => {
     const inv = existingSlots[index]
-    const firstName = (inv?.first_name ?? '').trim()
+    const name = (inv?.name ?? '').trim()
     const requiredFieldIds = resolveGuestRequiredFieldIds(inv)
 
     const fieldValues = { ...(inv?.field_values ?? {}) }
@@ -99,17 +99,17 @@ export function buildInitialGuestConfirmSlots(
 
     return {
       slotId: inv?.id,
-      firstName,
+      name,
       requiredFieldIds,
       fieldValues,
       fromInvitation: Boolean(inv?.required_field_ids?.length),
-      hasPresetName: Boolean(firstName),
+      hasPresetName: Boolean(name),
       attending,
     }
   })
 }
 
-export type GuestSlotValidationResult = {
+export type SpotValidationResult = {
   valid: boolean
   missingFieldIds: string[]
   invalidFieldIds: string[]
@@ -118,7 +118,7 @@ export type GuestSlotValidationResult = {
 
 export function showGuestConfirmValidationMessage(
   t: (key: string, options?: Record<string, unknown>) => string,
-  result: GuestSlotValidationResult,
+  result: SpotValidationResult,
   fieldDefinitions: FieldDefinition[],
 ): void {
   if (result.missingFieldIds.length > 0) {
@@ -136,12 +136,12 @@ export function showGuestConfirmValidationMessage(
   }
 }
 
-export function findFirstInvalidGuestSlotIndex(
+export function findFirstInvalidSpotIndex(
   slots: GuestConfirmFormSlot[],
   fieldDefinitions: FieldDefinition[],
-): { index: number; result: GuestSlotValidationResult } | null {
+): { index: number; result: SpotValidationResult } | null {
   for (let index = 0; index < slots.length; index += 1) {
-    const result = validateGuestSlot(slots[index], fieldDefinitions)
+    const result = validateSpot(slots[index], fieldDefinitions)
     if (!result.valid) {
       return { index, result }
     }
@@ -159,10 +159,10 @@ export function markAllGuestsNotAttending(
   return slots.map((slot) => ({ ...slot, attending: false }))
 }
 
-export function validateGuestSlot(
+export function validateSpot(
   slot: GuestConfirmFormSlot,
   fieldDefinitions: FieldDefinition[],
-): GuestSlotValidationResult {
+): SpotValidationResult {
   if (slot.attending === false) {
     return {
       valid: true,
@@ -207,7 +207,7 @@ export function formatReviewGuestHeading(
   displayName?: string,
 ): string {
   const notAttending = slot.attending === false
-  const name = (displayName ?? slot.firstName).trim()
+  const name = (displayName ?? slot.name).trim()
   const notAttendingSuffix = t('events.detail.guestConfirm.reviewNotAttending')
 
   if (slot.hasPresetName && name) {

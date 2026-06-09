@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { InvitationGuestSlotView, InvitationPaymentOrderItem } from './guestInvitationApi'
+import type { InvitationPaymentOrderItem, InvitationSpotView } from './guestInvitationApi'
 
 export type GuestFinishedPaymentLineItem = {
   key: string
@@ -21,26 +21,26 @@ function formatLineItemPrice(
 }
 
 function isTicketOrderItem(item: InvitationPaymentOrderItem): boolean {
-  return (item.product_type ?? '').toUpperCase() === 'TICKET' || Boolean(item.guest_slot_id)
+  return (item.product_type ?? '').toUpperCase() === 'TICKET' || Boolean(item.spot_id)
 }
 
 export function buildGuestFinishedPaymentLineItems(
   items: InvitationPaymentOrderItem[],
   context: {
-    slotById: Map<string, InvitationGuestSlotView>
+    spotById: Map<string, InvitationSpotView>
     currency: string
     t: TFunction
   },
 ): GuestFinishedPaymentLineItem[] {
-  const { slotById, currency, t } = context
+  const { spotById, currency, t } = context
 
   return items.map((item) => {
     const isTicket = isTicketOrderItem(item)
     const title = item.name?.trim() || item.product_id
     const subtitleParts: string[] = []
 
-    if (isTicket && item.guest_slot_id) {
-      const guestName = slotById.get(item.guest_slot_id)?.first_name?.trim()
+    if (isTicket && item.spot_id) {
+      const guestName = spotById.get(item.spot_id)?.name?.trim()
       if (guestName) {
         subtitleParts.push(t('events.detail.guestFinished.paymentItemGuest', { name: guestName }))
       }

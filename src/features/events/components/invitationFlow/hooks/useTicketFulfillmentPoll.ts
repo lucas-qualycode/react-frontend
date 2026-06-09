@@ -17,23 +17,23 @@ export type TicketFulfillmentPollState =
 type Params = {
   invitationId: string
   invitationAccess?: InvitationAccess | null
-  pendingSlotIds: string[]
+  pendingSpotIds: string[]
   enabled: boolean
   onComplete?: (view: InvitationGuestView) => void
 }
 
-function slotsFulfilled(view: InvitationGuestView, pendingSlotIds: string[]): boolean {
-  if (pendingSlotIds.length === 0) return true
-  return pendingSlotIds.every((slotId) => {
-    const slot = view.guest_slots.find((s) => s.id === slotId)
-    return slot?.user_product?.status === 'ACTIVE'
+function spotsFulfilled(view: InvitationGuestView, pendingSpotIds: string[]): boolean {
+  if (pendingSpotIds.length === 0) return true
+  return pendingSpotIds.every((spotId) => {
+    const spot = view.spots.find((s) => s.id === spotId)
+    return spot?.user_product?.status === 'ACTIVE'
   })
 }
 
 export function useTicketFulfillmentPoll({
   invitationId,
   invitationAccess,
-  pendingSlotIds,
+  pendingSpotIds,
   enabled,
   onComplete,
 }: Params) {
@@ -49,7 +49,7 @@ export function useTicketFulfillmentPoll({
   }, [invitationAccess, invitationId])
 
   useEffect(() => {
-    if (!enabled || pendingSlotIds.length === 0) {
+    if (!enabled || pendingSpotIds.length === 0) {
       setState('idle')
       return
     }
@@ -62,7 +62,7 @@ export function useTicketFulfillmentPoll({
       try {
         const view = await pollOnce()
         if (cancelled) return
-        if (slotsFulfilled(view, pendingSlotIds)) {
+        if (spotsFulfilled(view, pendingSpotIds)) {
           setState('complete')
           onCompleteRef.current?.(view)
           return true
@@ -91,13 +91,13 @@ export function useTicketFulfillmentPoll({
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [enabled, invitationAccess, invitationId, pendingSlotIds, pollOnce])
+  }, [enabled, invitationAccess, invitationId, pendingSpotIds, pollOnce])
 
   const retry = useCallback(async () => {
     setState('polling')
     try {
       const view = await pollOnce()
-      if (slotsFulfilled(view, pendingSlotIds)) {
+      if (spotsFulfilled(view, pendingSpotIds)) {
         setState('complete')
         onCompleteRef.current?.(view)
       } else {
@@ -106,7 +106,7 @@ export function useTicketFulfillmentPoll({
     } catch {
       setState('timeout')
     }
-  }, [pendingSlotIds, pollOnce])
+  }, [pendingSpotIds, pollOnce])
 
   return { state, guestView, retry }
 }

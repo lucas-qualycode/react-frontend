@@ -1,11 +1,11 @@
 import type { Invitation } from '@/shared/types/api'
 import {
   buildGuestMessageSubmitPayload,
-  buildGuestSlotsSubmitPayload,
+  buildSpotsSubmitPayload,
   fingerprintGuestMessagePayload,
-  fingerprintGuestSlotsSubmitPayload,
+  fingerprintSpotsSubmitPayload,
 } from './guestSubmitPayload'
-import { mergeGuestSlotsWithDraft } from './guestFlowDraftStorage'
+import { mergeSpotsWithDraft } from './guestFlowDraftStorage'
 import type { GuestFlowDraft, GuestFlowDraftState, GuestMessagePhase } from './guestFlowDraft'
 import { buildInitialGuestConfirmSlots } from './guestConfirmMock'
 import { GUEST_EMAIL_METADATA_KEY, GUEST_MESSAGE_METADATA_KEY } from './guestRsvpConstants'
@@ -35,9 +35,9 @@ export function readGuestEmailFromInvitation(invitation: Invitation): string {
 }
 
 export function invitationHasPersistedGuestRsvp(invitation: Invitation): boolean {
-  const slots = invitation.guest_slots ?? []
+  const slots = invitation.spots ?? []
   return slots.some((slot) => {
-    if (slot.id && slot.first_name?.trim()) return true
+    if (slot.id && slot.name?.trim()) return true
     if (slot.attending === false) return true
     const values = slot.field_values ?? {}
     return Object.values(values).some((v) => Boolean(String(v).trim()))
@@ -53,8 +53,8 @@ export function buildRsvpPersistFlagsFromInvitation(
   const messageSaved = savedEmail.length > 0
 
   const lastSavedGuestsFingerprint = guestsSaved
-    ? fingerprintGuestSlotsSubmitPayload(
-        buildGuestSlotsSubmitPayload(buildInitialGuestConfirmSlots(invitation)),
+    ? fingerprintSpotsSubmitPayload(
+        buildSpotsSubmitPayload(buildInitialGuestConfirmSlots(invitation)),
       )
     : null
 
@@ -111,9 +111,9 @@ export function mergeDraftWithServerState(
     serverFlags.guestsSaved ||
     invitationHasPersistedGuestRsvp(invitation)
 
-  const guestSlots = useServerGuests
+  const spots = useServerGuests
     ? serverSlots
-    : mergeGuestSlotsWithDraft(serverSlots, draft.guestSlots)
+    : mergeSpotsWithDraft(serverSlots, draft.spots)
 
   const useServerMessage =
     Boolean(draft.messageSaved) || serverFlags.messageSaved || savedEmail.length > 0
@@ -131,7 +131,7 @@ export function mergeDraftWithServerState(
   return {
     flowPath: draft.flowPath,
     activeStep: draft.activeStep,
-    guestSlots,
+    spots,
     confirmPhase: draft.confirmPhase,
     confirmGuestIndex: draft.confirmGuestIndex,
     selectedProductIds: draft.selectedProductIds,

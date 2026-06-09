@@ -109,8 +109,8 @@ function buildGuestFieldSelectableIdsOrdered(
   return [...ticketIds, ...extras]
 }
 
-type GuestRowForm = {
-  first_name: string
+type SpotRowForm = {
+  name: string
   required_field_ids: string[]
 }
 
@@ -119,15 +119,15 @@ type InvitationCreateFormValues = {
   destination_type: InvitationDestinationType
   destination: string
   ticket_id?: string
-  guest_slot_count?: number
+  spot_count?: number
   expires_at: Dayjs
   tag_ids?: string[]
-  guests?: GuestRowForm[]
+  spots?: SpotRowForm[]
 }
 
 function snapshotInvitationDirty(v: InvitationCreateFormValues): string {
-  const guests = (v.guests ?? []).map((g) => ({
-    first_name: (g.first_name ?? '').trim(),
+  const spots = (v.spots ?? []).map((g) => ({
+    name: (g.name ?? '').trim(),
     required_field_ids: [...(g.required_field_ids ?? [])].sort(),
   }))
   return JSON.stringify({
@@ -135,13 +135,13 @@ function snapshotInvitationDirty(v: InvitationCreateFormValues): string {
     destination_type: v.destination_type,
     destination: (v.destination ?? '').trim(),
     ticket_id: v.ticket_id ?? '',
-    guest_slot_count:
-      typeof v.guest_slot_count === 'number' && !Number.isNaN(v.guest_slot_count)
-        ? v.guest_slot_count
+    spot_count:
+      typeof v.spot_count === 'number' && !Number.isNaN(v.spot_count)
+        ? v.spot_count
         : 0,
     expires_at: v.expires_at?.isValid() ? v.expires_at.toISOString() : '',
     tag_ids: [...(v.tag_ids ?? [])].sort(),
-    guests,
+    spots,
   })
 }
 
@@ -390,10 +390,10 @@ export const EventInvitationCreateSection = forwardRef<
       destination_type: 'WHATSAPP',
       destination: '',
       ticket_id: undefined,
-      guest_slot_count: 0,
+      spot_count: 0,
       expires_at: dayjs().add(7, 'day'),
       tag_ids: [],
-      guests: [],
+      spots: [],
     })
     baselineRef.current = snapshotInvitationDirty(
       form.getFieldsValue(true) as InvitationCreateFormValues,
@@ -414,11 +414,11 @@ export const EventInvitationCreateSection = forwardRef<
       destination_type: existingInvitation.destination_type,
       destination: existingInvitation.destination ?? '',
       ticket_id: existingInvitation.ticket_id ?? undefined,
-      guest_slot_count: Math.max(1, existingInvitation.guest_slot_count ?? 0),
+      spot_count: Math.max(1, existingInvitation.spot_count ?? 0),
       expires_at: dayjs(existingInvitation.expires_at),
       tag_ids: existingInvitation.tags?.map((x) => x.id) ?? [],
-      guests: (existingInvitation.guest_slots ?? []).map((s) => ({
-        first_name: s.first_name ?? '',
+      spots: (existingInvitation.spots ?? []).map((s) => ({
+        name: s.name ?? '',
         required_field_ids: s.required_field_ids ?? [],
       })),
     })
@@ -437,11 +437,11 @@ export const EventInvitationCreateSection = forwardRef<
             destination_type: existingInvitation.destination_type,
             destination: existingInvitation.destination ?? '',
             ticket_id: existingInvitation.ticket_id ?? undefined,
-            guest_slot_count: Math.max(1, existingInvitation.guest_slot_count ?? 0),
+            spot_count: Math.max(1, existingInvitation.spot_count ?? 0),
             expires_at: dayjs(existingInvitation.expires_at),
             tag_ids: existingInvitation.tags?.map((x) => x.id) ?? [],
-            guests: (existingInvitation.guest_slots ?? []).map((s) => ({
-              first_name: s.first_name ?? '',
+            spots: (existingInvitation.spots ?? []).map((s) => ({
+              name: s.name ?? '',
               required_field_ids: s.required_field_ids ?? [],
             })),
           })
@@ -454,10 +454,10 @@ export const EventInvitationCreateSection = forwardRef<
             destination_type: 'WHATSAPP',
             destination: '',
             ticket_id: undefined,
-            guest_slot_count: 0,
+            spot_count: 0,
             expires_at: dayjs().add(7, 'day'),
             tag_ids: [],
-            guests: [],
+            spots: [],
           })
           baselineRef.current = snapshotInvitationDirty(
             form.getFieldsValue(true) as InvitationCreateFormValues,
@@ -482,24 +482,24 @@ export const EventInvitationCreateSection = forwardRef<
   useEffect(() => {
     if (!ticketId || !selectedTicket) {
       if (!ticketId && !isEdit) {
-        form.setFieldsValue({ guest_slot_count: 0, guests: [] })
+        form.setFieldsValue({ spot_count: 0, spots: [] })
       }
       return
     }
     const max = selectedTicket.max_per_user
-    const c = form.getFieldValue('guest_slot_count')
+    const c = form.getFieldValue('spot_count')
     const cur = typeof c === 'number' && !Number.isNaN(c) ? c : 1
     const clamped = Math.min(Math.max(1, cur), max)
     if (clamped !== cur) {
-      form.setFieldsValue({ guest_slot_count: clamped })
+      form.setFieldsValue({ spot_count: clamped })
     }
   }, [isEdit, ticketId, selectedTicket, form])
 
   useEffect(() => {
     if (!selectedTicket || !ticketId) return
-    const guests = form.getFieldValue('guests') as GuestRowForm[] | undefined
-    if (!guests?.length) return
-    const next = guests.map((g) => ({
+    const spots = form.getFieldValue('spots') as SpotRowForm[] | undefined
+    if (!spots?.length) return
+    const next = spots.map((g) => ({
       ...g,
       required_field_ids: normalizeGuestFieldIds(
         g.required_field_ids,
@@ -507,11 +507,11 @@ export const EventInvitationCreateSection = forwardRef<
         lockedFieldIdsForTicket,
       ),
     }))
-    const changed = guests.some(
+    const changed = spots.some(
       (g, i) =>
         JSON.stringify(g.required_field_ids) !== JSON.stringify(next[i]?.required_field_ids),
     )
-    if (changed) form.setFieldsValue({ guests: next })
+    if (changed) form.setFieldsValue({ spots: next })
   }, [ticketId, selectedTicket, guestFieldSelectableIdsOrdered, lockedFieldIdsForTicket, form])
 
   const submitPending = createMutation.isPending || updateMutation.isPending
@@ -524,13 +524,13 @@ export const EventInvitationCreateSection = forwardRef<
       }
       const slotCount = Math.max(
         1,
-        typeof values.guest_slot_count === 'number' && !Number.isNaN(values.guest_slot_count)
-          ? values.guest_slot_count
+        typeof values.spot_count === 'number' && !Number.isNaN(values.spot_count)
+          ? values.spot_count
           : 1,
       )
-      const rawGuests = values.guests ?? []
+      const rawGuests = values.spots ?? []
       if (rawGuests.length > slotCount) {
-        message.error(t('events.invitations.create.guestDetailsExceedSlots'))
+        message.error(t('events.invitations.create.spotDetailsExceedCount'))
         return
       }
       const tid = String(values.ticket_id ?? '').trim()
@@ -540,16 +540,16 @@ export const EventInvitationCreateSection = forwardRef<
         fieldDefinitions,
       )
       const submitLocked = ticketLockedFieldIdSet(submitTicket)
-      const guestsPayload = rawGuests
+      const spotsPayload = rawGuests
         .map((g) => ({
-          first_name: (g.first_name ?? '').trim(),
+          name: (g.name ?? '').trim(),
           required_field_ids: normalizeGuestFieldIds(
             g.required_field_ids,
             submitSelectableOrdered,
             submitLocked,
           ),
         }))
-        .filter((g) => g.first_name.length > 0 || (g.required_field_ids?.length ?? 0) > 0)
+        .filter((g) => g.name.length > 0 || (g.required_field_ids?.length ?? 0) > 0)
       try {
         if (isEdit && invitationId) {
           await updateMutation.mutateAsync({
@@ -561,8 +561,8 @@ export const EventInvitationCreateSection = forwardRef<
               expires_at: values.expires_at.toISOString(),
               tag_ids: values.tag_ids ?? [],
               ticket_id: tid || null,
-              guest_slot_count: slotCount,
-              guests: guestsPayload,
+              spot_count: slotCount,
+              spots: spotsPayload,
             },
           })
         } else {
@@ -574,8 +574,8 @@ export const EventInvitationCreateSection = forwardRef<
             tag_ids: values.tag_ids ?? [],
             metadata: {},
             ticket_id: tid,
-            guest_slot_count: slotCount,
-            guests: guestsPayload,
+            spot_count: slotCount,
+            spots: spotsPayload,
           })
           if (created.access_token && created.id) {
             setStoredInvitationAccessToken(created.id, created.access_token)
@@ -693,11 +693,11 @@ export const EventInvitationCreateSection = forwardRef<
             />
           </Form.Item>
           <Form.Item
-            name="guest_slot_count"
-            label={t('events.invitations.create.guestSlotCountLabel')}
+            name="spot_count"
+            label={t('events.invitations.create.spotCountLabel')}
             tooltip={
               selectedTicket
-                ? t('events.invitations.create.guestSlotCountTooltip', {
+                ? t('events.invitations.create.spotCountTooltip', {
                     max: selectedTicket.max_per_user,
                   })
                 : undefined
@@ -708,12 +708,12 @@ export const EventInvitationCreateSection = forwardRef<
                 validator: async (_, v) => {
                   if (v == null || v === '') return
                   const n = typeof v === 'number' ? v : Number(v)
-                  if (Number.isNaN(n) || n < 1) throw new Error(t('events.invitations.create.guestSlotCountMin'))
+                  if (Number.isNaN(n) || n < 1) throw new Error(t('events.invitations.create.spotCountMin'))
                   const tid = form.getFieldValue('ticket_id') as string | undefined
                   const tk = ticketsForInvitationForm.find((p) => p.id === tid)
                   const max = tk?.max_per_user
                   if (max !== undefined && n > max) {
-                    throw new Error(t('events.invitations.create.guestSlotCountOverMax', { max }))
+                    throw new Error(t('events.invitations.create.spotCountOverMax', { max }))
                   }
                 },
               },
@@ -729,17 +729,17 @@ export const EventInvitationCreateSection = forwardRef<
             />
           </Form.Item>
         </Flex>
-        <Form.List name="guests">
+        <Form.List name="spots">
           {(fields, { add, remove }) => (
             <>
               {fields.map((field) => (
                 <Flex key={field.key} gap={8} align="flex-start" wrap="wrap" style={{ marginBottom: 12 }}>
                   <Form.Item
-                    label={t('events.invitations.create.guestFirstNameLabel')}
-                    name={[field.name, 'first_name']}
+                    label={t('events.invitations.create.spotNameLabel')}
+                    name={[field.name, 'name']}
                     style={{ flex: '1 1 200px', marginBottom: 0 }}
                   >
-                    <Input placeholder={t('events.invitations.create.guestFirstNamePlaceholderOptional')} />
+                    <Input placeholder={t('events.invitations.create.spotNamePlaceholderOptional')} />
                   </Form.Item>
                   <Form.Item
                     label={
@@ -811,11 +811,11 @@ export const EventInvitationCreateSection = forwardRef<
               <Form.Item shouldUpdate noStyle>
                 {() => {
                   const maxSlots =
-                    typeof form.getFieldValue('guest_slot_count') === 'number' &&
-                    !Number.isNaN(form.getFieldValue('guest_slot_count'))
-                      ? form.getFieldValue('guest_slot_count')
+                    typeof form.getFieldValue('spot_count') === 'number' &&
+                    !Number.isNaN(form.getFieldValue('spot_count'))
+                      ? form.getFieldValue('spot_count')
                       : 0
-                  const currentLen = (form.getFieldValue('guests') as GuestRowForm[] | undefined)?.length ?? 0
+                  const currentLen = (form.getFieldValue('spots') as SpotRowForm[] | undefined)?.length ?? 0
                   const canAdd = ticketId && maxSlots > 0 && currentLen < maxSlots
                   return (
                     <Flex align="center" gap={8} style={{ width: '100%', marginBottom: 16 }}>
@@ -823,7 +823,7 @@ export const EventInvitationCreateSection = forwardRef<
                         type="dashed"
                         onClick={() =>
                           add({
-                            first_name: '',
+                            name: '',
                             required_field_ids: [...ticketDefaultGuestFieldIds],
                           })
                         }

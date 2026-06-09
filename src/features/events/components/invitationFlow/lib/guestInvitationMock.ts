@@ -1,4 +1,4 @@
-import type { FieldDefinition, Invitation, InvitationGuestSlot, Product } from '@/shared/types/api'
+import type { FieldDefinition, Invitation, Product, Spot } from '@/shared/types/api'
 
 export const USE_MOCK_INVITATION = false
 
@@ -62,32 +62,32 @@ const MOCK_TICKET: Product = {
   ],
 }
 
-function mockGuestSlots(invitationId: string): InvitationGuestSlot[] {
+function mockSpots(invitationId: string, eventId: string): Spot[] {
   return [
     {
       id: 'slot-1',
+      event_id: eventId,
       invitation_id: invitationId,
-      first_name: 'Ana',
+      name: 'Ana',
       required_field_ids: ['field-diet', 'field-phone'],
-      status: 'PENDING',
       created_at: '',
       updated_at: '',
     },
     {
       id: 'slot-2',
+      event_id: eventId,
       invitation_id: invitationId,
-      first_name: 'Bruno',
+      name: 'Bruno',
       required_field_ids: ['field-diet'],
-      status: 'PENDING',
       created_at: '',
       updated_at: '',
     },
     {
       id: 'slot-3',
+      event_id: eventId,
       invitation_id: invitationId,
-      first_name: '',
+      name: '',
       required_field_ids: [],
-      status: 'PENDING',
       created_at: '',
       updated_at: '',
     },
@@ -96,7 +96,7 @@ function mockGuestSlots(invitationId: string): InvitationGuestSlot[] {
 
 export function getMockInvitation(eventId: string): Invitation {
   const invitationId = `invitation-mock-${eventId}`
-  const guestSlots = mockGuestSlots(invitationId)
+  const spots = mockSpots(invitationId, eventId)
   return {
     id: invitationId,
     event_id: eventId,
@@ -109,8 +109,8 @@ export function getMockInvitation(eventId: string): Invitation {
     expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
     created_at: '',
     updated_at: '',
-    guest_slot_count: guestSlots.length,
-    guest_slots: guestSlots,
+    spot_count: spots.length,
+    spots,
     wizard_step: 'guests',
   }
 }
@@ -127,10 +127,11 @@ export function getMockInvitationGuestView(eventId: string) {
   const invitation = getMockInvitation(eventId)
   return {
     invitation,
-    guest_slots: (invitation.guest_slots ?? []).map((slot) => ({
-      ...slot,
-      field_values: slot.field_values ?? {},
-      attending: slot.attending !== false,
+    spots: (invitation.spots ?? []).map((spot) => ({
+      ...spot,
+      field_values: spot.field_values ?? {},
+      attending: spot.attending !== false,
+      status: 'PENDING',
       user_product: null,
     })),
     user_products: { tickets: [], gifts: [] },

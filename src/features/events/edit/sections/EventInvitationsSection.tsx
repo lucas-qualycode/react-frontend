@@ -17,20 +17,20 @@ import {
 } from '@/features/events/lib/invitationAccessStorage'
 import { useEventInvitations, useFieldDefinitions, useRegenerateInvitationAccessToken } from '@/features/events/hooks'
 
-type GuestSlotTableRow = {
+type SpotTableRow = {
   id: string
-  isGuestSlot: true
+  isSpot: true
   parentInvitationId: string
-  first_name: string
+  name: string
   fieldsDisplay: string
 }
 
 type InvitationTreeRow = Invitation & {
-  children?: GuestSlotTableRow[]
+  children?: SpotTableRow[]
 }
 
-function isGuestSlotRow(r: InvitationTreeRow | GuestSlotTableRow): r is GuestSlotTableRow {
-  return 'isGuestSlot' in r && r.isGuestSlot === true
+function isSpotRow(r: InvitationTreeRow | SpotTableRow): r is SpotTableRow {
+  return 'isSpot' in r && r.isSpot === true
 }
 
 type EventInvitationsSectionProps = {
@@ -92,10 +92,10 @@ function statusTagColor(status: InvitationStatus): string {
   }
 }
 
-function guestSlotSummaryLines(inv: Invitation, labelByFieldId: Map<string, string>) {
-  const slots = inv.guest_slots ?? []
+function spotSummaryLines(inv: Invitation, labelByFieldId: Map<string, string>) {
+  const slots = inv.spots ?? []
   return slots.map((s) => {
-    const name = (s.first_name ?? '').trim()
+    const name = (s.name ?? '').trim()
     const labels = (s.required_field_ids ?? []).map(
       (id) => labelByFieldId.get(id)?.trim() || id,
     )
@@ -151,14 +151,14 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
 
   const invitationTableData = useMemo((): InvitationTreeRow[] => {
     return invitations.map((inv): InvitationTreeRow => {
-      const slots = inv.guest_slots ?? []
-      const children: GuestSlotTableRow[] | undefined =
+      const slots = inv.spots ?? []
+      const children: SpotTableRow[] | undefined =
         slots.length > 0
           ? slots.map((s) => ({
               id: s.id,
-              isGuestSlot: true as const,
+              isSpot: true as const,
               parentInvitationId: inv.id,
-              first_name: (s.first_name ?? '').trim(),
+              name: (s.name ?? '').trim(),
               fieldsDisplay: (s.required_field_ids ?? [])
                 .map((id) => labelByFieldId.get(id)?.trim() || id)
                 .join(', '),
@@ -231,24 +231,24 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
     navigate(eventEditInvitationNewPath(eventId))
   }, [eventId, navigate, onCreate])
 
-  const columns: ColumnsType<InvitationTreeRow | GuestSlotTableRow> = useMemo(
+  const columns: ColumnsType<InvitationTreeRow | SpotTableRow> = useMemo(
     () => [
       {
         title: t('events.invitations.colName'),
         key: 'name',
         ellipsis: true,
         render: (_, record) =>
-          isGuestSlotRow(record) ? record.first_name || null : invitationTitle(record),
+          isSpotRow(record) ? record.name || null : invitationTitle(record),
       },
       {
-        title: t('events.invitations.colGuestSlots'),
-        key: 'guest_slot_count',
+        title: t('events.invitations.colSpots'),
+        key: 'spot_count',
         width: 140,
         render: (_, record) =>
-          isGuestSlotRow(record)
+          isSpotRow(record)
             ? record.fieldsDisplay || null
-            : (record.guest_slot_count ?? 0) > 0
-              ? String(record.guest_slot_count)
+            : (record.spot_count ?? 0) > 0
+              ? String(record.spot_count)
               : '—',
       },
       {
@@ -256,7 +256,7 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
         key: 'status',
         width: 130,
         render: (_, record) =>
-          isGuestSlotRow(record) ? null : (
+          isSpotRow(record) ? null : (
             <Tag color={statusTagColor(record.status)}>
               {invitationStatusLabel(t, record.status)}
             </Tag>
@@ -268,7 +268,7 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
         width: 180,
         ellipsis: true,
         render: (_, record) =>
-          isGuestSlotRow(record) ? null : (
+          isSpotRow(record) ? null : (
             <Typography.Text
               ellipsis
               style={expiresAtDisplayStyle(expiresAtVisualState(record.expires_at))}
@@ -283,7 +283,7 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
         width: 96,
         align: 'center',
         render: (_, record) =>
-          isGuestSlotRow(record) ? null : (
+          isSpotRow(record) ? null : (
             <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', gap: 4 }}>
               <Tooltip
                 title={
@@ -368,7 +368,7 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
               const expiresLabel = formatExpiresAt(inv.expires_at)
               const expiresExp = expiresAtVisualState(inv.expires_at)
               const expiresStyle = expiresAtDisplayStyle(expiresExp)
-              const slotLines = guestSlotSummaryLines(inv, labelByFieldId)
+              const spotLines = spotSummaryLines(inv, labelByFieldId)
               return (
                 <Col key={inv.id} span={24}>
                   <ListItemMediaCard
@@ -421,14 +421,14 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
                     }
                     footer={
                       <Flex vertical gap={4} style={{ padding: '12px 24px 24px' }}>
-                        {(inv.guest_slot_count ?? 0) > 0 ? (
+                        {(inv.spot_count ?? 0) > 0 ? (
                           <Typography.Text type="secondary" ellipsis>
-                            {t('events.invitations.colGuestSlots')}: {inv.guest_slot_count}
+                            {t('events.invitations.colSpots')}: {inv.spot_count}
                           </Typography.Text>
                         ) : null}
-                        {slotLines.some((x) => x.line) ? (
+                        {spotLines.some((x) => x.line) ? (
                           <Flex vertical gap={2}>
-                            {slotLines
+                            {spotLines
                               .filter((x) => x.line)
                               .map(({ key, line }) => (
                                 <Typography.Text key={key} type="secondary" style={{ fontSize: 12 }}>
@@ -450,8 +450,8 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
           </Row>
         )
       ) : (
-        <Table<InvitationTreeRow | GuestSlotTableRow>
-          rowKey={(r) => (isGuestSlotRow(r) ? `guest-${r.id}` : r.id)}
+        <Table<InvitationTreeRow | SpotTableRow>
+          rowKey={(r) => (isSpotRow(r) ? `spot-${r.id}` : r.id)}
           size="small"
           columns={columns}
           dataSource={invitationTableData}
@@ -461,7 +461,7 @@ export function EventInvitationsSection({ eventId, onCreate, onEdit }: EventInvi
           onRow={(record) => ({
             onClick: () =>
               goToEditInvitation(
-                isGuestSlotRow(record) ? record.parentInvitationId : record.id,
+                isSpotRow(record) ? record.parentInvitationId : record.id,
               ),
             style: { cursor: 'pointer' },
           })}

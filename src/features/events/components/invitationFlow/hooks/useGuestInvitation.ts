@@ -17,7 +17,7 @@ import {
   fetchInvitationGuestView,
   type InvitationGuestView,
 } from '../lib/guestInvitationApi'
-import { mergeInvitationGuestSlots } from '../lib/invitationGuestSlots'
+import { mergeInvitationSpots } from '../lib/invitationSpots'
 
 export function useGuestInvitation(
   eventId: string | undefined,
@@ -48,7 +48,7 @@ export function useGuestInvitation(
 
   const invitation = useMemo((): Invitation | null => {
     if (!guestView) return null
-    return mergeInvitationGuestSlots(guestView.invitation, guestView.guest_slots)
+    return mergeInvitationSpots(guestView.invitation, guestView.spots)
   }, [guestView])
 
   const fieldDefinitions = useMemo((): FieldDefinition[] => {

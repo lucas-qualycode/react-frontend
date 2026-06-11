@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { EventProductsSection } from '../sections/EventProductsSection'
+import { EventManageListSection } from '../sections/EventManageListSection'
 import {
   eventEditMerchEditPath,
   eventEditMerchNewPath,
+  eventEditMerchSalesPath,
 } from '../eventEditTabs'
 import { useEventEditContext } from '../EventEditContext'
 import { EditTabShell } from './EditTabShell'
@@ -13,11 +14,14 @@ export function EditProductsPage() {
 
   return (
     <EditTabShell showSave={false}>
-      <EventProductsSection
+      <EventManageListSection
         eventId={eventId}
         variant="merchandise"
         onMerchCreate={() => navigate(eventEditMerchNewPath(eventId))}
         onMerchEdit={(productId) => navigate(eventEditMerchEditPath(eventId, productId))}
+        onMerchViewSales={(productId) =>
+          navigate(eventEditMerchSalesPath(eventId, { productId }))
+        }
       />
     </EditTabShell>
   )

@@ -77,9 +77,24 @@ const EditSchedulePage = lazy(() =>
     default: m.EditSchedulePage,
   })),
 )
+const EditProductsDashboardPage = lazy(() =>
+  import('@/features/events/edit/pages/EditProductsDashboardPage').then((m) => ({
+    default: m.EditProductsDashboardPage,
+  })),
+)
 const EditProductsPage = lazy(() =>
   import('@/features/events/edit/pages/EditProductsPage').then((m) => ({
     default: m.EditProductsPage,
+  })),
+)
+const EditProductSalesPage = lazy(() =>
+  import('@/features/events/edit/pages/EditProductSalesPage').then((m) => ({
+    default: m.EditProductSalesPage,
+  })),
+)
+const EditTicketsDashboardPage = lazy(() =>
+  import('@/features/events/edit/pages/EditTicketsDashboardPage').then((m) => ({
+    default: m.EditTicketsDashboardPage,
   })),
 )
 const EditTicketsPage = lazy(() =>
@@ -87,9 +102,24 @@ const EditTicketsPage = lazy(() =>
     default: m.EditTicketsPage,
   })),
 )
+const EditTicketSalesPage = lazy(() =>
+  import('@/features/events/edit/pages/EditTicketSalesPage').then((m) => ({
+    default: m.EditTicketSalesPage,
+  })),
+)
+const EditInvitationsDashboardPage = lazy(() =>
+  import('@/features/events/edit/pages/EditInvitationsDashboardPage').then((m) => ({
+    default: m.EditInvitationsDashboardPage,
+  })),
+)
 const EditInvitationsPage = lazy(() =>
   import('@/features/events/edit/pages/EditInvitationsPage').then((m) => ({
     default: m.EditInvitationsPage,
+  })),
+)
+const EditInvitationGuestsPage = lazy(() =>
+  import('@/features/events/edit/pages/EditInvitationGuestsPage').then((m) => ({
+    default: m.EditInvitationGuestsPage,
   })),
 )
 const EditMerchProductRoutePage = lazy(() =>
@@ -199,13 +229,19 @@ export function getEventsRoutes(
         { path: 'details', element: <EditDetailsPage /> },
         { path: 'venue', element: <EditVenuePage /> },
         { path: 'schedule', element: <EditSchedulePage /> },
-        { path: 'products', element: <EditProductsPage /> },
+        { path: 'products', element: <EditProductsDashboardPage /> },
+        { path: 'products/catalog', element: <EditProductsPage /> },
+        { path: 'products/sales', element: <EditProductSalesPage /> },
         { path: 'products/new', element: <EditMerchProductRoutePage /> },
         { path: 'products/:productId', element: <EditMerchProductRoutePage /> },
-        { path: 'tickets', element: <EditTicketsPage /> },
+        { path: 'tickets', element: <EditTicketsDashboardPage /> },
+        { path: 'tickets/catalog', element: <EditTicketsPage /> },
+        { path: 'tickets/sales', element: <EditTicketSalesPage /> },
         { path: 'tickets/new', element: <EditTicketProductRoutePage /> },
         { path: 'tickets/:ticketId', element: <EditTicketProductRoutePage /> },
-        { path: 'invitations', element: <EditInvitationsPage /> },
+        { path: 'invitations', element: <EditInvitationsDashboardPage /> },
+        { path: 'invitations/catalog', element: <EditInvitationsPage /> },
+        { path: 'invitations/guests', element: <EditInvitationGuestsPage /> },
         { path: 'invitations/new', element: <EditInvitationEditorRoutePage /> },
         { path: 'invitations/:invitationId', element: <EditInvitationEditorRoutePage /> },
       ],

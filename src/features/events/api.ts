@@ -5,7 +5,10 @@ import {
   readApiErrorDetail,
   type InvitationAccess,
 } from '@/shared/api/invitationAccess'
-import { isInvitationGuestView } from '@/features/events/components/invitationFlow/lib/guestInvitationApi'
+import {
+  isInvitationGuestView,
+  type InvitationGuestView,
+} from '@/features/events/components/invitationFlow/lib/guestInvitationApi'
 import type {
   Event,
   EventPrimaryCategory,
@@ -19,6 +22,7 @@ import type {
   ProductKind,
   Schedule,
   Tag,
+  UserProduct,
 } from '@/shared/types/api'
 
 async function apiErrorMessage(res: Response): Promise<string> {
@@ -329,6 +333,18 @@ export async function listFieldDefinitions(): Promise<FieldDefinition[]> {
   return res.json() as Promise<FieldDefinition[]>
 }
 
+export async function listEventUserProducts(
+  eventId: string,
+  opts?: { productId?: string | null },
+): Promise<UserProduct[]> {
+  const params = new URLSearchParams()
+  if (opts?.productId) params.set('product_id', opts.productId)
+  const qs = params.toString()
+  const res = await fetchApi(`events/${eventId}/user-products${qs ? `?${qs}` : ''}`)
+  if (!res.ok) throw new Error(await apiErrorMessage(res))
+  return res.json() as Promise<UserProduct[]>
+}
+
 export async function listEventProducts(
   eventId: string,
   opts: { type: ProductKind },
@@ -456,44 +472,44 @@ export async function regenerateInvitationAccessToken(
   return res.json() as Promise<{ access_token: string }>
 }
 
+function invitationFromGuestView(data: InvitationGuestView): Invitation {
+  const eventId = data.invitation.event_id
+  return {
+    ...data.invitation,
+    spots: data.spots.map(({ user_product, status: _status, ...spot }) => ({
+      ...spot,
+      event_id: eventId,
+      has_user_product: user_product != null,
+    })),
+  }
+}
+
 export async function getInvitation(
   eventId: string,
   invitationId: string,
   invitationAccess?: InvitationAccess | null,
 ): Promise<Invitation> {
-  if (invitationAccess) {
-    const path = appendInvitationAccessQuery(
-      `events/${eventId}/invitations/${invitationId}/guests`,
-      invitationAccess,
-      { includeInvitationId: false },
-    )
-    const res = await fetchApi(path, undefined, invitationAccess)
-    if (!res.ok) {
-      const detail = await readApiErrorDetail(res)
-      if (
-        detail === 'invitation_expired' ||
-        detail === 'invitation_access_token_invalid'
-      ) {
-        throw new InvitationAccessFailure(detail)
-      }
-      throw new Error(detail ?? `Request failed (${res.status})`)
+  const guestViewPath = appendInvitationAccessQuery(
+    `events/${eventId}/invitations/${invitationId}/guests`,
+    invitationAccess,
+    { includeInvitationId: false },
+  )
+  const res = await fetchApi(guestViewPath, undefined, invitationAccess)
+  if (!res.ok) {
+    const detail = await readApiErrorDetail(res)
+    if (
+      detail === 'invitation_expired' ||
+      detail === 'invitation_access_token_invalid'
+    ) {
+      throw new InvitationAccessFailure(detail)
     }
-    const data = (await res.json()) as unknown
-    if (isInvitationGuestView(data)) {
-      return {
-        ...data.invitation,
-        spots: data.spots.map(({ user_product, ...spot }) => ({
-          ...spot,
-          has_user_product: user_product != null,
-        })),
-      }
-    }
+    throw new Error(detail ?? `Request failed (${res.status})`)
+  }
+  const data = (await res.json()) as unknown
+  if (!isInvitationGuestView(data)) {
     throw new Error('Invalid invitation response shape')
   }
-
-  const res = await fetchApi(`events/${eventId}/invitations/${invitationId}`)
-  if (!res.ok) throw new Error(await apiErrorMessage(res))
-  return res.json() as Promise<Invitation>
+  return invitationFromGuestView(data)
 }
 
 export type UpdateInvitationPayload = {

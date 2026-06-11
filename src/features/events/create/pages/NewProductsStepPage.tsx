@@ -7,7 +7,7 @@ import {
   createWizardSchedulePath,
   createWizardTicketsPath,
 } from '@/features/events/create/createWizardSteps'
-import { EventProductsSection } from '@/features/events/edit/sections/EventProductsSection'
+import { EventManageListSection } from '@/features/events/edit/sections/EventManageListSection'
 
 export function NewProductsStepPage() {
   const { t } = useTranslation()
@@ -18,7 +18,7 @@ export function NewProductsStepPage() {
 
   return (
     <Card style={{ flex: 1, minWidth: 0 }}>
-      <EventProductsSection
+      <EventManageListSection
         eventId={eventId}
         variant="merchandise"
         onMerchCreate={() => navigate(createWizardMerchNewPath(eventId))}

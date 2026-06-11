@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   FIELD_DEFINITIONS_GC_MS,
@@ -20,6 +21,7 @@ import {
   getEventSetup,
   getInvitation,
   listEventProducts,
+  listEventUserProducts,
   listFieldDefinitions,
   listInvitationProducts,
   listInvitations,
@@ -469,6 +471,47 @@ export function useUpdateProduct() {
       queryClient.invalidateQueries({ queryKey: ['eventProducts', variables.eventId] })
     },
   })
+}
+
+function useEventUserProductsByCatalog(
+  eventId: string | undefined,
+  catalogProductIds: Set<string>,
+  productId: string | null | undefined,
+  queryScope: 'gift' | 'ticket',
+) {
+  return useQuery({
+    queryKey: ['eventUserProducts', eventId, queryScope, productId ?? 'all'],
+    queryFn: () => listEventUserProducts(eventId!, { productId: productId ?? undefined }),
+    enabled: !!eventId,
+    select: (items) => items.filter((item) => catalogProductIds.has(item.product_id)),
+    staleTime: 30_000,
+  })
+}
+
+export function useEventGiftUserProducts(
+  eventId: string | undefined,
+  productId?: string | null,
+) {
+  const merchQ = useEventMerchProducts(eventId)
+  const giftProductIds = useMemo(
+    () => new Set((merchQ.data ?? []).map((p) => p.id)),
+    [merchQ.data],
+  )
+
+  return useEventUserProductsByCatalog(eventId, giftProductIds, productId, 'gift')
+}
+
+export function useEventTicketUserProducts(
+  eventId: string | undefined,
+  ticketId?: string | null,
+) {
+  const ticketQ = useEventTicketProducts(eventId)
+  const ticketProductIds = useMemo(
+    () => new Set((ticketQ.data ?? []).map((p) => p.id)),
+    [ticketQ.data],
+  )
+
+  return useEventUserProductsByCatalog(eventId, ticketProductIds, ticketId, 'ticket')
 }
 
 export function useDeleteProduct() {

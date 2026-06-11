@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { inferWizardStepFromInvitationStatus } from './inferWizardStep'
 
 describe('inferWizardStepFromInvitationStatus', () => {
-  it('defaults to guests for sent invitations', () => {
-    expect(inferWizardStepFromInvitationStatus('CREATED')).toBe('guests')
-    expect(inferWizardStepFromInvitationStatus('SENT')).toBe('guests')
+  it('defaults to welcome for sent invitations', () => {
+    expect(inferWizardStepFromInvitationStatus('CREATED')).toBe('welcome')
+    expect(inferWizardStepFromInvitationStatus('SENT')).toBe('welcome')
   })
 
   it('returns finished for accepted or declined invitations', () => {
@@ -14,6 +14,6 @@ describe('inferWizardStepFromInvitationStatus', () => {
 
   it('returns welcome for cancelled or missing status', () => {
     expect(inferWizardStepFromInvitationStatus('CANCELLED')).toBe('welcome')
-    expect(inferWizardStepFromInvitationStatus(undefined)).toBe('guests')
+    expect(inferWizardStepFromInvitationStatus(undefined)).toBe('welcome')
   })
 })

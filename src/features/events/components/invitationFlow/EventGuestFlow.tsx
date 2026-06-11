@@ -687,6 +687,36 @@ export function EventGuestFlow({
     return () => window.clearInterval(intervalId)
   }, [giftsSubView, pixExpiresAt])
 
+  const handleBackToWelcome = useCallback(() => {
+    animateTo('welcome')
+  }, [animateTo])
+
+  const handleResumeFromWelcome = useCallback(() => {
+    const invitation = guestInvitation.invitation
+    const ticket = guestInvitation.ticket
+    if (!invitation) return
+
+    if (invitation.wizard_step === 'welcome') {
+      setFlowPath('attend')
+      if (ticket && spots.length === 0) {
+        setSpots(buildInitialGuestConfirmSlots(invitation))
+      }
+      animateTo('guests')
+      return
+    }
+
+    animateTo(flowStepFromWizardStep(invitation.wizard_step))
+  }, [
+    animateTo,
+    guestInvitation.invitation,
+    guestInvitation.ticket,
+    spots.length,
+  ])
+
+  const welcomeResumeMode =
+    guestInvitation.invitation?.wizard_step !== undefined &&
+    guestInvitation.invitation.wizard_step !== 'welcome'
+
   const handleCannotAttend = useCallback(() => {
     const invitation = guestInvitation.invitation
     const ticket = guestInvitation.ticket
@@ -1060,20 +1090,9 @@ export function EventGuestFlow({
           <EventGuestWelcomeBlock
             event={event}
             variant={welcomeVariant}
+            resumeMode={welcomeResumeMode}
             onCannotAttend={handleCannotAttend}
-            onConfirmAttendance={() => {
-              setFlowPath('attend')
-              if (
-                guestInvitation.invitation &&
-                guestInvitation.ticket &&
-                spots.length === 0
-              ) {
-                setSpots(
-                  buildInitialGuestConfirmSlots(guestInvitation.invitation),
-                )
-              }
-              animateTo('guests')
-            }}
+            onConfirmAttendance={handleResumeFromWelcome}
           />
         )
       case 'guests':
@@ -1100,6 +1119,7 @@ export function EventGuestFlow({
               currentIndex={confirmGuestIndex}
               onCurrentIndexChange={setConfirmGuestIndex}
               onReviewBackToForm={handleConfirmReviewBackToForm}
+              onBackToWelcome={handleBackToWelcome}
               onAttendanceConfirmed={() => void handleAttendanceConfirmed()}
               editFromFinished={guestEditReturnStep !== null}
               onCancelEdit={handleCancelGuestEdit}
@@ -1160,6 +1180,7 @@ export function EventGuestFlow({
             onPageChange={setGiftPage}
             editFromFinished={guestEditReturnStep !== null}
             onCancelEdit={handleCancelGiftEdit}
+            onBack={guestEditReturnStep === null ? handleBackToWelcome : undefined}
             onGiftsConfirmed={handleGiftsConfirmed}
           />
         )
@@ -1177,6 +1198,7 @@ export function EventGuestFlow({
               onMessageChange={setCoupleMessage}
               onPhaseChange={setMessagePhase}
               onBack={() => animateTo('gifts')}
+              onBackToWelcome={handleBackToWelcome}
               onContinue={() => void handleMessageContinue()}
             />
           </Spin>

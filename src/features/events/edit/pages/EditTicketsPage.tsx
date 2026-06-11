@@ -5,10 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { patchEventCommerce } from '@/features/events/api'
-import { EventProductsSection } from '../sections/EventProductsSection'
+import { EventManageListSection } from '../sections/EventManageListSection'
 import {
   eventEditTicketEditPath,
   eventEditTicketNewPath,
+  eventEditTicketSalesPath,
 } from '../eventEditTabs'
 import { useEventEditContext } from '../EventEditContext'
 import {
@@ -81,11 +82,14 @@ export function EditTicketsPage() {
             onChange={(e) => void handleIsPaidAutoSave(e)}
           />
         </Form.Item>
-        <EventProductsSection
+        <EventManageListSection
           eventId={eventId}
           variant="ticket"
           onTicketCreate={() => navigate(eventEditTicketNewPath(eventId))}
           onTicketEdit={(productId) => navigate(eventEditTicketEditPath(eventId, productId))}
+          onTicketViewSales={(ticketId) =>
+            navigate(eventEditTicketSalesPath(eventId, { ticketId }))
+          }
         />
       </Form>
     </EditTabShell>

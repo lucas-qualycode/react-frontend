@@ -164,8 +164,78 @@
   opacity: 0.72;
 }
 
+.event-form-wide-steps.ant-steps-vertical .ant-steps-item-rail {
+  display: none;
+}
+
+.event-form-compact-steps.ant-steps-navigation .ant-steps-item:not(:last-child)::after {
+  display: none;
+}
+
 .event-form-compact-steps-menu.ant-steps-navigation .ant-steps-item-wait .ant-steps-item-icon {
   opacity: 0.72;
+}
+
+.event-form-section-menu.ant-menu {
+  border-inline-end: none !important;
+  background: transparent;
+}
+
+.event-form-section-menu.ant-menu .ant-menu-sub.ant-menu-inline {
+  position: relative;
+  margin-block: 2px 6px;
+  margin-inline-start: 14px;
+  padding-inline-start: 0;
+  background: transparent !important;
+  border-inline-start: 2px solid var(--ant-color-border-secondary);
+}
+
+.event-form-section-menu.ant-menu .ant-menu-item,
+.event-form-section-menu.ant-menu .ant-menu-submenu-title {
+  height: 36px;
+  line-height: 36px;
+  margin-block: 2px;
+  border-radius: 8px;
+}
+
+.event-form-section-menu.ant-menu .ant-menu-submenu-open > .ant-menu-submenu-title {
+  color: var(--ant-color-text);
+}
+
+.event-form-section-menu.ant-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  font-weight: 600;
+  color: var(--ant-color-primary);
+  background: transparent !important;
+}
+
+.event-form-section-menu.ant-menu > .ant-menu-item,
+.event-form-section-menu.ant-menu > .ant-menu-submenu > .ant-menu-submenu-title {
+  padding-inline: 16px !important;
+}
+
+.event-form-section-menu.ant-menu .ant-menu-sub .ant-menu-item {
+  font-size: 13px;
+  list-style: none;
+  padding-inline: 16px !important;
+}
+
+.event-form-section-menu.ant-menu .ant-menu-sub .ant-menu-item .ant-menu-item-icon {
+  font-size: 14px;
+}
+
+.event-form-section-menu.ant-menu .ant-menu-sub .ant-menu-item-selected {
+  font-weight: 600;
+  background: var(--ant-color-primary-bg) !important;
+  color: var(--ant-color-primary);
+  border-inline-start: 3px solid var(--ant-color-primary);
+  padding-inline: 16px !important;
+}
+
+.event-form-section-menu.ant-menu > .ant-menu-item-selected {
+  font-weight: 600;
+  background: var(--ant-color-primary-bg) !important;
+  color: var(--ant-color-primary);
+  border-inline-start: 3px solid var(--ant-color-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {

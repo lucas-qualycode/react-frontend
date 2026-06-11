@@ -247,3 +247,29 @@ export function guestFieldInputMode(
 export function guestFieldValidationMessageKey(errorKey: GuestFieldValidationErrorKey): string {
   return `events.detail.guestConfirm.validation.${errorKey}`
 }
+
+export function fullNameFromSpotFieldValues(
+  fieldValues: Record<string, string> | undefined,
+  fieldDefinitions: FieldDefinition[],
+): string {
+  const values = fieldValues ?? {}
+  for (const def of fieldDefinitions) {
+    if (def.key.trim().toLowerCase() !== 'full_name') continue
+    const value = (values[def.id] ?? '').trim()
+    if (value) return value
+  }
+  return (values.full_name ?? '').trim()
+}
+
+export function formatGuestDisplayName(
+  name: string | undefined,
+  fieldValues: Record<string, string> | undefined,
+  fieldDefinitions: FieldDefinition[],
+): string {
+  const spotName = (name ?? '').trim()
+  const fullName = fullNameFromSpotFieldValues(fieldValues, fieldDefinitions)
+  if (spotName && fullName) return `${spotName} - ${fullName}`
+  if (spotName) return spotName
+  if (fullName) return fullName
+  return '—'
+}

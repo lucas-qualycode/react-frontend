@@ -6,7 +6,7 @@ import {
   createWizardInvitationNewPath,
   createWizardTicketsPath,
 } from '@/features/events/create/createWizardSteps'
-import { EventInvitationsSection } from '@/features/events/edit/sections/EventInvitationsSection'
+import { EventManageListSection } from '@/features/events/edit/sections/EventManageListSection'
 import { useCompleteEventSetup } from '@/features/events/hooks'
 
 export function NewInvitationsStepPage() {
@@ -30,8 +30,9 @@ export function NewInvitationsStepPage() {
 
   return (
     <Card style={{ flex: 1, minWidth: 0 }}>
-      <EventInvitationsSection
+      <EventManageListSection
         eventId={eventId}
+        variant="invitation"
         onCreate={() => navigate(createWizardInvitationNewPath(eventId))}
         onEdit={(invitationId) => navigate(createWizardInvitationEditPath(eventId, invitationId))}
       />

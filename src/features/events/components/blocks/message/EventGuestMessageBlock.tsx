@@ -31,6 +31,7 @@ type Props = {
   onMessageChange: (message: string) => void
   onPhaseChange: (phase: GuestMessagePhase) => void
   onBack?: () => void
+  onBackToWelcome?: () => void
   onContinue: () => void
 }
 
@@ -44,6 +45,7 @@ export function EventGuestMessageBlock({
   onMessageChange,
   onPhaseChange,
   onBack,
+  onBackToWelcome,
   onContinue,
 }: Props) {
   const { t } = useTranslation()
@@ -97,8 +99,8 @@ export function EventGuestMessageBlock({
         </Flex>
 
         <GuestFlowActions>
-          {onBack ? (
-            <Button size="large" onClick={onBack}>
+          {onBackToWelcome ? (
+            <Button size="large" onClick={onBackToWelcome}>
               {t('events.detail.guestMessage.back')}
             </Button>
           ) : null}

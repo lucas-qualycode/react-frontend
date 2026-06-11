@@ -1,10 +1,16 @@
 import type { InvitationStatus } from '@/shared/types/api'
 import type { EventGuestFlowStep } from '../types'
 
-export type InvitationWizardStep = 'guests' | 'gifts' | 'message' | 'finished'
+export type InvitationWizardStep = 'welcome' | 'guests' | 'gifts' | 'message' | 'finished'
 
 export function isInvitationWizardStep(value: string | null | undefined): value is InvitationWizardStep {
-  return value === 'guests' || value === 'gifts' || value === 'message' || value === 'finished'
+  return (
+    value === 'welcome' ||
+    value === 'guests' ||
+    value === 'gifts' ||
+    value === 'message' ||
+    value === 'finished'
+  )
 }
 
 export function resolveWizardStepFromInvitation(invitation: {
@@ -24,12 +30,12 @@ export function resolveWizardStepFromInvitation(invitation: {
     return 'finished'
   }
 
-  return 'guests'
+  return 'welcome'
 }
 
 export function flowStepFromWizardStep(wizardStep: InvitationWizardStep | string | null | undefined): EventGuestFlowStep {
   if (isInvitationWizardStep(wizardStep)) {
     return wizardStep
   }
-  return 'guests'
+  return 'welcome'
 }

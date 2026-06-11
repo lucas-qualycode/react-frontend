@@ -12,11 +12,18 @@ const { Title, Paragraph } = Typography
 type Props = {
   event: Event
   variant: EventGuestWelcomeVariant
+  resumeMode?: boolean
   onCannotAttend?: () => void
   onConfirmAttendance?: () => void
 }
 
-export function EventGuestWelcomeBlock({ event, variant, onCannotAttend, onConfirmAttendance }: Props) {
+export function EventGuestWelcomeBlock({
+  event,
+  variant,
+  resumeMode = false,
+  onCannotAttend,
+  onConfirmAttendance,
+}: Props) {
   const { t } = useTranslation()
 
   if (variant !== 'wedding') return null
@@ -80,24 +87,28 @@ export function EventGuestWelcomeBlock({ event, variant, onCannotAttend, onConfi
               fontWeight: 600,
             }}
           >
-            {t('events.detail.guestWelcome.ctaPrimary')}
+            {resumeMode
+              ? t('events.detail.guestWelcome.ctaResume')
+              : t('events.detail.guestWelcome.ctaPrimary')}
           </Button>
-          <Button
-            type="link"
-            className="guest-welcome-decline-cta"
-            onClick={onCannotAttend}
-            style={{
-              color: 'var(--ant-color-primary)',
-              fontSize: 16,
-              fontWeight: 700,
-              height: 'auto',
-              padding: 0,
-              border: 'none',
-              boxShadow: 'none',
-            }}
-          >
-            {t('events.detail.guestWelcome.ctaSecondary')}
-          </Button>
+          {!resumeMode ? (
+            <Button
+              type="link"
+              className="guest-welcome-decline-cta"
+              onClick={onCannotAttend}
+              style={{
+                color: 'var(--ant-color-primary)',
+                fontSize: 16,
+                fontWeight: 700,
+                height: 'auto',
+                padding: 0,
+                border: 'none',
+                boxShadow: 'none',
+              }}
+            >
+              {t('events.detail.guestWelcome.ctaSecondary')}
+            </Button>
+          ) : null}
         </Flex>
       </Flex>
     </div>

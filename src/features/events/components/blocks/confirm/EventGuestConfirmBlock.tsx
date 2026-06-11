@@ -37,6 +37,7 @@ type Props = {
   currentIndex: number
   onCurrentIndexChange: (index: number) => void
   onBack?: () => void
+  onBackToWelcome?: () => void
   onReviewBackToForm: () => void
   onAttendanceConfirmed: () => void
   editFromFinished?: boolean
@@ -257,6 +258,7 @@ export function EventGuestConfirmBlock({
   currentIndex,
   onCurrentIndexChange,
   onBack,
+  onBackToWelcome,
   onReviewBackToForm,
   onAttendanceConfirmed,
   editFromFinished = false,
@@ -379,7 +381,11 @@ export function EventGuestConfirmBlock({
           currentIndex={currentIndex}
           fieldDefinitions={fieldDefinitions}
           validation={displayValidation}
-          onBack={currentIndex > 0 || editFromFinished ? handleFormBack : undefined}
+          onBack={
+            currentIndex > 0 || editFromFinished
+              ? handleFormBack
+              : onBackToWelcome
+          }
           backLabel={
             editFromFinished && currentIndex === 0
               ? t('events.detail.guestFinished.cancelEdit')

@@ -132,7 +132,7 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **`InvitationUnavailablePage`** — light page with **`GuestInvitationAccessErrorPanel`** only (no guest-flow imports).
 - Organizer **`events/:id`** (protected) still uses **`EventDetailPage`** without invitation token.
 - Hooks (`useEvent`, `useInvitation`, ticket/gift products) pass **`invitation_id` + `token`** on GETs and **`X-Invitation-Token`** on writes via **`fetchApi(..., invitationAccess)`**. Guest catalog uses **`GET /invitations/{id}/products`** (`useInvitationTicketProducts`, `useInvitationGiftProducts`); organizer event product lists use **`GET /events/{eventId}/products`** (Firebase). **`useFieldDefinitions`** is public (no invite token); results are cached in **localStorage** (~24h stale) so guest/organizer flows avoid refetching on every refresh.
-- Organizers get **`access_token`** once on **POST `/events/{eventId}/invitations`** (create) or **`POST /events/{eventId}/invitations/{id}/access-token`** (refresh); token is stored in **`sessionStorage`** per invitation id for the invitations table **Link** / **Refresh link** actions (`EventInvitationsSection`).
+- Organizers get **`access_token`** once on **POST `/events/{eventId}/invitations`** (create) or **`POST /events/{eventId}/invitations/{id}/access-token`** (refresh); token is stored in **`sessionStorage`** per invitation id for the invitations list **Link** / **Refresh link** actions (`EventManageListSection`).
 - **`POST /invitations/{id}/guest-submit`** requires the same token (`guestSubmitPersistence`).
 - Router factory: **`createAppRouter(queryClient)`** in **`app/routes/index.tsx`**; **`main.tsx`** passes the shared **`QueryClient`** into event routes for loader cache seeding.
 
@@ -143,8 +143,9 @@ Settings (`settings.*`): menu, profile, notifications, appearance, language, sec
 - **`PatchEventIdentityPayload.imageURL`**: `string | null` clears cover image.
 - **`CreateInvitationResponse`**: `Invitation & { access_token?: string }` (one-time; not returned on list GET).
 
-### Event products and tickets (`EventProductsSection`)
+### Event products, tickets, and invitations (`EventManageListSection`)
 
+- Shared list for products, tickets, and invitations. **md and up**: shrinkable flex column rows (header + data rows). **Below md**: `ListItemMediaCard` cards.
 - **`Product.type`**: `TICKET` \| `GIFT` (organizer products tab; see `shared/types/api.ts`). Listings use **`listEventProducts(..., { type: 'GIFT' | 'TICKET' })`**; backend defaults **`deleted=false`** on list routes.
 - **`fulfillment_type`**: optional on create/update; labels live under **`events.products.*`** and **`events.tickets.*`** (en + pt-BR).
 

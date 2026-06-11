@@ -111,7 +111,7 @@ export function getMockInvitation(eventId: string): Invitation {
     updated_at: '',
     spot_count: spots.length,
     spots,
-    wizard_step: 'guests',
+    wizard_step: 'welcome',
   }
 }
 

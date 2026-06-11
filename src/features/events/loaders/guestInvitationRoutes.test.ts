@@ -28,12 +28,12 @@ describe('isLegacyGuestInvitationPath', () => {
 
 describe('inferWizardStepFromInvitationStatus', () => {
   it.each([
-    { status: 'CREATED', expected: 'guests' },
-    { status: 'SENT', expected: 'guests' },
+    { status: 'CREATED', expected: 'welcome' },
+    { status: 'SENT', expected: 'welcome' },
     { status: 'ACCEPTED', expected: 'finished' },
     { status: 'DECLINED', expected: 'finished' },
     { status: 'CANCELLED', expected: 'welcome' },
-    { status: undefined, expected: 'guests' },
+    { status: undefined, expected: 'welcome' },
   ])('$status → $expected', ({ status, expected }) => {
     expect(inferWizardStepFromInvitationStatus(status)).toBe(expected)
   })

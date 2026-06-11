@@ -1,4 +1,10 @@
-import { ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons'
+import {
+  AppstoreOutlined,
+  ArrowLeftOutlined,
+  DollarOutlined,
+  EyeOutlined,
+  TeamOutlined,
+} from '@ant-design/icons'
 import { App, Button, Flex, Grid, Spin, Typography } from 'antd'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { flushSync } from 'react-dom'
@@ -28,8 +34,20 @@ import { EventEditProvider } from './EventEditContext'
 import {
   EVENT_EDIT_TAB_ICONS,
   EVENT_EDIT_TAB_ORDER,
+  eventEditMerchCatalogPath,
+  eventEditMerchDashboardPath,
+  eventEditMerchSalesPath,
   eventEditTabPath,
+  eventEditInvitationCatalogPath,
+  eventEditInvitationDashboardPath,
+  eventEditInvitationGuestsPath,
+  eventEditTicketCatalogPath,
+  eventEditTicketDashboardPath,
+  eventEditTicketSalesPath,
   resolveEditTabFromPathname,
+  resolveInvitationSubNavFromPathname,
+  resolveProductSubNavFromPathname,
+  resolveTicketSubNavFromPathname,
   type EventEditTabKey,
 } from './eventEditTabs'
 
@@ -52,6 +70,82 @@ function EventEditLayoutInner() {
     if (!id) return 'details'
     return resolveEditTabFromPathname(location.pathname, id) ?? 'details'
   }, [id, location.pathname])
+
+  const activeSubKey = useMemo(() => {
+    if (!id) return null
+    if (activeTab === 'products') return resolveProductSubNavFromPathname(location.pathname, id)
+    if (activeTab === 'tickets') return resolveTicketSubNavFromPathname(location.pathname, id)
+    if (activeTab === 'invitations') return resolveInvitationSubNavFromPathname(location.pathname, id)
+    return null
+  }, [activeTab, id, location.pathname])
+
+  const productsSubNav = useMemo(
+    () => [
+      { key: 'catalog', icon: <AppstoreOutlined />, label: t('events.products.subNavCatalog') },
+      { key: 'sales', icon: <DollarOutlined />, label: t('events.products.subNavSales') },
+    ],
+    [t],
+  )
+
+  const ticketsSubNav = useMemo(
+    () => [
+      { key: 'catalog', icon: <AppstoreOutlined />, label: t('events.tickets.subNavCatalog') },
+      { key: 'sales', icon: <DollarOutlined />, label: t('events.tickets.subNavSales') },
+    ],
+    [t],
+  )
+
+  const invitationsSubNav = useMemo(
+    () => [
+      { key: 'catalog', icon: <AppstoreOutlined />, label: t('events.invitations.subNavList') },
+      { key: 'guests', icon: <TeamOutlined />, label: t('events.invitations.subNavGuests') },
+    ],
+    [t],
+  )
+
+  const subNavBySection = useMemo(
+    () => ({ products: productsSubNav, tickets: ticketsSubNav, invitations: invitationsSubNav }),
+    [productsSubNav, ticketsSubNav, invitationsSubNav],
+  )
+
+  const handleSubNavClick = useCallback(
+    (sectionKey: EventEditTabKey, subKey: string) => {
+      if (!id) return
+      if (sectionKey === 'products') {
+        if (subKey === 'sales') navigate(eventEditMerchSalesPath(id))
+        else if (subKey === 'catalog') navigate(eventEditMerchCatalogPath(id))
+        return
+      }
+      if (sectionKey === 'tickets') {
+        if (subKey === 'sales') navigate(eventEditTicketSalesPath(id))
+        else if (subKey === 'catalog') navigate(eventEditTicketCatalogPath(id))
+        return
+      }
+      if (sectionKey === 'invitations') {
+        if (subKey === 'catalog') navigate(eventEditInvitationCatalogPath(id))
+        else if (subKey === 'guests') navigate(eventEditInvitationGuestsPath(id))
+      }
+    },
+    [id, navigate],
+  )
+
+  const subNavParentClickBySection = useMemo(
+    () => ({
+      products: () => {
+        if (!id) return
+        navigate(eventEditMerchDashboardPath(id))
+      },
+      tickets: () => {
+        if (!id) return
+        navigate(eventEditTicketDashboardPath(id))
+      },
+      invitations: () => {
+        if (!id) return
+        navigate(eventEditInvitationDashboardPath(id))
+      },
+    }),
+    [id, navigate],
+  )
 
   const navItems = useMemo(
     () =>
@@ -85,61 +179,132 @@ function EventEditLayoutInner() {
     const path = location.pathname
     const tabLabel = navItems.find((x) => x.key === activeTab)?.label ?? activeTab
 
+    const productsDashboardPath = eventEditMerchDashboardPath(id)
+
+    if (path === productsDashboardPath || path === `${productsDashboardPath}/`) {
+      return [...base, { title: t('events.form.menuProducts') }]
+    }
+    if (path.includes('/edit/products/sales')) {
+      return [
+        ...base,
+        { title: <Link to={productsDashboardPath}>{t('events.form.menuProducts')}</Link> },
+        { title: t('events.products.subNavSales') },
+      ]
+    }
     if (path.includes('/edit/products/new')) {
       return [
         ...base,
-        { title: <Link to={eventEditTabPath(id, 'products')}>{t('events.form.menuProducts')}</Link> },
+        { title: <Link to={productsDashboardPath}>{t('events.form.menuProducts')}</Link> },
+        { title: <Link to={eventEditMerchCatalogPath(id)}>{t('events.products.subNavCatalog')}</Link> },
         { title: t('events.form.addButton') },
       ]
     }
-    if (path.match(/\/edit\/products\/[^/]+$/)) {
+    if (/\/edit\/products\/(?!catalog|sales|new)[^/]+$/.test(path)) {
       return [
         ...base,
-        { title: <Link to={eventEditTabPath(id, 'products')}>{t('events.form.menuProducts')}</Link> },
+        { title: <Link to={productsDashboardPath}>{t('events.form.menuProducts')}</Link> },
+        { title: <Link to={eventEditMerchCatalogPath(id)}>{t('events.products.subNavCatalog')}</Link> },
         { title: t('events.products.breadcrumbEdit') },
+      ]
+    }
+    if (activeTab === 'products' && activeSubKey === 'catalog') {
+      return [
+        ...base,
+        { title: <Link to={productsDashboardPath}>{t('events.form.menuProducts')}</Link> },
+        { title: t('events.products.subNavCatalog') },
+      ]
+    }
+
+    const ticketsDashboardPath = eventEditTicketDashboardPath(id)
+
+    if (path === ticketsDashboardPath || path === `${ticketsDashboardPath}/`) {
+      return [...base, { title: t('events.form.menuTickets') }]
+    }
+    if (path.includes('/edit/tickets/sales')) {
+      return [
+        ...base,
+        { title: <Link to={ticketsDashboardPath}>{t('events.form.menuTickets')}</Link> },
+        { title: t('events.tickets.subNavSales') },
       ]
     }
     if (path.includes('/edit/tickets/new')) {
       return [
         ...base,
-        { title: <Link to={eventEditTabPath(id, 'tickets')}>{t('events.form.menuTickets')}</Link> },
+        { title: <Link to={ticketsDashboardPath}>{t('events.form.menuTickets')}</Link> },
+        { title: <Link to={eventEditTicketCatalogPath(id)}>{t('events.tickets.subNavCatalog')}</Link> },
         { title: t('events.form.addButton') },
       ]
     }
-    if (path.match(/\/edit\/tickets\/[^/]+$/)) {
+    if (/\/edit\/tickets\/(?!catalog|sales|new)[^/]+$/.test(path)) {
       return [
         ...base,
-        { title: <Link to={eventEditTabPath(id, 'tickets')}>{t('events.form.menuTickets')}</Link> },
+        { title: <Link to={ticketsDashboardPath}>{t('events.form.menuTickets')}</Link> },
+        { title: <Link to={eventEditTicketCatalogPath(id)}>{t('events.tickets.subNavCatalog')}</Link> },
         { title: t('events.tickets.breadcrumbEdit') },
       ]
+    }
+    if (activeTab === 'tickets' && activeSubKey === 'catalog') {
+      return [
+        ...base,
+        { title: <Link to={ticketsDashboardPath}>{t('events.form.menuTickets')}</Link> },
+        { title: t('events.tickets.subNavCatalog') },
+      ]
+    }
+    const invitationsDashboardPath = eventEditInvitationDashboardPath(id)
+
+    if (path === invitationsDashboardPath || path === `${invitationsDashboardPath}/`) {
+      return [...base, { title: t('events.form.menuInvitations') }]
     }
     if (path.includes('/edit/invitations/new')) {
       return [
         ...base,
+        { title: <Link to={invitationsDashboardPath}>{t('events.form.menuInvitations')}</Link> },
         {
           title: (
-            <Link to={eventEditTabPath(id, 'invitations')}>{t('events.form.menuInvitations')}</Link>
+            <Link to={eventEditInvitationCatalogPath(id)}>{t('events.invitations.subNavList')}</Link>
           ),
         },
         { title: t('events.form.addButton') },
       ]
     }
-    if (path.match(/\/edit\/invitations\/[^/]+$/)) {
+    if (path.includes('/edit/invitations/guests')) {
       return [
         ...base,
+        { title: <Link to={invitationsDashboardPath}>{t('events.form.menuInvitations')}</Link> },
+        { title: t('events.invitations.subNavGuests') },
+      ]
+    }
+    if (/\/edit\/invitations\/(?!catalog|guests|new)[^/]+$/.test(path)) {
+      return [
+        ...base,
+        { title: <Link to={invitationsDashboardPath}>{t('events.form.menuInvitations')}</Link> },
         {
           title: (
-            <Link to={eventEditTabPath(id, 'invitations')}>{t('events.form.menuInvitations')}</Link>
+            <Link to={eventEditInvitationCatalogPath(id)}>{t('events.invitations.subNavList')}</Link>
           ),
         },
         { title: t('events.invitations.breadcrumbEdit') },
+      ]
+    }
+    if (activeTab === 'invitations' && activeSubKey === 'catalog') {
+      return [
+        ...base,
+        { title: <Link to={invitationsDashboardPath}>{t('events.form.menuInvitations')}</Link> },
+        { title: t('events.invitations.subNavList') },
+      ]
+    }
+    if (activeTab === 'invitations' && activeSubKey === 'guests') {
+      return [
+        ...base,
+        { title: <Link to={invitationsDashboardPath}>{t('events.form.menuInvitations')}</Link> },
+        { title: t('events.invitations.subNavGuests') },
       ]
     }
     if (activeTab !== 'details') {
       return [...base, { title: tabLabel }]
     }
     return [...base, { title: t('events.detail.edit') }]
-  }, [activeTab, event, id, location.pathname, navItems, t])
+  }, [activeSubKey, activeTab, event, id, location.pathname, navItems, t])
 
   const blocker = useBlocker(anyDirty)
 
@@ -265,6 +430,10 @@ function EventEditLayoutInner() {
           onActiveKeyChange={handleTabChange}
           menuDropdownAriaLabel={t('events.form.sectionNavAria')}
           navMode="menu"
+          subNavBySection={subNavBySection}
+          activeSubKey={activeSubKey}
+          onSubNavClick={handleSubNavClick}
+          subNavParentClickBySection={subNavParentClickBySection}
         >
           <Outlet />
         </SectionStepsNavLayout>

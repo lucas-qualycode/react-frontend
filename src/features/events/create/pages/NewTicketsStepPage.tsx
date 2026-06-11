@@ -11,7 +11,7 @@ import {
   createWizardTicketEditPath,
   createWizardTicketNewPath,
 } from '@/features/events/create/createWizardSteps'
-import { EventProductsSection } from '@/features/events/edit/sections/EventProductsSection'
+import { EventManageListSection } from '@/features/events/edit/sections/EventManageListSection'
 import { useEvent } from '@/features/events/hooks'
 import {
   eventInitialValuesFromEvent,
@@ -90,7 +90,7 @@ export function NewTicketsStepPage() {
             onChange={(e) => void handleIsPaidAutoSave(e)}
           />
         </Form.Item>
-        <EventProductsSection
+        <EventManageListSection
           eventId={eventId}
           variant="ticket"
           onTicketCreate={() => navigate(createWizardTicketNewPath(eventId))}

@@ -1,4 +1,4 @@
-import { EventInvitationsSection } from '../sections/EventInvitationsSection'
+import { EventManageListSection } from '../sections/EventManageListSection'
 import { useEventEditContext } from '../EventEditContext'
 import { EditTabShell } from './EditTabShell'
 
@@ -7,7 +7,7 @@ export function EditInvitationsPage() {
 
   return (
     <EditTabShell showSave={false}>
-      <EventInvitationsSection eventId={eventId} />
+      <EventManageListSection eventId={eventId} variant="invitation" />
     </EditTabShell>
   )
 }

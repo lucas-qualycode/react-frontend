@@ -3,6 +3,9 @@ import { resolveWizardStepFromInvitation } from './resolveWizardStep'
 
 describe('resolveWizardStepFromInvitation', () => {
   it('uses backend wizard_step when present', () => {
+    expect(resolveWizardStepFromInvitation({ status: 'SENT', wizard_step: 'welcome' })).toBe(
+      'welcome',
+    )
     expect(resolveWizardStepFromInvitation({ status: 'SENT', wizard_step: 'gifts' })).toBe('gifts')
     expect(resolveWizardStepFromInvitation({ status: 'SENT', wizard_step: 'message' })).toBe(
       'message',
@@ -12,9 +15,9 @@ describe('resolveWizardStepFromInvitation', () => {
     )
   })
 
-  it('defaults to guests for sent invitations without wizard_step', () => {
-    expect(resolveWizardStepFromInvitation({ status: 'SENT' })).toBe('guests')
-    expect(resolveWizardStepFromInvitation({ status: 'CREATED' })).toBe('guests')
+  it('defaults to welcome for sent invitations without wizard_step', () => {
+    expect(resolveWizardStepFromInvitation({ status: 'SENT' })).toBe('welcome')
+    expect(resolveWizardStepFromInvitation({ status: 'CREATED' })).toBe('welcome')
   })
 
   it('falls back to finished for accepted or declined without wizard_step', () => {

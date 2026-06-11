@@ -1,12 +1,18 @@
 import { MenuOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
-import { Button, Dropdown, Flex, Grid, Steps } from 'antd'
-import { useMemo, type ReactNode } from 'react'
+import { Button, Dropdown, Flex, Grid, Menu, Steps } from 'antd'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 export type SectionNavItem<K extends string = string> = {
   key: K
   icon: ReactNode
   label: string
+}
+
+export type SectionSubNavItem = {
+  key: string
+  label: string
+  icon?: ReactNode
 }
 
 export type SectionStepsNavLayoutProps<K extends string> = {
@@ -16,6 +22,10 @@ export type SectionStepsNavLayoutProps<K extends string> = {
   onActiveKeyChange: (key: K) => void
   menuDropdownAriaLabel: string
   navMode?: 'progress' | 'menu'
+  subNavBySection?: Partial<Record<K, SectionSubNavItem[]>>
+  activeSubKey?: string | null
+  onSubNavClick?: (sectionKey: K, subKey: string) => void
+  subNavParentClickBySection?: Partial<Record<K, () => void>>
   children: ReactNode
 }
 
@@ -26,6 +36,10 @@ export function SectionStepsNavLayout<K extends string>({
   onActiveKeyChange,
   menuDropdownAriaLabel,
   navMode = 'progress',
+  subNavBySection,
+  activeSubKey,
+  onSubNavClick,
+  subNavParentClickBySection,
   children,
 }: SectionStepsNavLayoutProps<K>) {
   const screens = Grid.useBreakpoint()
@@ -95,9 +109,96 @@ export function SectionStepsNavLayout<K extends string>({
   )
 
   const dropdownMenuItems: MenuProps['items'] = useMemo(
-    () => items.map(({ key, icon, label }) => ({ key, icon, label })),
-    [items],
+    () =>
+      items.map(({ key, icon, label }) => {
+        const subs = subNavBySection?.[key]
+        if (subs?.length) {
+          return {
+            key,
+            icon,
+            label,
+            children: subs.map((sub) => ({
+              key: `${key}:${sub.key}`,
+              icon: sub.icon,
+              label: sub.label,
+            })),
+          }
+        }
+        return { key, icon, label }
+      }),
+    [items, subNavBySection],
   )
+
+  const wideMenuItems = useMemo((): MenuProps['items'] => {
+    if (navMode !== 'menu') return []
+    return sectionOrder.map((key) => {
+      const m = itemByKey.get(key)
+      const subs = subNavBySection?.[key]
+      if (subs?.length) {
+        const parentLabel = m?.label ?? key
+        const onParentClick = subNavParentClickBySection?.[key]
+        return {
+          key,
+          icon: m?.icon,
+          label: onParentClick ? (
+            <span
+              role="link"
+              tabIndex={0}
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onParentClick()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onParentClick()
+                }
+              }}
+            >
+              {parentLabel}
+            </span>
+          ) : (
+            parentLabel
+          ),
+          children: subs.map((sub) => ({
+            key: `${key}:${sub.key}`,
+            icon: sub.icon,
+            label: sub.label,
+          })),
+        }
+      }
+      return {
+        key,
+        icon: m?.icon,
+        label: m?.label ?? key,
+      }
+    })
+  }, [itemByKey, navMode, sectionOrder, subNavBySection, subNavParentClickBySection])
+
+  const wideMenuSelectedKeys = useMemo(() => {
+    if (activeSubKey && subNavBySection?.[activeKey]?.length) {
+      return [`${activeKey}:${activeSubKey}`]
+    }
+    return [activeKey]
+  }, [activeKey, activeSubKey, subNavBySection])
+
+  const wideMenuOpenKeys = useMemo(() => {
+    const keys: string[] = []
+    for (const key of sectionOrder) {
+      if (subNavBySection?.[key]?.length) keys.push(key)
+    }
+    return keys
+  }, [sectionOrder, subNavBySection])
+
+  const [menuOpenKeys, setMenuOpenKeys] = useState(wideMenuOpenKeys)
+
+  useEffect(() => {
+    if (activeSubKey && subNavBySection?.[activeKey]?.length) {
+      setMenuOpenKeys((prev) => (prev.includes(activeKey) ? prev : [...prev, activeKey]))
+    }
+  }, [activeSubKey, activeKey, subNavBySection])
 
   const wideStepsClassName =
     navMode === 'menu' ? 'event-form-wide-steps event-form-wide-steps-menu' : 'event-form-wide-steps'
@@ -125,8 +226,19 @@ export function SectionStepsNavLayout<K extends string>({
             <Dropdown
               menu={{
                 items: dropdownMenuItems,
-                selectedKeys: [activeKey],
-                onClick: ({ key }) => onActiveKeyChange(key as K),
+                selectedKeys: [
+                  activeKey,
+                  ...(activeSubKey ? [`${activeKey}:${activeSubKey}`] : []),
+                ],
+                onClick: ({ key }) => {
+                  const keyStr = String(key)
+                  const colon = keyStr.indexOf(':')
+                  if (colon > 0 && onSubNavClick) {
+                    onSubNavClick(keyStr.slice(0, colon) as K, keyStr.slice(colon + 1))
+                    return
+                  }
+                  onActiveKeyChange(keyStr as K)
+                },
               }}
               trigger={['hover', 'click']}
               placement="bottomRight"
@@ -142,15 +254,36 @@ export function SectionStepsNavLayout<K extends string>({
         </Flex>
         {!compactNav ? (
           <div style={{ width: 220, flexShrink: 0 }}>
-            <Steps
-              className={wideStepsClassName}
-              orientation="vertical"
-              size="small"
-              responsive={false}
-              current={stepIndex}
-              items={wideStepItems}
-              onChange={(step) => onActiveKeyChange(sectionOrder[step])}
-            />
+            {navMode === 'menu' && subNavBySection ? (
+              <Menu
+                className="event-form-section-menu"
+                mode="inline"
+                inlineIndent={0}
+                selectedKeys={wideMenuSelectedKeys}
+                openKeys={menuOpenKeys}
+                onOpenChange={setMenuOpenKeys}
+                items={wideMenuItems}
+                onClick={({ key }) => {
+                  const keyStr = String(key)
+                  const colon = keyStr.indexOf(':')
+                  if (colon > 0 && onSubNavClick) {
+                    onSubNavClick(keyStr.slice(0, colon) as K, keyStr.slice(colon + 1))
+                    return
+                  }
+                  onActiveKeyChange(keyStr as K)
+                }}
+              />
+            ) : (
+              <Steps
+                className={wideStepsClassName}
+                orientation="vertical"
+                size="small"
+                responsive={false}
+                current={stepIndex}
+                items={wideStepItems}
+                onChange={(step) => onActiveKeyChange(sectionOrder[step])}
+              />
+            )}
           </div>
         ) : null}
       </Flex>
